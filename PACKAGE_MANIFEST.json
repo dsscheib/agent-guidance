@@ -15,8 +15,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 2818,
-      "sha256": "423b2409d00900ed7cdbdff225be49a43a7f219f5ffbef2cbb459cb6104a8ba7"
+      "bytes": 2904,
+      "sha256": "17706db2ef25726d4339bf9db9200e22e69d1e6298a67763d211d2d0adaca557"
     },
     {
       "path": "check_package.py",
