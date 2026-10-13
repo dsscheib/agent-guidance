@@ -1,0 +1,147 @@
+{
+  "package": "reusable-project-guidance",
+  "version": "1.0",
+  "status": "unconfigured-templates",
+  "files": [
+    {
+      "path": "AGENTS.md",
+      "bytes": 5459,
+      "sha256": "fc3df7d695280d660465f5e7e56da9cc5bac3a458035a457afabdd3cdf8eff38"
+    },
+    {
+      "path": "PROJECT_PROFILE.md",
+      "bytes": 2202,
+      "sha256": "9bbd5ce6e4102f45546693f92bad43f248d6ee35b599a4fc6eaa92fbff7744bb"
+    },
+    {
+      "path": "README.md",
+      "bytes": 2818,
+      "sha256": "423b2409d00900ed7cdbdff225be49a43a7f219f5ffbef2cbb459cb6104a8ba7"
+    },
+    {
+      "path": "check_package.py",
+      "bytes": 1208,
+      "sha256": "9bd873b878db45294bfbe182453a44435c149dc7ee4219bbec15603606336296"
+    },
+    {
+      "path": "design_doc.md",
+      "bytes": 2161,
+      "sha256": "daa0a1b37bb73cb4abc609d8519b12fa3ce8f70445440b09535e9284c593e0c8"
+    },
+    {
+      "path": "docs/ARCHITECTURE.md",
+      "bytes": 3302,
+      "sha256": "0a3349d7fb1f41c744980bc5c77aee08bb36a3ed69990013514996b445e7cdec"
+    },
+    {
+      "path": "docs/BRANDING.md",
+      "bytes": 615,
+      "sha256": "d8df1445820ee3d586bff1c47ed6df029e4de0b9766c373565c8ea255837b814"
+    },
+    {
+      "path": "docs/CHANGE_WORKFLOW.md",
+      "bytes": 3484,
+      "sha256": "49e8db6a53f7864cf54f838d0f51e287200c2165bc37a58e9bd612850e1467b1"
+    },
+    {
+      "path": "docs/DATA_PORTABILITY.md",
+      "bytes": 2762,
+      "sha256": "5ffa1c07722d9ceb3695abdf2f3ae13c7cab14ce37c6f730ee4e10d0e4990afc"
+    },
+    {
+      "path": "docs/DOCUMENTATION.md",
+      "bytes": 4354,
+      "sha256": "674adb1f6b128265d76ffdd97025db75123f72f5fd71e51594614186a36d0340"
+    },
+    {
+      "path": "docs/DOMAIN_RULES.md",
+      "bytes": 2212,
+      "sha256": "2e3259340a66a33f968aa750787b486785e582cc5395d23a855e9f8eb686977e"
+    },
+    {
+      "path": "docs/OPEN_WORK.md",
+      "bytes": 821,
+      "sha256": "77369f3a6afa15e9985472f7ae0c1a40ac46b908267ea74a2a960d53bbe9ff70"
+    },
+    {
+      "path": "docs/PRODUCTION_READINESS.md",
+      "bytes": 1706,
+      "sha256": "a074ef834ece3b832062dad91cbc3a226eedf9201c1f3fb9c241f53e943c4e0b"
+    },
+    {
+      "path": "docs/REQUIREMENTS_REVIEW.md",
+      "bytes": 1187,
+      "sha256": "406c4288ff544daf6e08c1764fe491086b92e8e9f793bfc22203eec6ee93e35c"
+    },
+    {
+      "path": "docs/ROADMAP.md",
+      "bytes": 1427,
+      "sha256": "d21bfcaee66f699069a889baa8f27c045c019797b25159e8cd488e290de843fb"
+    },
+    {
+      "path": "docs/RUNBOOKS.md",
+      "bytes": 3505,
+      "sha256": "79cb24cc74acaff2b1c7de7c243a054ce4ff83518c53355f3c16b9e3da60065b"
+    },
+    {
+      "path": "docs/SECURITY_PRODUCTION_SPEC.md",
+      "bytes": 4733,
+      "sha256": "2d21958330149fbff2f885edffd82e4dc107d5ef18317f82216ec4a09360a9ac"
+    },
+    {
+      "path": "docs/SOAK_QUALIFICATION_COLLECTOR.md",
+      "bytes": 3065,
+      "sha256": "a5e2e63607ef4560dac9574f639ef512cef46c52748b36d906dc798031d77573"
+    },
+    {
+      "path": "docs/SOURCES.md",
+      "bytes": 748,
+      "sha256": "c6a5a5c30789792478a036508e84c97af1ea3eabc6669a6617599809246fdba6"
+    },
+    {
+      "path": "docs/TESTING_SPEC.md",
+      "bytes": 7451,
+      "sha256": "295fdba1bf87a7d9d36db6d03f74dfdad5924663989228f2358a770c63baeff7"
+    },
+    {
+      "path": "docs/TEST_VERIFICATION_HANDOFF.md",
+      "bytes": 1613,
+      "sha256": "64be0ca1e92ffc3c1b9b091f4670bbbeb2cc9b3171f931c46b66fb6b19388fe8"
+    },
+    {
+      "path": "docs/UI_PATTERNS.md",
+      "bytes": 2511,
+      "sha256": "7e177bc9490ac395b4892432912aefad3f5b2b4579c90ff0ac4d7ad1acd02919"
+    },
+    {
+      "path": "docs/UX_ACCEPTANCE_CHECKLIST.md",
+      "bytes": 1638,
+      "sha256": "c000a5dfe3fccd3da3c1b1c73194ba9d5a60b2ec725bb630f4cd3a723bde29bd"
+    },
+    {
+      "path": "docs/UX_DESIGN_SPEC.md",
+      "bytes": 4340,
+      "sha256": "042466dfed8306933cbffbb1446303bd0a0ee716c5b97cb63bdc0fbacdbd8b87"
+    },
+    {
+      "path": "docs/VERIFICATION_MATRIX.md",
+      "bytes": 1296,
+      "sha256": "f244670defb90ad5ace95ce0a1325fd56959fb8bc652d5abc52e1573c9b99711"
+    },
+    {
+      "path": "docs/VERIFICATION_REVIEW.md",
+      "bytes": 1057,
+      "sha256": "8178b363e7290ed74ffd480c85fa2aa9395bf50bae6893df889924e1ce23d94b"
+    },
+    {
+      "path": "docs/decisions/ADR_TEMPLATE.md",
+      "bytes": 620,
+      "sha256": "84da65b4b9b108aad822559edffcfab9f8aa5f55ac53cf1c84b500f6be41454b"
+    },
+    {
+      "path": "profiles/SERVER_RENDERED_WEB.md",
+      "bytes": 1638,
+      "sha256": "a860f660c6c6ec9ff36796237fe98f4fdba6a04f1ba97035325593bd91974762"
+    }
+  ]
+}
