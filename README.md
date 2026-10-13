@@ -13,6 +13,7 @@ This package contains project-neutral adaptations of agent instructions, enginee
 
 ## What is included
 - AGENTS.md as the entry point and requirements router.
+- CLAUDE.md is included for CLaudeCode compatability and simply references AGENTS.md.
 - Architecture, domain, portability, UX, testing, security, documentation and change policies.
 - Technical design, roadmap, requirement-review, verification handoff, branding and decision templates.
 - Empty work/evidence registers and operator/qualification procedures.
