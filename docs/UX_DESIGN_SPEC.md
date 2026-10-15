@@ -36,6 +36,17 @@ Adopt the target and matrix in PROJECT_PROFILE.md; for web projects consider WCA
 
 Record manual touch, assistive-technology, forced-colors and environmental checks separately from automated checks. A framework class or zero automated accessibility violations is not complete conformance evidence.
 
+### Visual Design Direction
+
+When creating or substantially redesigning an interface, establish a coherent visual direction appropriate to the application's purpose, audience, and workflows.
+
+- Define or reuse the application's visual identity, including typography, color palette, spacing, information density, component styling, and motion.
+- Prefer existing design tokens, components, and visual conventions over introducing new ones.
+- When no visual direction exists, propose one before implementing significant UI changes.
+- Optional frontend-design skills may assist with visual exploration and refinement but must not override adopted project requirements.
+- Visual distinctiveness must not compromise accessibility, semantic HTML, usability, consistency, or established interaction patterns.
+- Follow the verification requirements in `UX_ACCEPTANCE_CHECKLIST.md`. A design skill's self-review does not replace project acceptance criteria.
+
 ## Search and performance
 For supported searchable collections, expose active filters, result counts and clear actions. Represent shareable state in coherent navigable URLs where applicable; preserve Back/Forward behavior. Live search needs bounded debounce and stale-response protection plus usable direct submission. Announce meaningful changes politely, not every keystroke. Use pagination/bounded data access according to the adopted contract.
 
