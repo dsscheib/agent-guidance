@@ -24,4 +24,4 @@ Define atomicity, successful acknowledgments, conflict results and reconciliatio
 
 ## Scope and decisions
 {{SUPPORTED_UNSUPPORTED_AND_UNRESOLVED_RULES}}
-Product decisions belong here after approval; unresolved choices belong in OPEN_WORK.md. Import/export uses the same authoritative rules under DATA_PORTABILITY.md. Actual schema/interfaces remain in design_doc.md. Inspection is not evidence of verification.
+Product decisions belong here after approval; unresolved choices belong in OPEN_WORK.md. Import/export uses the same authoritative rules under DATA_PORTABILITY.md. Actual schema/interfaces remain in DESIGN_DOC.md. Inspection is not evidence of verification.

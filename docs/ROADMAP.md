@@ -1,6 +1,6 @@
 # Future requirements and iteration planning
 
-Status: Unconfigured proposals. Planning does not authorize implementation or deployment. Current defects/decisions remain in OPEN_WORK.md; technical contracts remain in design_doc.md and their subject specifications.
+Status: Unconfigured proposals. Planning does not authorize implementation or deployment. Current defects/decisions remain in OPEN_WORK.md; technical contracts remain in DESIGN_DOC.md and their subject specifications.
 
 ## Entry conditions
 {{SUPPORTED_BASELINE_AND_DEPENDENCIES}}

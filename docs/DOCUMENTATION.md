@@ -6,7 +6,7 @@ AGENTS.md is a concise router. User-authorized decisions govern scope; update th
 | Subject | Authoritative home |
 |---|---|
 | Project identity, adopted stack, support and actual command inventory | [PROJECT_PROFILE.md](../PROJECT_PROFILE.md) |
-| Technical interfaces/model and delivery scope | [design_doc.md](../design_doc.md) |
+| Technical interfaces/model and delivery scope | [DESIGN_DOC.md](../DESIGN_DOC.md) |
 | Domain meaning and invariants | [DOMAIN_RULES.md](DOMAIN_RULES.md) |
 | Architecture responsibility boundaries | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | Portable formats and import/export semantics | [DATA_PORTABILITY.md](DATA_PORTABILITY.md) |

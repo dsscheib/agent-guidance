@@ -6,7 +6,7 @@
     {
       "path": "AGENTS.md",
       "bytes": 5459,
-      "sha256": "fc3df7d695280d660465f5e7e56da9cc5bac3a458035a457afabdd3cdf8eff38"
+      "sha256": "37fb68a1ad2eefd64bf533aa05b934f8836e84b044c4c30bf653db0a69fcab29"
     },
     {
       "path": "PROJECT_PROFILE.md",
@@ -16,7 +16,7 @@
     {
       "path": "README.md",
       "bytes": 2904,
-      "sha256": "17706db2ef25726d4339bf9db9200e22e69d1e6298a67763d211d2d0adaca557"
+      "sha256": "725f53f919c3d0f60964d4e96e491aad706940acf998a57aa2de7a4a6fc5e90d"
     },
     {
       "path": "check_package.py",
@@ -24,7 +24,7 @@
       "sha256": "9bd873b878db45294bfbe182453a44435c149dc7ee4219bbec15603606336296"
     },
     {
-      "path": "design_doc.md",
+      "path": "DESIGN_DOC.md",
       "bytes": 2161,
       "sha256": "daa0a1b37bb73cb4abc609d8519b12fa3ce8f70445440b09535e9284c593e0c8"
     },
@@ -51,17 +51,17 @@
     {
       "path": "docs/DOCUMENTATION.md",
       "bytes": 4354,
-      "sha256": "674adb1f6b128265d76ffdd97025db75123f72f5fd71e51594614186a36d0340"
+      "sha256": "329d22fe3aedfbd1aba7805a0d87628c2c040aa91a03ded6f25734811d59b27b"
     },
     {
       "path": "docs/DOMAIN_RULES.md",
       "bytes": 2212,
-      "sha256": "2e3259340a66a33f968aa750787b486785e582cc5395d23a855e9f8eb686977e"
+      "sha256": "9c8b1634e4afd81042e590cfcd03bc46ea0c4b6556fb8e68e6e19392235c7bf0"
     },
     {
       "path": "docs/OPEN_WORK.md",
-      "bytes": 821,
-      "sha256": "77369f3a6afa15e9985472f7ae0c1a40ac46b908267ea74a2a960d53bbe9ff70"
+      "bytes": 1311,
+      "sha256": "7d3837585bb5f1a2a207a5502ef18fc4d893a5f1663e6f022af54cdab7e78e46"
     },
     {
       "path": "docs/PRODUCTION_READINESS.md",
@@ -76,7 +76,7 @@
     {
       "path": "docs/ROADMAP.md",
       "bytes": 1427,
-      "sha256": "d21bfcaee66f699069a889baa8f27c045c019797b25159e8cd488e290de843fb"
+      "sha256": "8094047b841c88c27868df0ccb5cba3aea69e1afc679bf867ebeb34da1b96acf"
     },
     {
       "path": "docs/RUNBOOKS.md",
@@ -120,13 +120,13 @@
     },
     {
       "path": "docs/UX_DESIGN_SPEC.md",
-      "bytes": 4340,
-      "sha256": "042466dfed8306933cbffbb1446303bd0a0ee716c5b97cb63bdc0fbacdbd8b87"
+      "bytes": 5289,
+      "sha256": "3ddd5e4eb3c747b553e9b185272cfbfba77faf5dde955e9ac8bc6f80bbf814fc"
     },
     {
       "path": "docs/VERIFICATION_MATRIX.md",
-      "bytes": 1296,
-      "sha256": "f244670defb90ad5ace95ce0a1325fd56959fb8bc652d5abc52e1573c9b99711"
+      "bytes": 1959,
+      "sha256": "9316ef28a401c89cdbbd5230611e3fae7c636426c1b26a94bfaf65880e83927f"
     },
     {
       "path": "docs/VERIFICATION_REVIEW.md",

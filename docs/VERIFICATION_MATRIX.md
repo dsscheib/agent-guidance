@@ -1,7 +1,7 @@
 # Requirement and gate verification matrix
 
 Scope/profile/candidate: {{VERIFICATION_SCOPE}}
-Status: Unconfigured; no executed results.
+Status: Product verification remains unconfigured. Repository maintenance checks are recorded separately below.
 
 | Requirement / scenario | Intended path and failure case | Coverage / actual command | Environment | Applicability | Result / raw evidence | Work ID |
 |---|---|---|---|---|---|---|
@@ -14,3 +14,11 @@ Map unit/integration, security, static/concurrency/build, browser/manual accessi
 ## Evidence and final audit
 {{CANDIDATE_ARTIFACTS_ENVIRONMENT_DATES_OPERATORS_COMMANDS_RAW_RESULTS_AND_REUSE_RATIONALE}}
 Use the shared completion/status definitions in DOCUMENTATION.md and final audit in CHANGE_WORKFLOW.md. Keep unresolved status in OPEN_WORK.md rather than duplicating a second backlog. This map does not replace authoritative requirements.
+
+## Repository maintenance verification
+
+| Requirement | Checks | Result | Work ID |
+|---|---|---|---|
+| Rename the technical design file to `DESIGN_DOC.md` and update all references | Confirm the new path exists, the old path is absent, content is unchanged, no old-name references remain, and `python3 check_package.py` passes | Passed 2026-10-17: path, unchanged-content and old-reference assertions; package checker reports 28 intact files and resolved internal links | DOC-001 |
+
+Application, UI, security, performance and release gates are inapplicable to this documentation-only rename.

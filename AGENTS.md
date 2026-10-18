@@ -9,7 +9,7 @@ Before relevant changes, read:
 - [docs/DATA_PORTABILITY.md](docs/DATA_PORTABILITY.md): interfaces, identities and compatibility.
 - [docs/CHANGE_WORKFLOW.md](docs/CHANGE_WORKFLOW.md): scope, review and verification.
 - [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md): authority, statuses and decisions.
-- [design_doc.md](design_doc.md): technical contracts and adopted delivery scope.
+- [DESIGN_DOC.md](DESIGN_DOC.md): technical contracts and adopted delivery scope.
 - [docs/UX_DESIGN_SPEC.md](docs/UX_DESIGN_SPEC.md), [docs/UI_PATTERNS.md](docs/UI_PATTERNS.md) and [docs/UX_ACCEPTANCE_CHECKLIST.md](docs/UX_ACCEPTANCE_CHECKLIST.md): applicable UI contracts.
 - [docs/ROADMAP.md](docs/ROADMAP.md) when planning future work; inclusion does not authorize implementation.
 

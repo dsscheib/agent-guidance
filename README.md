@@ -5,7 +5,7 @@ This package contains project-neutral adaptations of agent instructions, enginee
 ## Start here
 1. Copy this directory's contents into the new repository. Review files individually before overwriting existing documentation.
 2. Complete [PROJECT_PROFILE.md](PROJECT_PROFILE.md) with the owner, goals, approved stack, domain, supported platforms, actual commands and required verification gates.
-3. Populate [design_doc.md](design_doc.md) and the domain, UX, security and portability specifications with adopted requirements. Unfilled templates are not approved product defaults.
+3. Populate [DESIGN_DOC.md](DESIGN_DOC.md) and the domain, UX, security and portability specifications with adopted requirements. Unfilled templates are not approved product defaults.
 4. Keep applicable requirements. Record a reason and owner decision when excluding a gate; missing tooling is not inapplicability. Non-web projects may exclude the web UI guides with a recorded rationale.
 5. Select an optional stack profile only when authorized. The included [server-rendered web profile](profiles/SERVER_RENDERED_WEB.md) is not the default architecture.
 6. Establish the real test command inventory and required-gate matrix. Replace all `{{...}}` placeholders before claiming configuration or acceptance is complete.
