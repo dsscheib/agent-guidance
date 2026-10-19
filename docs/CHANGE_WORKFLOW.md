@@ -6,7 +6,7 @@ Follow the user's intended outcome. Explicit authorization persists for its scop
 Distinguish proposals, accepted requirements, implementation observations and verification. Record conflicting references, impact and required decisions; continue independent authorized work while blocked questions remain. For substantial/risky changes prepare a reviewable plan with affected boundaries, compatibility, verification and recovery. Small changes need a proportionate explanation.
 
 ## Implementation and compatibility
-Make the smallest cohesive change using approved patterns. No unrelated rewrites, renames, bulk formatting, upgrades or speculative features. Regenerate owned output rather than editing generated files directly. Preserve input on errors; never suppress failures or silently create substitute data/configuration.
+Make the smallest cohesive change using approved patterns. No unrelated rewrites, renames, bulk formatting, upgrades or speculative features. Regenerate owned output rather than editing generated files directly. Preserve input on errors; never suppress failures or silently create substitute data/configuration. Synchronize affected documentation, runbooks, and verification registers within the same work item rather than deferring documentation updates to a later pass.
 
 Identifiers, formats, stored values, public interfaces and configuration are compatibility contracts. Explain breaks unless already authorized; supply reviewed transition and recovery procedures. Production migrations are explicit authorized operations. Durable architecture choices require an ADR; routine helpers do not.
 

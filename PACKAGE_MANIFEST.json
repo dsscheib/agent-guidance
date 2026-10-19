@@ -5,8 +5,8 @@
   "files": [
     {
       "path": "AGENTS.md",
-      "bytes": 5459,
-      "sha256": "37fb68a1ad2eefd64bf533aa05b934f8836e84b044c4c30bf653db0a69fcab29"
+      "bytes": 6277,
+      "sha256": "3937b681a919c61a5114691bbce9354612e4e21be77ba8ab6780258105e9813a"
     },
     {
       "path": "PROJECT_PROFILE.md",
@@ -40,8 +40,8 @@
     },
     {
       "path": "docs/CHANGE_WORKFLOW.md",
-      "bytes": 3484,
-      "sha256": "49e8db6a53f7864cf54f838d0f51e287200c2165bc37a58e9bd612850e1467b1"
+      "bytes": 3644,
+      "sha256": "bd29dfd8874fd18aada3b9e9612b177f85a7c5d29ae9b2fd7d1eb118721aa1f6"
     },
     {
       "path": "docs/DATA_PORTABILITY.md",

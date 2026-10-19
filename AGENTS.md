@@ -22,7 +22,7 @@ Before changing authentication, authorization, persistence, dependencies, deploy
 - Do not invent uncertain business rules. Ask about blocking decisions while continuing independent authorized work.
 - Material dependency or architecture changes need a concrete justification and authorization unless already in scope. Routine internal helpers do not need another approval.
 - Do not reset, overwrite, bulk reformat or refactor unrelated work. Do not commit, push, merge, publish, deploy or perform destructive data changes without applicable authorization.
-- Complete authorized work, update affected documentation and run appropriate checks. Do not stop at a plan when implementation was requested.
+- Complete authorized work, update affected documentation (`PROJECT_PROFILE.md`, `DESIGN_DOC.md`, `README.md`, and affected `docs/` guides) after every change within the same work item, and run change-appropriate checks. Never leave documentation out of sync with code, UI patterns, scripts, configuration, or test gates. Do not stop at a plan when implementation was requested.
 
 ## UI invariants
 - Prioritize the adopted user journeys. Show identities, values, units and states accurately; never advertise unsupported features.
@@ -32,6 +32,7 @@ Before changing authentication, authorization, persistence, dependencies, deploy
 - Use links for navigation and buttons for actions. Apply confirmations to destructive non-reversible actions; offer undo only when supported.
 - Keep a plain form or navigable fallback for critical web workflows where feasible. Verify dynamic replacement preserves valid HTML, focus, component lifecycle and target contracts.
 - Test the configured browser/theme/viewport matrix and manual accessibility scenarios. Never claim a check ran when it did not.
+- After every UI, component, token, or accessibility change, update affected UI documentation (`docs/UI_PATTERNS.md`, `docs/UX_DESIGN_SPEC.md`, `docs/BRANDING.md`, `docs/UX_ACCEPTANCE_CHECKLIST.md`) within the same work item before claiming completion.
 
 ## Operations and testing
 - Treat clients and external inputs as untrusted. Enforce authorization, validation, escaping and applicable request-forgery protections at the authoritative boundary.
@@ -41,4 +42,4 @@ Before changing authentication, authorization, persistence, dependencies, deploy
 - No unattended application releases/schema changes unless specifically adopted and authorized. Never log secrets or store them in source, arguments, examples or evidence.
 - Map affected requirements to verification before implementation. Missing UI/performance/soak tooling is work or a blocker, never an implicit waiver.
 - Use isolated synthetic data and the real persistence path where relevant. Add meaningful regressions and negative controls; demonstrate failure before a fix when practical.
-- Report implementation completion, verification completion and release acceptance separately. Track unresolved work in [docs/OPEN_WORK.md](docs/OPEN_WORK.md); perform the final audit in CHANGE_WORKFLOW.md. A green local suite or running long test is not release acceptance.
+- After every domain, operational, deployment, or test change, update affected specifications and registers (`docs/DOMAIN_RULES.md`, `docs/RUNBOOKS.md`, `docs/SECURITY_PRODUCTION_SPEC.md`, `docs/TESTING_SPEC.md`, `docs/VERIFICATION_MATRIX.md`, `docs/PRODUCTION_READINESS.md`, `docs/OPEN_WORK.md`, `README.md`) within the same work item before claiming completion. Report implementation completion, verification completion and release acceptance separately; perform the final audit in [docs/CHANGE_WORKFLOW.md](docs/CHANGE_WORKFLOW.md). A green local suite or running long test is not release acceptance.
