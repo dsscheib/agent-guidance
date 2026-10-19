@@ -32,6 +32,7 @@ Before changing authentication, authorization, persistence, dependencies, deploy
 - Use links for navigation and buttons for actions. Apply confirmations to destructive non-reversible actions; offer undo only when supported.
 - Keep a plain form or navigable fallback for critical web workflows where feasible. Verify dynamic replacement preserves valid HTML, focus, component lifecycle and target contracts.
 - Test the configured browser/theme/viewport matrix and manual accessibility scenarios. Never claim a check ran when it did not.
+- When a completed task includes UI or interactive workflow changes that benefit from owner review, deploy the verified changes to the configured review/target environment (when authorized) and provide a concise set of User Acceptance Tests (UAT) for the owner to run and provide feedback.
 - After every UI, component, token, or accessibility change, update affected UI documentation (`docs/UI_PATTERNS.md`, `docs/UX_DESIGN_SPEC.md`, `docs/BRANDING.md`, `docs/UX_ACCEPTANCE_CHECKLIST.md`) within the same work item before claiming completion.
 
 ## Operations and testing
