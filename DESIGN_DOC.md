@@ -1,6 +1,6 @@
 # Technical design template
 
-Status: Unconfigured. Authority by subject follows [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md). Descriptive code/schema observations are not accepted requirements or proof of testing.
+Kind: Template. Status: Unconfigured. Authority by subject follows the routing table in [AGENTS.md](AGENTS.md). Descriptive code/schema observations are not accepted requirements or proof of testing.
 
 ## Purpose, users and scope
 {{PURPOSE_USERS_JOURNEYS_AND_NON_GOALS}}
@@ -19,7 +19,7 @@ Cross-reference [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and domain invarian
 |---|---|---|---|---|
 | {{INTERFACE}} | {{VALIDATION_AND_AUTHORIZATION}} | {{STATUS_AND_RESULT}} | {{COMPATIBILITY_AND_FALLBACK}} | Planned; not implemented |
 
-For web interfaces document direct navigation, full-document and fragment variants, target/swap contracts, validation, authentication expiry and retry behavior. For other applications document the equivalent public interaction boundaries.
+For every public interaction boundary, document direct access, validation, permission, result and error semantics, session expiry and retry behavior. Adopted stack profiles add mechanism-specific contracts, such as full-page and fragment variants in the [server-rendered web profile](profiles/SERVER_RENDERED_WEB.md).
 
 ## Persistent model and transitions
 {{IDENTITIES_RELATIONSHIPS_TYPES_UNITS_CONSTRAINTS_AND_LIFECYCLES}}
@@ -31,4 +31,4 @@ Reference the authoritative security, portability and runbook guides. List actua
 
 ## Verification and delivery
 {{ADOPTED_SCOPE_DEPENDENCIES_AND_ACCEPTANCE_CRITERIA}}
-Link [docs/VERIFICATION_MATRIX.md](docs/VERIFICATION_MATRIX.md), [docs/OPEN_WORK.md](docs/OPEN_WORK.md) and [docs/ROADMAP.md](docs/ROADMAP.md). Do not rename incomplete committed scope as a future feature. Record separately what is proposed, implemented, verified and accepted.
+Link [docs/VERIFICATION_MATRIX.md](docs/VERIFICATION_MATRIX.md), [docs/OPEN_WORK.md](docs/OPEN_WORK.md) and [docs/ROADMAP.md](docs/ROADMAP.md). Do not rename incomplete committed scope as a future feature. Use the status vocabulary in [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md).

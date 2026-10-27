@@ -1,5 +1,7 @@
 # Data portability and exchange
 
+Kind: Policy with template fields. Applies only if the project imports or exports data; otherwise record an exclusion in PROJECT_PROFILE.md.
+
 ## Scope and formats
 {{SHIPPED_FORMATS_VERSIONS_AND_INCLUSION_EXCLUSION}}
 Distinguish human-editable exchange, logical full-fidelity transfer and operational backup. An export is not automatically a recoverable backup. Do not advertise full recovery while omitting relationships, history, required assets or configuration. Exclude secrets and reusable sessions from ordinary portable exports; define account inclusion explicitly.

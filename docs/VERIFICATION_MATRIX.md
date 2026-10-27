@@ -1,7 +1,7 @@
 # Requirement and gate verification matrix
 
 Scope/profile/candidate: {{VERIFICATION_SCOPE}}
-Status: Product verification remains unconfigured. Repository maintenance checks are recorded separately below.
+Kind: Register. Status: Unconfigured. Set default gate applicability from the project tier in [PROJECT_PROFILE.md](../PROJECT_PROFILE.md); record each deviation with the owner decision.
 
 | Requirement / scenario | Intended path and failure case | Coverage / actual command | Environment | Applicability | Result / raw evidence | Work ID |
 |---|---|---|---|---|---|---|
@@ -9,16 +9,9 @@ Status: Product verification remains unconfigured. Repository maintenance checks
 
 ## Required-gate inventory
 {{EXACT_UNIQUE_GATE_IDS_AND_ADOPTED_REQUIREMENT_REFERENCES}}
-Map unit/integration, security, static/concurrency/build, browser/manual accessibility, harness validity, performance/soak, migration/recovery and selected-host/operational families as applicable. Manual and long checks remain explicit until completed. A running check is in progress, not a pass. Missing tooling is a gap, not an exclusion.
+Map unit/integration, security, static/concurrency/build, browser/manual accessibility, harness validity, performance/soak, migration/recovery and selected-host/operational families as the tier requires. Manual and long checks remain explicit until completed. Gap and in-progress rules: [TESTING_SPEC.md](TESTING_SPEC.md).
 
 ## Evidence and final audit
 {{CANDIDATE_ARTIFACTS_ENVIRONMENT_DATES_OPERATORS_COMMANDS_RAW_RESULTS_AND_REUSE_RATIONALE}}
-Use the shared completion/status definitions in DOCUMENTATION.md and final audit in CHANGE_WORKFLOW.md. Keep unresolved status in OPEN_WORK.md rather than duplicating a second backlog. This map does not replace authoritative requirements.
+Use the status vocabulary in [DOCUMENTATION.md](DOCUMENTATION.md) and the [final audit procedure](procedures/final-audit.md). Keep unresolved status in OPEN_WORK.md rather than duplicating a second backlog. This map does not replace authoritative requirements.
 
-## Repository maintenance verification
-
-| Requirement | Checks | Result | Work ID |
-|---|---|---|---|
-| Rename the technical design file to `DESIGN_DOC.md` and update all references | Confirm the new path exists, the old path is absent, content is unchanged, no old-name references remain, and `python3 check_package.py` passes | Passed 2026-10-17: path, unchanged-content and old-reference assertions; package checker reports 28 intact files and resolved internal links | DOC-001 |
-
-Application, UI, security, performance and release gates are inapplicable to this documentation-only rename.

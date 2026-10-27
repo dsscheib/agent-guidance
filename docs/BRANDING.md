@@ -1,6 +1,6 @@
 # Branding and design-system template
 
-Status: Unconfigured. Brand choices do not override product, accessibility or security requirements.
+Kind: Template. Status: Unconfigured. Brand choices do not override product, accessibility or security requirements.
 
 {{PRODUCT_NAME_TONE_VISUAL_IDENTITY_AND_APPROVAL}}
 {{APPROVED_LOGO_ASSETS_THEMES_TOKENS_TYPE_AND_USAGE_RULES}}

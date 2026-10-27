@@ -1,6 +1,6 @@
 # Domain rules template
 
-Status: Unconfigured. Populate accepted rules from the product's real domain; do not adopt sample entities or invariants by inference.
+Kind: Template. Status: Unconfigured. Populate accepted rules from the product's real domain; do not adopt sample entities or invariants by inference.
 
 ## Vocabulary and identity
 {{DOMAIN_TERMS_ENTITIES_AND_RELATIONSHIPS}}

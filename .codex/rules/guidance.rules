@@ -1,0 +1,39 @@
+# Mirrors AGENTS.md rules 2 and 3: remote and destructive git operations need confirmation.
+# Codex loads project rules only when this project's .codex/ layer is trusted.
+# Loosen only to match the agent git policy adopted in PROJECT_PROFILE.md.
+
+prefix_rule(
+    pattern = ["git", "push"],
+    decision = "prompt",
+    justification = "AGENTS.md rule 3: push only with explicit authorization.",
+)
+
+prefix_rule(
+    pattern = ["git", "reset", "--hard"],
+    decision = "prompt",
+    justification = "AGENTS.md rule 2: may discard uncommitted work.",
+)
+
+prefix_rule(
+    pattern = ["git", "clean"],
+    decision = "prompt",
+    justification = "AGENTS.md rule 2: may delete untracked work.",
+)
+
+prefix_rule(
+    pattern = ["git", "branch", "-D"],
+    decision = "prompt",
+    justification = "AGENTS.md rule 2: may delete unmerged work.",
+)
+
+prefix_rule(
+    pattern = ["git", "rebase"],
+    decision = "prompt",
+    justification = "AGENTS.md rule 2: rewrites history.",
+)
+
+prefix_rule(
+    pattern = ["git", "checkout", "--"],
+    decision = "prompt",
+    justification = "AGENTS.md rule 2: may discard uncommitted work.",
+)

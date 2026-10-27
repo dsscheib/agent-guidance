@@ -1,6 +1,6 @@
 # Source and decision references
 
-Status: Empty reference register. No inherited host support claims or dated product research.
+Kind: Register. Status: Empty reference register. No inherited host support claims or dated product research.
 
 | ID | Subject / supported claim | Primary source or decision | Checked date / version | Limits / affected requirement |
 |---|---|---|---|---|

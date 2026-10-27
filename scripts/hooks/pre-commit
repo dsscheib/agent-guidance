@@ -1,0 +1,4 @@
+#!/bin/sh
+# Optional, agent-neutral guidance check. Enable with: git config core.hooksPath scripts/hooks
+# Blocks commits with broken internal links, stale skill wrappers or missing nested CLAUDE.md shims.
+exec python3 "$(git rev-parse --show-toplevel)/check_package.py"

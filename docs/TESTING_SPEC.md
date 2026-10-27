@@ -1,42 +1,64 @@
 # Testing and verification policy
 
-## Workflow and matrix
-Before behavior changes, map affected requirements and regressions to actual tests, commands, environments, evidence and gate dispositions. Release work covers the full adopted required inventory; focused work explains exclusions. Missing tests/harnesses are implementation work or explicit blockers. Unsupported/unavailable tools, insufficient duration or absent telemetry are not successful checks.
+Kind: Policy. It applies as written; changing it needs an owner decision. Gate applicability by tier is set in [PROJECT_PROFILE.md](../PROJECT_PROFILE.md). Status vocabulary is defined in [DOCUMENTATION.md](DOCUMENTATION.md).
 
-Inspect existing tests and reuse conventions. Add the smallest meaningful regressions with failure-before-fix when practical. Run focused checks, then appropriate broader gates. Preserve the first failure and diagnostics; do not weaken assertions, remove required coverage or hide errors to obtain green results.
+## Workflow and matrix
+This section is the home of the gap, first-failure and no-weakening rules.
+
+1. **Map before changing.** Map the affected requirements and regressions to actual tests, commands, environments, evidence and gate dispositions in [VERIFICATION_MATRIX.md](VERIFICATION_MATRIX.md). Release work covers the tier's full required inventory; focused work explains its exclusions.
+2. **Missing tooling is a gap.** Missing tests or harnesses are implementation work or explicit blockers, never exclusions. Unavailable tools, insufficient duration and absent telemetry are not successful checks. A running check is in progress, not passed.
+3. **Write the smallest meaningful regressions.** Inspect existing tests and reuse their conventions. Make each regression fail before the fix where practical. Run focused checks, then the broader gates.
+4. **Keep failures honest.** Preserve the first failure and its diagnostics. Never weaken assertions, lower thresholds, remove required coverage or hide errors to get a green result.
 
 ## Isolation and test-path validity
-Use independent synthetic fixtures, real selected persistence/migrations/settings for storage boundaries, managed resources and deterministic clocks/IDs where needed. Bound concurrency and synchronize with observable conditions rather than arbitrary sleeps. Mock external services for ordinary tests; dedicated isolated contract tests exercise adapter/network defenses. Never use production data for destructive tests.
+Use:
+- independent synthetic fixtures,
+- the real selected persistence, migrations and settings for storage boundaries,
+- managed resources,
+- deterministic clocks and IDs where needed.
 
-Assert real consequences: persisted records and relationships, permission denial with no effects, atomicity, retry/deduplication, conflict handling, committed acknowledgments and recovery. Test actual shared operational paths, not substitute mock scripts that bypass the implementation. Coverage percentages, command names and pass counts do not prove intended-path coverage.
+Bound concurrency, and synchronize on observable conditions rather than arbitrary sleeps. Mock external services in ordinary tests; dedicated isolated contract tests exercise adapter and network defenses. Never use production data for destructive tests.
+
+Assert real consequences:
+- persisted records and relationships,
+- permission denial with no effects,
+- atomicity, retry and deduplication,
+- conflict handling, committed acknowledgments and recovery.
+
+Test the actual shared operational paths, not substitute mock scripts that bypass the implementation. Coverage percentages, command names and pass counts do not prove the intended path was covered.
 
 ## Unit, integration and concurrency
-Exercise domain valid/invalid/boundary values, unknown versus zero, precision/overflow, identifier normalization and lifecycle rules. Persistence tests verify constraints, transaction rollback/atomicity, concurrent updates, last-resource contention where relevant, lost responses, scoped idempotency, stale writes, bounded busy handling, deletion/history and schema compatibility. Use controlled disposable subprocess interruption to check acknowledged versus uncommitted effects; it does not prove physical power-loss durability.
+- **Domain tests** exercise valid, invalid and boundary values; unknown versus zero; precision and overflow; identifier normalization; and lifecycle rules.
+- **Persistence tests** verify constraints, transaction rollback and atomicity, concurrent updates, last-resource contention where relevant, lost responses, scoped idempotency, stale writes, bounded busy handling, deletion and history, and schema compatibility.
+- **Interruption tests** use controlled, disposable subprocess interruption to check acknowledged versus uncommitted effects. This does not prove durability through physical power loss.
 
-## Transport, browser and semantics
-Test authentication, authorization, applicable request-forgery defenses, validation/status/fallback contracts, redirects and expired sessions. UI/workflow changes require real served-application browser checks across the adopted engine/viewport/theme matrix and appropriate manual evidence. Verify initial and dynamically replaced DOM, native semantics, label relationships, valid nesting, keyboard/focus, errors, responsive overflow, stale responses and direct/no-script fallback where applicable. Assert persisted outcomes, not only a toast. Automated accessibility scans do not replace assistive-technology/device checks.
+## Interface, UI and semantics
+Test authentication, authorization, applicable request-forgery defenses, validation, status codes, redirects and expired sessions.
+
+UI and workflow changes need real browser or client checks against the served application, across the adopted engine, viewport and theme matrix, plus the tier's manual evidence. Verify:
+- the initial and the dynamically updated interface,
+- native semantics, label relationships and valid nesting,
+- keyboard and focus behavior, error states and responsive overflow,
+- stale responses,
+- any fallback the adopted stack profile requires.
+
+Assert persisted outcomes, not only a toast. Automated accessibility scans do not replace assistive-technology and device checks.
 
 ## Security, migrations and operations
-Test secrets redaction, input/upload/archive bounds, parser abuse, resource limits and actual adapter defenses. Migrations need isolated upgrade, idempotence/compatibility and failure recovery evidence. Exercise actual ownership/write denial, stop/backup/migration/readiness failures, protected rollback stages, singleton identity, bounded retries, unavailable storage and cleanup safeguards. Syntax inspection alone cannot pass behavior gates.
+Test:
+- secret redaction,
+- input, upload and archive bounds, parser abuse and resource limits,
+- the actual adapter defenses.
+
+Migrations need evidence of isolated upgrade, idempotence and compatibility, and failure recovery. For operational code, exercise ownership and write denial, failures during stop, backup, migration and readiness, protected rollback stages, singleton identity, bounded retries, unavailable storage and cleanup safeguards. Syntax inspection alone cannot pass a behavior gate.
 
 ## Recovery
-Test coherent implemented archives with real relationships/assets/configuration. Verify local integrity, off-host receipt/decryption and isolated restore separately. Confirm session revocation and measured recovery objectives where required. Repository tests do not prove deployed schedules, alert delivery, transport configuration or selected-host recovery.
+Test coherent archives of the actual implementation with real relationships, assets and configuration. Verify local integrity, off-host receipt and decryption, and isolated restore separately. Repository tests do not prove deployed schedules, alert delivery, transport configuration or recovery on the selected host.
 
-## Performance and soak
-PROJECT_PROFILE.md owns the adopted dataset, user/client concurrency, workload mix, warm-up, measured performance window, complete soak duration, minimum samples, throughput and capacity budgets. Populate them before acceptance; do not inherit arbitrary values. Initial release qualification includes applicable complete performance/soak protocols unless explicitly justified as inapplicable. A short diagnostic cannot pass a longer gate.
+## Performance, soak and aggregate verification
+PROJECT_PROFILE.md owns the adopted budgets and qualification protocol; never inherit arbitrary values. Where the tier requires them, follow the full protocols in [profiles/PRODUCTION_OPERATIONS.md](../profiles/PRODUCTION_OPERATIONS.md). A short diagnostic cannot pass a longer gate, and wrong routes, login redirects or error responses never count as successful load.
 
-Use real served workflows and independent authenticated role-valid sessions. Preflight reads/writes and verify successful persisted effects. Wrong routes, login redirects, bad tokens and unexpected error responses cannot count as successful load. Separate expected negative/fault scenarios from uninterrupted workload. Consume response bodies before client timing; separate actual server timings from network/render/client timings. Retain per-operation counts/errors/distributions, achieved throughput and raw traces.
+## Evidence reuse and CI
+Reuse unaffected evidence only with a recorded rationale for the candidate and environment, and the adopted requalification triggers. Relevant runtime, dependency, storage, interface, operational or workload changes may need new target evidence. Small unrelated changes do not need to repeat equivalent long runs.
 
-Collect baseline, bounded-interval and final process/host/storage/job telemetry with actual process/executable/start identity, restart detection and declared measurement methods. Missing measurements make the run incomplete, not zero. Estimates require an explicitly adopted method, retained inputs and clear labels. Record representative background jobs, backup interaction and session renewal. Reconcile initial state plus acknowledged operations against final persistent invariants, integrity, relationships and audit data.
-
-Review time-series resource growth, not endpoints alone. Define investigation thresholds and capacity budgets before the run. Unresolved growth, interruption, restart, insufficient samples/rate, missing telemetry, failed effects or breached budgets prevent qualification. Test the harness against each known bad outcome. Retain failed/incomplete reports and return non-success; failed report persistence also fails.
-
-## Aggregate release verifier
-Use a complete expected-gate inventory from adopted requirements, not only supplied results. Record candidate commit plus actual source/artifact identity, dirty state, build configuration, commands/status/exit codes, environment, dates and raw evidence paths/hashes/sizes. Identify synthetic test mode explicitly as release-ineligible. Compare actual binary identity and source attestation, not a label from an unrelated checkout.
-
-Reject missing/duplicate gates, malformed/wrong-candidate/stale/tampered evidence, unsupported exclusions and contradictory eligibility. Validate the same qualification contract in direct checks, evidence intake and manifest validation. Pending/manual/blocked/failed required gates remain visible and prevent an aggregate pass. Test child failures, missing artifacts, false pass markers, synthetic eligibility and honest non-success results. The verifier never deploys as a side effect. JSON consistency cannot establish owner consent or perform a manual check.
-
-## Evidence reuse, CI and delivery
-Reuse unaffected evidence only with the candidate/environment applicability rationale and adopted requalification triggers. Relevant runtime, dependency, storage, interface, operational or workload changes may require new target evidence; small unrelated changes need not repeat equivalent long runs. CI builds pinned code/assets and runs appropriate checks without exposing operational secrets to untrusted contributions.
-
-Retain raw results under the adopted policy. Report implementation, verification and release acceptance independently with the final audit, matrix, actual commands/results, first failures, exclusions, manual/target gaps and OPEN_WORK.md references. Documentation-only scope uses document/reference review; no unrelated application-test claims.
+CI builds pinned code and assets and runs the appropriate checks, without exposing operational secrets to untrusted contributions. Retain raw results under the adopted policy. Documentation-only scope uses a document and reference review, with no unrelated application-test claims.

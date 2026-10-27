@@ -1,26 +1,56 @@
 # Reusable project guidance
 
-This package contains project-neutral adaptations of agent instructions, engineering policies, specification templates, acceptance checklists and operational guides. It is a starting point for a new project, not evidence of implementation, testing, deployment authorization or release acceptance.
+This package gives coding agents instructions, policies, templates and procedures for starting a new project. It works with Codex, Antigravity, Claude Code and any other agent that reads `AGENTS.md`. It is a starting point for a project. It is not evidence of implementation, testing, deployment authorization or release acceptance.
 
 ## Start here
-1. Copy this directory's contents into the new repository. Review files individually before overwriting existing documentation.
-2. Complete [PROJECT_PROFILE.md](PROJECT_PROFILE.md) with the owner, goals, approved stack, domain, supported platforms, actual commands and required verification gates.
-3. Populate [DESIGN_DOC.md](DESIGN_DOC.md) and the domain, UX, security and portability specifications with adopted requirements. Unfilled templates are not approved product defaults.
-4. Keep applicable requirements. Record a reason and owner decision when excluding a gate; missing tooling is not inapplicability. Non-web projects may exclude the web UI guides with a recorded rationale.
-5. Select an optional stack profile only when authorized. The included [server-rendered web profile](profiles/SERVER_RENDERED_WEB.md) is not the default architecture.
-6. Establish the real test command inventory and required-gate matrix. Replace all `{{...}}` placeholders before claiming configuration or acceptance is complete.
-7. Start a fresh unresolved-work register and readiness record. Do not copy results or approvals from another project.
+1. **Install into the new repository.** Run:
+
+   ```sh
+   python3 check_package.py --install /path/to/project
+   ```
+
+   This copies only the packaged files listed in `PACKAGE_MANIFEST.json`. It skips any file that already exists, and lists those files so you can merge them by hand. `--force` overwrites them; review the result before committing. Maintainer-only files are never copied.
+2. **Bootstrap with your agent.** Ask it to "bootstrap the project guidance". The agent follows the [bootstrap procedure](docs/procedures/bootstrap-project.md): it inspects the repository, proposes the profile values in [PROJECT_PROFILE.md](PROJECT_PROFILE.md), asks you only the decisions it cannot infer, and records what you adopt.
+3. **Choose a tier.** The tier table in PROJECT_PROFILE.md sets which gates apply by default: Prototype, Internal tool or Production service. A small tool does not inherit production ceremony, and a production service does not lose it.
+4. **Adopt only the profiles you need.** [Server-rendered web](profiles/SERVER_RENDERED_WEB.md) and [production operations](profiles/PRODUCTION_OPERATIONS.md) are optional and bind only once adopted. Exclude guides that do not apply, such as the UI guides for a non-UI project, and record the rationale.
+5. **Fill in the rest as work proceeds.** `python3 check_package.py --require code` must pass before product code is written. `--require release` must pass before the first release. Registers start empty; never copy results or approvals from another project.
+
+## Agent support
+[AGENTS.md](AGENTS.md) is the single instruction source. Each tool gets a thin adapter:
+
+| Agent | Instructions | Procedures as skills | Command guardrails |
+|---|---|---|---|
+| Codex | `AGENTS.md` | `.agents/skills/` | `.codex/rules/guidance.rules` (trusted projects) |
+| Antigravity | `AGENTS.md` | `.agents/skills/` | User-level only: app permission settings, or CLI `~/.gemini/antigravity-cli/settings.json` |
+| Claude Code | `CLAUDE.md`, which imports `AGENTS.md` | `.claude/skills/` | `.claude/settings.json` |
+| Other agents | `AGENTS.md` | Read `docs/procedures/` directly | Optional git hook in `scripts/hooks/` |
+
+[docs/AGENT_TOOLS.md](docs/AGENT_TOOLS.md) explains each adapter, how to keep them in sync, and how to add a tool.
 
 ## What is included
-- AGENTS.md as the entry point and requirements router.
-- CLAUDE.md is included for ClaudeCode compatability and simply references AGENTS.md.
-- Architecture, domain, portability, UX, testing, security, documentation and change policies.
-- Technical design, roadmap, requirement-review, verification handoff, branding and decision templates.
-- Empty work/evidence registers and operator/qualification procedures.
-- A checksummed manifest and a local package checker.
+| Kind | Files | Use |
+|---|---|---|
+| Entry and adapters | `AGENTS.md`, `CLAUDE.md`, `.agents/`, `.claude/`, `.codex/` | Agent entry points. Skill wrappers are generated; never edit them by hand |
+| Policy | `docs/ARCHITECTURE.md`, `CHANGE_WORKFLOW.md`, `DOCUMENTATION.md`, `TESTING_SPEC.md`, `SECURITY_PRODUCTION_SPEC.md`, `UX_DESIGN_SPEC.md`, `UI_PATTERNS.md`, `DATA_PORTABILITY.md`, `AGENT_TOOLS.md` | Copy as-is; change only by owner decision |
+| Template | `PROJECT_PROFILE.md`, `DESIGN_DOC.md`, `docs/DOMAIN_RULES.md`, `BRANDING.md`, `RUNBOOKS.md`, review and handoff templates, ADR template | Fill in with project values |
+| Register | `docs/OPEN_WORK.md`, `VERIFICATION_MATRIX.md`, `PRODUCTION_READINESS.md`, `ROADMAP.md`, `SOURCES.md` | Start empty; append as work happens |
+| Procedure | `docs/procedures/` | Bootstrap, final audit, release readiness; exposed as skills |
+| Profile | `profiles/` | Optional stack or tier rules |
+| Tooling | `check_package.py`, `PACKAGE_MANIFEST.json`, `scripts/hooks/pre-commit` | Install, integrity and placeholder checks |
 
-The instructions are language- and host-neutral. No application routes, entities, data model, credentials, host addresses, product backlog, production results or historical approvals are carried over. Examples and placeholders do not establish implemented interfaces. Choose workload sizes, budgets, soak duration, retention, recovery objectives and supported environments for the new project; no inherited benchmark number is a universal requirement.
+The instructions are language- and host-neutral. No application routes, entities, data model, credentials, host addresses, product backlog, production results or historical approvals are carried over. Choose your own workload sizes, budgets, soak duration, retention, recovery objectives and supported environments; no inherited number is a universal requirement.
 
-Historical project audits, archived plans, raw evidence, application source and deployment scripts are intentionally omitted. Their reusable review/verification contracts are represented by fresh templates. This package performs no deployments and sends no messages.
+## Checker
+`check_package.py` detects its mode automatically:
+- **Template mode** applies when `MAINTAINING.md` is present.
+- **Project mode** applies after installation.
 
-Run `python3 check_package.py` from this directory to check manifest hashes, internal references and placeholder inventory. Checksummed placeholders are intentional template content, not claims that setup is finished.
+| Command | Effect |
+|---|---|
+| `python3 check_package.py` | Checks internal links, generated adapters and nested instruction shims. In template mode it also checks manifest hashes, unlisted files and empty registers. In project mode it reports remaining placeholders by stage |
+| `--require code` / `--require release` | Fails if placeholders remain at that stage |
+| `--install DIR [--force]` | Copies the packaged files into a project |
+| `--sync-adapters` | Regenerates the skill wrappers from `docs/procedures/` |
+| `--update-manifest` | Refreshes manifest hashes after a reviewed edit (template mode) |
+
+To run the checks on every commit, for any agent or person, enable the optional hook with `git config core.hooksPath scripts/hooks`.

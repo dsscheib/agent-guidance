@@ -1,7 +1,7 @@
 # Verification implementation handoff template
 
 Scope/candidate/date: {{HANDOFF_SCOPE}}
-Status: Unconfigured worklist. No tests or operations claimed.
+Kind: Template. Status: Unconfigured worklist. No tests or operations claimed.
 
 Read AGENTS.md and applicable references. TESTING_SPEC.md owns protocols; this handoff assigns work and observations, not new policy or operational authorization. Track current ownership/status in OPEN_WORK.md.
 
@@ -17,8 +17,8 @@ Read AGENTS.md and applicable references. TESTING_SPEC.md owns protocols; this h
 5. Run short diagnostics before adopted complete performance/soak protocols.
 6. Collect separate local, manual, recovery and selected-host evidence; continue independent work when target authorization/tooling is pending.
 7. Update authoritative docs, matrix, readiness record and work register.
-8. Audit final results and report implementation, verification and release acceptance separately.
+8. Run the [final audit procedure](procedures/final-audit.md).
 
 ## Deliverables
 {{REVIEWABLE_CODE_TESTS_COMMAND_INVENTORY_RAW_EVIDENCE_AND_REMAINING_BOUNDARIES}}
-No deployment side effects, fabricated signatures or weakened thresholds. Preserve first failures. Reuse current unaffected evidence only with a recorded rationale.
+No deployment side effects. Failure, threshold and evidence-reuse rules: [TESTING_SPEC.md](TESTING_SPEC.md).

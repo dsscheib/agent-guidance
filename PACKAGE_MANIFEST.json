@@ -1,147 +1,276 @@
 {
   "package": "reusable-project-guidance",
-  "version": "1.0",
+  "version": "2.0",
   "status": "unconfigured-templates",
+  "procedures": "docs/procedures",
+  "adapters": [
+    {
+      "dir": ".agents/skills",
+      "tools": "Codex and Antigravity"
+    },
+    {
+      "dir": ".claude/skills",
+      "tools": "Claude Code"
+    }
+  ],
+  "repo_only": [
+    "MAINTAINING.md",
+    "maintainer/",
+    ".claude/settings.local.json"
+  ],
   "files": [
     {
       "path": "AGENTS.md",
-      "bytes": 6277,
-      "sha256": "3937b681a919c61a5114691bbce9354612e4e21be77ba8ab6780258105e9813a"
+      "kind": "entry",
+      "bytes": 8440,
+      "sha256": "4e7a0c68c76acb9a9dc4fc71d1ed5c45c6054692cfdaf71d52d149c1c13952c4"
     },
     {
-      "path": "PROJECT_PROFILE.md",
-      "bytes": 2202,
-      "sha256": "9bbd5ce6e4102f45546693f92bad43f248d6ee35b599a4fc6eaa92fbff7744bb"
+      "path": "CLAUDE.md",
+      "kind": "entry",
+      "bytes": 11,
+      "sha256": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49"
     },
     {
       "path": "README.md",
-      "bytes": 2904,
-      "sha256": "725f53f919c3d0f60964d4e96e491aad706940acf998a57aa2de7a4a6fc5e90d"
+      "kind": "entry",
+      "bytes": 5029,
+      "sha256": "ef2433d5e97e343bc2fc8f449db76f26203c6575c476a9c8ae080a0d7978f4d6"
     },
     {
-      "path": "check_package.py",
-      "bytes": 1208,
-      "sha256": "9bd873b878db45294bfbe182453a44435c149dc7ee4219bbec15603606336296"
+      "path": ".claude/settings.json",
+      "kind": "guardrail",
+      "bytes": 425,
+      "sha256": "e37b8a470b77e81580e256e9305bdac9046833d4ba013350ce1e1cd2c4366319"
     },
     {
-      "path": "DESIGN_DOC.md",
-      "bytes": 2161,
-      "sha256": "daa0a1b37bb73cb4abc609d8519b12fa3ce8f70445440b09535e9284c593e0c8"
+      "path": ".codex/rules/guidance.rules",
+      "kind": "guardrail",
+      "bytes": 1126,
+      "sha256": "77701ed0538278e882c73faab0be5ff39967b15771df3c1e151ed8526f04ea13"
+    },
+    {
+      "path": "docs/AGENT_TOOLS.md",
+      "kind": "policy",
+      "bytes": 6369,
+      "sha256": "8f81cb0ac9f20d202d9ea70634564d896761069440cf37a71bb86074a6204418"
     },
     {
       "path": "docs/ARCHITECTURE.md",
-      "bytes": 3302,
-      "sha256": "0a3349d7fb1f41c744980bc5c77aee08bb36a3ed69990013514996b445e7cdec"
-    },
-    {
-      "path": "docs/BRANDING.md",
-      "bytes": 615,
-      "sha256": "d8df1445820ee3d586bff1c47ed6df029e4de0b9766c373565c8ea255837b814"
+      "kind": "policy",
+      "bytes": 3458,
+      "sha256": "5b5865ad6639e9bdd1d0ab5be2ab5697ece3c0372ee70b6fb47b57ec39100af7"
     },
     {
       "path": "docs/CHANGE_WORKFLOW.md",
-      "bytes": 3644,
-      "sha256": "bd29dfd8874fd18aada3b9e9612b177f85a7c5d29ae9b2fd7d1eb118721aa1f6"
+      "kind": "policy",
+      "bytes": 2619,
+      "sha256": "4e2a7b6827326c27ef12f4a8bd41c3bde0c49c3d9da480011c8e26a91571d6ec"
     },
     {
       "path": "docs/DATA_PORTABILITY.md",
-      "bytes": 2762,
-      "sha256": "5ffa1c07722d9ceb3695abdf2f3ae13c7cab14ce37c6f730ee4e10d0e4990afc"
+      "kind": "policy",
+      "bytes": 2904,
+      "sha256": "813a8d4fdd7e52da39a4542a54c24062596e442eac09bbd56bc48b662b1320ba"
     },
     {
       "path": "docs/DOCUMENTATION.md",
-      "bytes": 4354,
-      "sha256": "329d22fe3aedfbd1aba7805a0d87628c2c040aa91a03ded6f25734811d59b27b"
-    },
-    {
-      "path": "docs/DOMAIN_RULES.md",
-      "bytes": 2212,
-      "sha256": "9c8b1634e4afd81042e590cfcd03bc46ea0c4b6556fb8e68e6e19392235c7bf0"
-    },
-    {
-      "path": "docs/OPEN_WORK.md",
-      "bytes": 1311,
-      "sha256": "7d3837585bb5f1a2a207a5502ef18fc4d893a5f1663e6f022af54cdab7e78e46"
-    },
-    {
-      "path": "docs/PRODUCTION_READINESS.md",
-      "bytes": 1706,
-      "sha256": "a074ef834ece3b832062dad91cbc3a226eedf9201c1f3fb9c241f53e943c4e0b"
-    },
-    {
-      "path": "docs/REQUIREMENTS_REVIEW.md",
-      "bytes": 1187,
-      "sha256": "406c4288ff544daf6e08c1764fe491086b92e8e9f793bfc22203eec6ee93e35c"
-    },
-    {
-      "path": "docs/ROADMAP.md",
-      "bytes": 1427,
-      "sha256": "8094047b841c88c27868df0ccb5cba3aea69e1afc679bf867ebeb34da1b96acf"
-    },
-    {
-      "path": "docs/RUNBOOKS.md",
-      "bytes": 3505,
-      "sha256": "79cb24cc74acaff2b1c7de7c243a054ce4ff83518c53355f3c16b9e3da60065b"
+      "kind": "policy",
+      "bytes": 4604,
+      "sha256": "4b577d23c7995968aeba9b575a34b22b5d127ae90feb5f140c46c8bf8c1d4246"
     },
     {
       "path": "docs/SECURITY_PRODUCTION_SPEC.md",
-      "bytes": 4733,
-      "sha256": "2d21958330149fbff2f885edffd82e4dc107d5ef18317f82216ec4a09360a9ac"
-    },
-    {
-      "path": "docs/SOAK_QUALIFICATION_COLLECTOR.md",
-      "bytes": 3065,
-      "sha256": "a5e2e63607ef4560dac9574f639ef512cef46c52748b36d906dc798031d77573"
-    },
-    {
-      "path": "docs/SOURCES.md",
-      "bytes": 748,
-      "sha256": "c6a5a5c30789792478a036508e84c97af1ea3eabc6669a6617599809246fdba6"
+      "kind": "policy",
+      "bytes": 5127,
+      "sha256": "a3f78246b9255306f0f2789ab3f91d77566079090eb3d4f76acbd24a69bb6812"
     },
     {
       "path": "docs/TESTING_SPEC.md",
-      "bytes": 7451,
-      "sha256": "295fdba1bf87a7d9d36db6d03f74dfdad5924663989228f2358a770c63baeff7"
-    },
-    {
-      "path": "docs/TEST_VERIFICATION_HANDOFF.md",
-      "bytes": 1613,
-      "sha256": "64be0ca1e92ffc3c1b9b091f4670bbbeb2cc9b3171f931c46b66fb6b19388fe8"
+      "kind": "policy",
+      "bytes": 5464,
+      "sha256": "e28bee107fdef1184dc8ae9117186d342331313fb16791eb6d8352e7eef474d7"
     },
     {
       "path": "docs/UI_PATTERNS.md",
-      "bytes": 2511,
-      "sha256": "7e177bc9490ac395b4892432912aefad3f5b2b4579c90ff0ac4d7ad1acd02919"
-    },
-    {
-      "path": "docs/UX_ACCEPTANCE_CHECKLIST.md",
-      "bytes": 1638,
-      "sha256": "c000a5dfe3fccd3da3c1b1c73194ba9d5a60b2ec725bb630f4cd3a723bde29bd"
+      "kind": "policy",
+      "bytes": 2791,
+      "sha256": "be29dde2e43609d8053b9102c0bea15e90ae44995834229a34b58865a75a4d28"
     },
     {
       "path": "docs/UX_DESIGN_SPEC.md",
-      "bytes": 5289,
-      "sha256": "3ddd5e4eb3c747b553e9b185272cfbfba77faf5dde955e9ac8bc6f80bbf814fc"
+      "kind": "policy",
+      "bytes": 5480,
+      "sha256": "c4e43da0f5c126d2a7f920ca0a0f0cef0effc71dc691fdc7174e80201c8ad1ec"
     },
     {
-      "path": "docs/VERIFICATION_MATRIX.md",
-      "bytes": 1959,
-      "sha256": "9316ef28a401c89cdbbd5230611e3fae7c636426c1b26a94bfaf65880e83927f"
+      "path": "PROJECT_PROFILE.md",
+      "kind": "template",
+      "stage": "code",
+      "bytes": 5332,
+      "sha256": "400b04f777712438c210f8e71cc00c681eaf2fd19b1c7b61eec57263f3377fcf"
+    },
+    {
+      "path": "DESIGN_DOC.md",
+      "kind": "template",
+      "bytes": 2258,
+      "sha256": "0a9ab25916f5c1641a9b69c5aaf0385677e62c98b1662d3e922fa3547b1d2d10"
+    },
+    {
+      "path": "docs/BRANDING.md",
+      "kind": "template",
+      "bytes": 631,
+      "sha256": "ea33d3ff5ac85913bcb5747f7a0206380c6c02b2f598e33b1bcd1579fb1399a7"
+    },
+    {
+      "path": "docs/DOMAIN_RULES.md",
+      "kind": "template",
+      "bytes": 2228,
+      "sha256": "1940929e03531f1fd80f2221b5df2f06644b6b72e117777a13cbce419a03a434"
+    },
+    {
+      "path": "docs/RUNBOOKS.md",
+      "kind": "template",
+      "bytes": 3689,
+      "sha256": "7be610129c71b137f8371902efde534bfd9381f2fad6728543a80b0b54809d35"
+    },
+    {
+      "path": "docs/REQUIREMENTS_REVIEW.md",
+      "kind": "template",
+      "bytes": 1203,
+      "sha256": "3fa89dc07dbba49b34c254de58df4163543d8879660d88e6327df246ad0cd9d2"
+    },
+    {
+      "path": "docs/TEST_VERIFICATION_HANDOFF.md",
+      "kind": "template",
+      "bytes": 1538,
+      "sha256": "96554e0d09608dbac6a75cfe7b85b2cc514a72063fdfb157c0740f00794f1a5c"
+    },
+    {
+      "path": "docs/UX_ACCEPTANCE_CHECKLIST.md",
+      "kind": "template",
+      "bytes": 1721,
+      "sha256": "bd7a67a2e64d47a20e161c383ee6fd2cd3292ee3e12e05b9c18fb42e0dbb8bc0"
     },
     {
       "path": "docs/VERIFICATION_REVIEW.md",
-      "bytes": 1057,
-      "sha256": "8178b363e7290ed74ffd480c85fa2aa9395bf50bae6893df889924e1ce23d94b"
+      "kind": "template",
+      "bytes": 1051,
+      "sha256": "18c9e9ab16b1a569aee86c829329e322f15dd09540d084aa73adbfc38df277ed"
     },
     {
       "path": "docs/decisions/ADR_TEMPLATE.md",
-      "bytes": 620,
-      "sha256": "84da65b4b9b108aad822559edffcfab9f8aa5f55ac53cf1c84b500f6be41454b"
+      "kind": "template",
+      "bytes": 671,
+      "sha256": "452c1db0db928d628cc73eb88172ae35ee3c48c0de7c1fbc55d446f4f7ebf273"
+    },
+    {
+      "path": "docs/OPEN_WORK.md",
+      "kind": "register",
+      "bytes": 855,
+      "sha256": "ec5aa1560e9dc0195423067e08aa56e5c3270ed3d9901224eeb1b1e74d45c491"
+    },
+    {
+      "path": "docs/PRODUCTION_READINESS.md",
+      "kind": "register",
+      "bytes": 1842,
+      "sha256": "83f8dc26361cd8704a9a25e18bd60f152a325e162e28628413dcdca82cecedee"
+    },
+    {
+      "path": "docs/ROADMAP.md",
+      "kind": "register",
+      "bytes": 1443,
+      "sha256": "822da18faef97de9e24e02d6bb0aceb83a6cbfca98202ca040cac4471a6f0bc7"
+    },
+    {
+      "path": "docs/SOURCES.md",
+      "kind": "register",
+      "bytes": 764,
+      "sha256": "4081f319303bb34ad3204d3cc54b19089e02a885cfcebc1e257debd9b18a6ae1"
+    },
+    {
+      "path": "docs/VERIFICATION_MATRIX.md",
+      "kind": "register",
+      "bytes": 1444,
+      "sha256": "7c7d7bd8b1aa2858185cfef6dfb5229081bfd09f8107c1942a703a70ddade6a9"
+    },
+    {
+      "path": "docs/procedures/bootstrap-project.md",
+      "kind": "procedure",
+      "bytes": 3155,
+      "sha256": "47a001dfbd3c4cb1c3226f9c61825ec86216e9c13828f21497dcb3994eae9b8c"
+    },
+    {
+      "path": "docs/procedures/final-audit.md",
+      "kind": "procedure",
+      "bytes": 2705,
+      "sha256": "8d705368524d5983423fb384893260b88c9c8c00720c3a927a4c87d7b5f6ddef"
+    },
+    {
+      "path": "docs/procedures/release-readiness.md",
+      "kind": "procedure",
+      "bytes": 2274,
+      "sha256": "7651e4948e9fc27ab6c706428a8d50785e68d110c531e808153463b667305850"
+    },
+    {
+      "path": "profiles/PRODUCTION_OPERATIONS.md",
+      "kind": "profile",
+      "bytes": 5849,
+      "sha256": "ad1843169c83ffa5227a0d8b8b44a7e5ea1b1d0ced9e24eeaead0c0f7d8697b4"
     },
     {
       "path": "profiles/SERVER_RENDERED_WEB.md",
-      "bytes": 1638,
-      "sha256": "a860f660c6c6ec9ff36796237fe98f4fdba6a04f1ba97035325593bd91974762"
+      "kind": "profile",
+      "bytes": 2122,
+      "sha256": "87785929cc4307e2b65f5f8e764abbfe6e184aef8befbbde816f520959bed747"
+    },
+    {
+      "path": "check_package.py",
+      "kind": "tooling",
+      "bytes": 11209,
+      "sha256": "f0e3ced908f23b1ddda98326fc481f67c6c21940249960e3663d878002fef325"
+    },
+    {
+      "path": "scripts/hooks/pre-commit",
+      "kind": "tooling",
+      "bytes": 271,
+      "sha256": "5b47e2a3d77e8d064247a836e816ae0482da50a1e42ed50bb9777e66a91ddf06"
+    },
+    {
+      "path": ".agents/skills/bootstrap-project/SKILL.md",
+      "kind": "adapter",
+      "bytes": 694,
+      "sha256": "bde82473dbb8f4daf27acea73e6ec29b9955db0122d2a8bb982e3619ec5f799a"
+    },
+    {
+      "path": ".agents/skills/final-audit/SKILL.md",
+      "kind": "adapter",
+      "bytes": 669,
+      "sha256": "08c6a28ee08e9559f57036c7e48114dd79c30a0786db73bf8270f60b6cc3a957"
+    },
+    {
+      "path": ".agents/skills/release-readiness/SKILL.md",
+      "kind": "adapter",
+      "bytes": 707,
+      "sha256": "c8bb3845a7060aa839b2d0d67c7db5ee5cdd5b6293bf3faa8a2099253a137f36"
+    },
+    {
+      "path": ".claude/skills/bootstrap-project/SKILL.md",
+      "kind": "adapter",
+      "bytes": 684,
+      "sha256": "f14accf32f0b4e72045237688d954c2b74068b11834c93e5e16fa8591ab0889a"
+    },
+    {
+      "path": ".claude/skills/final-audit/SKILL.md",
+      "kind": "adapter",
+      "bytes": 659,
+      "sha256": "099d48a3e0faf6bd1aceb1fd8c26f77fa103f085e0e2efe183b71e8dfa685146"
+    },
+    {
+      "path": ".claude/skills/release-readiness/SKILL.md",
+      "kind": "adapter",
+      "bytes": 697,
+      "sha256": "8bfe3cc368cb9f1532037b19df43c61fa1be67051c72aa04942846f623e4929f"
     }
   ]
 }

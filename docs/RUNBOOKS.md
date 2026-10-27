@@ -1,6 +1,6 @@
 # Operator runbook templates
 
-Status: Unconfigured procedures. Replace placeholders with inspected commands and role/path checks, rehearse in isolated staging and record evidence before operational use. These procedures do not authorize deployment or production access.
+Kind: Template. Applies at the tiers listed in [PROJECT_PROFILE.md](../PROJECT_PROFILE.md) (Internal tool: R1–R3; Production service: all). Status: Unconfigured procedures. Replace placeholders with inspected commands and role/path checks, rehearse in isolated staging and record evidence before operational use. These procedures do not authorize deployment or production access.
 
 ## R1 — Install and start
 Verify owner authorization, supported platform, approved artifact/source identity and checksum, effective runtime identity, mount/volume readiness, ancestor ownership/permissions and configuration. Stage immutable files and private writable data under declared paths. Start exactly one supervised process; verify readiness, authentication and a critical read/write on disposable data. Record version/environment and diagnostics. No fallback empty production store.
@@ -21,7 +21,7 @@ Authorize disposable target and identify the actual archive. Verify off-host ret
 Contain the affected boundary under authorized scope, preserve evidence, rotate/revoke affected secrets/sessions and assess exposure. Verify corrective controls and restoration before reopening. Record incident decision authority; send messages only when authorized.
 
 ## R7 — Qualification staging
-Use SOAK_QUALIFICATION_COLLECTOR.md for selected-host performance/soak work. Validate marker/path/data/executable identity, permissions and no production overlap. Preserve prior runs and fail early on missing telemetry or invalid authentication. Graceful stop retains incomplete evidence; cleanup is a separately scoped operation with identity checks.
+Use [profiles/PRODUCTION_OPERATIONS.md](../profiles/PRODUCTION_OPERATIONS.md) for selected-host performance/soak work. Validate marker/path/data/executable identity, permissions and no production overlap. Preserve prior runs and fail early on missing telemetry or invalid authentication. Graceful stop retains incomplete evidence; cleanup is a separately scoped operation with identity checks.
 
 ## Command and evidence record
 {{ACTUAL_COMMANDS_REQUIRED_ROLES_PATHS_EXPECTED_RESULTS_AND_RECOVERY_ACTIONS}}

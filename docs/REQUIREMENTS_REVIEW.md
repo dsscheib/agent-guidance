@@ -1,7 +1,7 @@
 # Requirements review template
 
 Scope/revision/reviewer/date: {{REVIEW_CONTEXT}}
-Status: Advisory assessment; findings require revalidation and adoption in authoritative guides.
+Kind: Template. Status: Advisory assessment; findings require revalidation and adoption in authoritative guides.
 
 | Finding ID / severity | Concrete contradiction or missing contract | References / observed behavior | User/operational consequence | Recommendation / decision | Work ID |
 |---|---|---|---|---|---|

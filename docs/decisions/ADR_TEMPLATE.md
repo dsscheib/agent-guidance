@@ -1,5 +1,6 @@
 # ADR-{{NUMBER}}: {{CONCRETE_DECISION_TITLE}}
 
+Kind: Template; copy to `ADR-NNNN-short-title.md`.
 Date: {{DATE}}
 Status: Proposed / Accepted / Superseded
 Decision owner: {{OWNER}}

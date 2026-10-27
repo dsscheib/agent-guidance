@@ -3,7 +3,7 @@
 Candidate/source/artifacts: {{CANDIDATE_IDENTITIES}}
 Environment/profile: {{TARGET_ENVIRONMENT}}
 Reviewer/operator/date: {{REVIEW_RECORD}}
-Status: Not evaluated. No inherited evidence or approvals.
+Kind: Register. Status: Not evaluated. No inherited evidence or approvals. Fill in with the [release readiness procedure](procedures/release-readiness.md); required rows follow the project tier.
 
 | Required gate | Requirement / procedure | Result | Current evidence | Work ID |
 |---|---|---|---|---|
