@@ -5,7 +5,7 @@ Template mode (MAINTAINING.md present) checks the package itself; project mode c
 Only --install, --sync-adapters and --update-manifest write files.
 """
 from pathlib import Path
-import argparse, hashlib, json, re, shutil, sys
+import argparse, hashlib, json, re, shutil, subprocess, sys
 
 root = Path(__file__).resolve().parent
 manifest_path = root / 'PACKAGE_MANIFEST.json'
@@ -216,6 +216,11 @@ def main():
         for path in walk(include_repo_only=False, manifest=manifest):
             if rel(path) not in listed and path != manifest_path:
                 errors.append(f'Unlisted file {rel(path)}; add it to the manifest or to repo_only')
+        scenarios = root / 'maintainer' / 'run_scenario.py'
+        if scenarios.is_file():
+            result = subprocess.run([sys.executable, str(scenarios), '--check'], capture_output=True, text=True)
+            if result.returncode:
+                errors.append('Scenario fixtures:\n  ' + (result.stdout + result.stderr).strip().replace('\n', '\n  '))
     else:
         absent = [p for p in listed if not (root / p).is_file()]
         modified = [p for p in listed if (root / p).is_file() and sha256(root / p) != listed[p].get('sha256')]

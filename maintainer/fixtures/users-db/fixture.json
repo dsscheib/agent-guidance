@@ -1,0 +1,18 @@
+{
+  "description": "Python service layer over SQLite with explicit versioned migrations and an existing users table",
+  "profile": {
+    "PROJECT_NAME_AND_PURPOSE": "accounts-core: user account storage for a customer-facing service",
+    "PRIMARY_JOURNEYS": "Create a user; look up a user; evolve the schema without losing data",
+    "SCOPE": "Included: user records and schema migrations. Excluded: authentication UI, email delivery",
+    "TECHNOLOGY_STACK": "Python 3.10+ standard library; SQLite via `sqlite3`; SQL migrations in `migrations/`",
+    "REPOSITORY_LAYOUT": "`app/` package, `migrations/NNNN_name.sql`, `tests/` unittest suite",
+    "SUPPORTED_ENVIRONMENTS": "Linux x86_64 with Python 3.10+ and SQLite 3.35+",
+    "DATA_AND_TRUST_BOUNDARIES": "Customer personal data (confidential); production database holds live records; tests use in-memory databases only",
+    "EXCLUDED_GUIDES_OR_NONE": "UI guides (no UI)",
+    "INSTALL_COMMAND": "None needed (standard library only)",
+    "DEV_ENVIRONMENT": "Local shell",
+    "TEST_COMMAND": "`python3 -m unittest`",
+    "TEST_ENVIRONMENT": "Local shell with in-memory SQLite",
+    "DEPLOYMENT_BOUNDARIES": "Production at prod.example.invalid; deploys and production migrations only by the owner, per operation"
+  }
+}

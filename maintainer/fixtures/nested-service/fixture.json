@@ -1,0 +1,4 @@
+{
+  "description": "Adds a `service/` subdirectory with its own AGENTS.md rules and the CLAUDE.md shim",
+  "profile": {}
+}

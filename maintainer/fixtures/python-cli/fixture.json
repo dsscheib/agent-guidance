@@ -1,0 +1,22 @@
+{
+  "description": "Small Python command-line word counter with unittest tests and a project README",
+  "profile": {
+    "PROJECT_NAME_AND_PURPOSE": "wc-cli: counts lines, words and characters in text files for the maintainer's scripts",
+    "PRIMARY_JOURNEYS": "Count a file from the command line; count standard input in a pipeline",
+    "SCOPE": "Included: counting and output formats. Excluded: network access, GUIs, binary files",
+    "TECHNOLOGY_STACK": "Python 3.10+ standard library only; no third-party dependencies; no storage",
+    "REPOSITORY_LAYOUT": "`wc_cli/` package, `tests/` unittest suite, no generated files",
+    "SUPPORTED_ENVIRONMENTS": "Linux and macOS with Python 3.10 or later",
+    "DATA_AND_TRUST_BOUNDARIES": "Reads local files the user names; no personal or confidential data; no network",
+    "EXCLUDED_GUIDES_OR_NONE": "UI guides (no UI), DATA_PORTABILITY (no import/export), RUNBOOKS and PRODUCTION_READINESS (Prototype tier)",
+    "INSTALL_COMMAND": "None needed (standard library only)",
+    "DEV_ENVIRONMENT": "Local shell",
+    "RUN_COMMAND": "`python3 -m wc_cli.cli FILE`",
+    "FORMAT_COMMAND": "None configured",
+    "STATIC_AND_CONCURRENCY_COMMANDS": "None configured",
+    "TEST_COMMAND": "`python3 -m unittest`",
+    "TEST_ENVIRONMENT": "Local shell",
+    "BUILD_COMMAND": "None (pure Python)",
+    "BUILD_ENVIRONMENT": "Not applicable"
+  }
+}

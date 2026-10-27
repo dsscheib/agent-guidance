@@ -1,0 +1,20 @@
+{
+  "description": "Minimal server-rendered Python web app (standard-library HTTP server) with render tests but no browser test tooling",
+  "profile": {
+    "PROJECT_NAME_AND_PURPOSE": "team-portal: internal web portal for a small team's links and preferences",
+    "PRIMARY_JOURNEYS": "Open the home page; navigate between pages; change personal display preferences",
+    "SCOPE": "Included: server-rendered pages and preference forms. Excluded: authentication (behind the company proxy), external APIs",
+    "TECHNOLOGY_STACK": "Python 3.10+ standard library `http.server`; HTML rendered server-side; no JavaScript framework; no storage yet",
+    "REPOSITORY_LAYOUT": "`app/` package, `tests/` unittest suite",
+    "SUPPORTED_ENVIRONMENTS": "Linux server with Python 3.10+; current stable Firefox and Chromium",
+    "DATA_AND_TRUST_BOUNDARIES": "Internal users behind the company proxy; preferences are non-sensitive; all request input is untrusted",
+    "EXCLUDED_GUIDES_OR_NONE": "DATA_PORTABILITY (no import/export)",
+    "INSTALL_COMMAND": "None needed (standard library only)",
+    "DEV_ENVIRONMENT": "Local shell",
+    "RUN_COMMAND": "`python3 -m app.server` then open http://127.0.0.1:8000",
+    "TEST_COMMAND": "`python3 -m unittest`",
+    "TEST_ENVIRONMENT": "Local shell",
+    "UI_TEST_COMMANDS_OR_JUSTIFIED_EXCLUSION": "None configured yet (required at Internal tool tier)",
+    "BROWSER_MATRIX": "Firefox and Chromium, current stable"
+  }
+}

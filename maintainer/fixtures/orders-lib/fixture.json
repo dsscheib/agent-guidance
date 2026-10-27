@@ -1,0 +1,18 @@
+{
+  "description": "Python order-lifecycle library (place, deliver, cancel) whose scope names refunds but no refund rules",
+  "profile": {
+    "PROJECT_NAME_AND_PURPOSE": "shop-orders: order lifecycle library used by the internal fulfilment team",
+    "PRIMARY_JOURNEYS": "Place an order; mark it delivered; cancel an undelivered order; refund a delivered order at the customer's request",
+    "SCOPE": "Included: order lifecycle and customer refunds of delivered orders (refund rules not yet specified). Excluded: payments integration, storage, UI",
+    "TECHNOLOGY_STACK": "Python 3.10+ standard library; Decimal for money; no storage (callers persist orders)",
+    "REPOSITORY_LAYOUT": "`shop/` package, `tests/` unittest suite",
+    "SUPPORTED_ENVIRONMENTS": "Linux with Python 3.10 or later",
+    "DATA_AND_TRUST_BOUNDARIES": "Order totals and history are confidential business data; tests use synthetic orders only",
+    "EXCLUDED_GUIDES_OR_NONE": "UI guides (no UI), DATA_PORTABILITY (no import/export)",
+    "INSTALL_COMMAND": "None needed (standard library only)",
+    "DEV_ENVIRONMENT": "Local shell",
+    "RUN_COMMAND": "Not applicable (library)",
+    "TEST_COMMAND": "`python3 -m unittest`",
+    "TEST_ENVIRONMENT": "Local shell"
+  }
+}

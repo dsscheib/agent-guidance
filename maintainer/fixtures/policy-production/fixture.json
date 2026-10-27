@@ -1,0 +1,12 @@
+{
+  "description": "Production service tier with the production operations profile; feature branches; pull requests only when asked",
+  "profile": {
+    "OWNER": "Scenario Owner (fixture maintainer)",
+    "PROJECT_TIER": "Production service (adopted by Scenario Owner)",
+    "ADOPTED_PROFILES": "profiles/PRODUCTION_OPERATIONS.md",
+    "AGENT_MAY_COMMIT": "Per work item, on a feature branch",
+    "BRANCH_POLICY": "Feature branches named `<type>/<topic>`; never commit to main",
+    "COMMIT_CONVENTION": "Conventional Commits",
+    "AGENT_REMOTE_POLICY": "Open pull requests when asked; never push to main or merge"
+  }
+}

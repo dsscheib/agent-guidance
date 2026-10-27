@@ -47,7 +47,7 @@ The instructions are language- and host-neutral. No application routes, entities
 
 | Command | Effect |
 |---|---|
-| `python3 check_package.py` | Checks internal links, generated adapters and nested instruction shims. In template mode it also checks manifest hashes, unlisted files and empty registers. In project mode it reports remaining placeholders by stage |
+| `python3 check_package.py` | Checks internal links, generated adapters and nested instruction shims. In template mode it also checks manifest hashes, unlisted files, empty registers and the maintainer scenario fixtures. In project mode it reports remaining placeholders by stage |
 | `--require code` / `--require release` | Fails if placeholders remain at that stage |
 | `--install DIR [--force]` | Copies the packaged files into a project |
 | `--sync-adapters` | Regenerates the skill wrappers from `docs/procedures/` |

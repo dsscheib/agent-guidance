@@ -34,8 +34,8 @@
     {
       "path": "README.md",
       "kind": "entry",
-      "bytes": 5029,
-      "sha256": "ef2433d5e97e343bc2fc8f449db76f26203c6575c476a9c8ae080a0d7978f4d6"
+      "bytes": 5063,
+      "sha256": "6e7deb413a144727e894ef9619e548c3515233625619a02b74b8c4f3c98fdf36"
     },
     {
       "path": ".claude/settings.json",
@@ -227,8 +227,8 @@
     {
       "path": "check_package.py",
       "kind": "tooling",
-      "bytes": 11209,
-      "sha256": "f0e3ced908f23b1ddda98326fc481f67c6c21940249960e3663d878002fef325"
+      "bytes": 11580,
+      "sha256": "a5bcf7d9b6ae4286fe4d7d3fb33435333f9165a8eb5e598ff7a9afc6c9822145"
     },
     {
       "path": "scripts/hooks/pre-commit",
