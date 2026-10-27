@@ -67,9 +67,11 @@ def build(scenario, target):
     if target.exists() and any(target.iterdir()):
         raise SystemExit(f'Target must be empty or absent: {target}')
     target.mkdir(parents=True, exist_ok=True)
-    result = run([sys.executable, str(root / 'check_package.py'), '--install', str(target)], root)
-    if result.returncode:
-        raise SystemExit(result.stdout + result.stderr)
+    install = scenario.get('install', True)
+    if install:
+        result = run([sys.executable, str(root / 'check_package.py'), '--install', str(target)], root)
+        if result.returncode:
+            raise SystemExit(result.stdout + result.stderr)
     values = {}
     for name in scenario['fixtures']:
         values.update(fixture(name).get('profile', {}))
@@ -79,7 +81,8 @@ def build(scenario, target):
                 dest = target / src.relative_to(files)
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(src, dest)
-    fill_profile(target / 'PROJECT_PROFILE.md', values)
+    if install:
+        fill_profile(target / 'PROJECT_PROFILE.md', values)
     apply(target, scenario.get('setup', {}))
     git = ['git', '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null']
     for cmd in (git + ['init', '-q', '-b', 'main'], git + ['add', '-A'], git + ['commit', '-q', '-m', f"Scenario {scenario['id']} fixture"]):
@@ -90,15 +93,25 @@ def build(scenario, target):
 
     problems = []
     configured = scenario.get('configured', True)
-    required = run([sys.executable, 'check_package.py', '--require', 'code'], target)
-    if configured != (required.returncode == 0):
-        problems.append(f"profile should be {'configured' if configured else 'unconfigured'}: {required.stdout.strip().splitlines()[-1]}")
+    if not install:
+        stray = [p for p in ('check_package.py', 'PACKAGE_MANIFEST.json', 'PROJECT_PROFILE.md') if (target / p).exists()]
+        if stray:
+            problems.append('uninstalled fixture contains package files: ' + ', '.join(stray))
+    elif configured is not None:
+        required = run([sys.executable, 'check_package.py', '--require', 'code'], target)
+        if configured != (required.returncode == 0):
+            problems.append(f"profile should be {'configured' if configured else 'unconfigured'}: {required.stdout.strip().splitlines()[-1]}")
     if scenario.get('tests'):
         tests = run([sys.executable, '-m', 'unittest', '-q'], target)
         outcome = 'pass' if tests.returncode == 0 else 'fail'
         if outcome != scenario['tests']:
             problems.append(f"tests should {scenario['tests']} but {outcome}ed: {tests.stderr.strip().splitlines()[-1:]}")
     return problems
+
+
+def prompt(scenario):
+    """The prompt with {guidance} replaced by this checkout's path."""
+    return scenario['prompt'].replace('{guidance}', str(root))
 
 
 def cell(text):
@@ -113,6 +126,8 @@ def table():
     lines += ['', '| # | Fixtures | Prompt | Expected | Must not |', '|---|---|---|---|---|']
     for s in scenarios:
         state = ', '.join(f'`{f}`' for f in s['fixtures']) or 'Fresh install, unconfigured'
+        if not s.get('install', True):
+            state += ' (package not installed)'
         extras = [label for key, label in (('setup', 'setup patch'), ('dirty', 'uncommitted changes')) if key in s]
         if extras:
             state += ' + ' + ', '.join(extras)
@@ -138,7 +153,7 @@ def main():
 
     if args.list:
         for s in scenarios.values():
-            print(f"{s['id']:>4}  {s['prompt']}")
+            print(f"{s['id']:>4}  {prompt(s)}")
         return
     if args.write_table:
         text, start, end = catalog_text()
@@ -171,7 +186,7 @@ def main():
     target = Path(args.target).resolve()
     print(f"Built {s['id']} in {target}\n")
     print('Open that directory in the agent under test, start a fresh session and paste this prompt verbatim:\n')
-    print('    ' + s['prompt'] + '\n')
+    print('    ' + prompt(s) + '\n')
     print('Expected:\n' + ''.join(f'  - {e}\n' for e in s['expected']))
     print('Must not:\n' + ''.join(f'  - {m}\n' for m in s['must_not']))
     print('Record the result in maintainer/RESULTS.md:')

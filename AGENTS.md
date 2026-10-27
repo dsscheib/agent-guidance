@@ -65,5 +65,6 @@ Reusable procedures live in `docs/procedures/`. Codex and Antigravity expose the
 | [bootstrap-project](docs/procedures/bootstrap-project.md) | Starting a project or filling an incomplete PROJECT_PROFILE |
 | [final-audit](docs/procedures/final-audit.md) | Finishing any change, before reporting completion |
 | [release-readiness](docs/procedures/release-readiness.md) | Preparing or evaluating a release candidate |
+| [upgrade-guidance](docs/procedures/upgrade-guidance.md) | Adopting this guidance in an existing project, or updating an earlier adoption |
 
 Verify guidance integrity with `python3 check_package.py`.

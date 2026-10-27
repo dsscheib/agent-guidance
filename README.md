@@ -3,13 +3,15 @@
 This package gives coding agents instructions, policies, templates and procedures for starting a new project. It works with Codex, Antigravity, Claude Code and any other agent that reads `AGENTS.md`. It is a starting point for a project. It is not evidence of implementation, testing, deployment authorization or release acceptance.
 
 ## Start here
+**Existing project, or one that adopted an earlier version?** Do not use `--install`. Ask your agent to "upgrade the project guidance from `<path to this checkout>`". It follows the [upgrade procedure](docs/procedures/upgrade-guidance.md): it maps each upstream change onto the project's own documents, asks you the policy questions, and records the source commit. The steps below are for new repositories.
+
 1. **Install into the new repository.** Run:
 
    ```sh
    python3 check_package.py --install /path/to/project
    ```
 
-   This copies only the packaged files listed in `PACKAGE_MANIFEST.json`. It skips any file that already exists, and lists those files so you can merge them by hand. `--force` overwrites them; review the result before committing. Maintainer-only files are never copied.
+   This copies only the packaged files listed in `PACKAGE_MANIFEST.json`, and records this checkout's commit as `installed_from` in the copied manifest so later upgrades know where to start. It skips any file that already exists, and lists those files so you can merge them by hand. `--force` overwrites them; review the result before committing. Maintainer-only files are never copied.
 2. **Bootstrap with your agent.** Ask it to "bootstrap the project guidance". The agent follows the [bootstrap procedure](docs/procedures/bootstrap-project.md): it inspects the repository, proposes the profile values in [PROJECT_PROFILE.md](PROJECT_PROFILE.md), asks you only the decisions it cannot infer, and records what you adopt.
 3. **Choose a tier.** The tier table in PROJECT_PROFILE.md sets which gates apply by default: Prototype, Internal tool or Production service. A small tool does not inherit production ceremony, and a production service does not lose it.
 4. **Adopt only the profiles you need.** [Server-rendered web](profiles/SERVER_RENDERED_WEB.md) and [production operations](profiles/PRODUCTION_OPERATIONS.md) are optional and bind only once adopted. Exclude guides that do not apply, such as the UI guides for a non-UI project, and record the rationale.
@@ -34,7 +36,7 @@ This package gives coding agents instructions, policies, templates and procedure
 | Policy | `docs/ARCHITECTURE.md`, `CHANGE_WORKFLOW.md`, `DOCUMENTATION.md`, `TESTING_SPEC.md`, `SECURITY_PRODUCTION_SPEC.md`, `UX_DESIGN_SPEC.md`, `UI_PATTERNS.md`, `DATA_PORTABILITY.md`, `AGENT_TOOLS.md` | Copy as-is; change only by owner decision |
 | Template | `PROJECT_PROFILE.md`, `DESIGN_DOC.md`, `docs/DOMAIN_RULES.md`, `BRANDING.md`, `RUNBOOKS.md`, review and handoff templates, ADR template | Fill in with project values |
 | Register | `docs/OPEN_WORK.md`, `VERIFICATION_MATRIX.md`, `PRODUCTION_READINESS.md`, `ROADMAP.md`, `SOURCES.md` | Start empty; append as work happens |
-| Procedure | `docs/procedures/` | Bootstrap, final audit, release readiness; exposed as skills |
+| Procedure | `docs/procedures/` | Bootstrap, upgrade, final audit, release readiness; exposed as skills |
 | Profile | `profiles/` | Optional stack or tier rules |
 | Tooling | `check_package.py`, `PACKAGE_MANIFEST.json`, `scripts/hooks/pre-commit` | Install, integrity and placeholder checks |
 

@@ -4,6 +4,7 @@
 Template mode (MAINTAINING.md present) checks the package itself; project mode checks an installed copy.
 Only --install, --sync-adapters and --update-manifest write files.
 """
+from datetime import date
 from pathlib import Path
 import argparse, hashlib, json, re, shutil, subprocess, sys
 
@@ -108,6 +109,17 @@ def update_manifest(manifest, errors):
     print(f'Updated manifest: {len(entries)} entries.')
 
 
+def source_identity():
+    """Commit and dirty state of this package checkout, recorded so later upgrades know where to diff from."""
+    def git(*args):
+        result = subprocess.run(['git', '-C', str(root), *args], capture_output=True, text=True)
+        return result.stdout.strip() if result.returncode == 0 else None
+    commit = git('rev-parse', 'HEAD')
+    status = git('status', '--porcelain')
+    return {'repository': git('config', '--get', 'remote.origin.url') or 'unknown', 'commit': commit or 'unknown',
+            'dirty': None if status is None else bool(status), 'date': date.today().isoformat()}
+
+
 def install(manifest, target, force):
     target = Path(target).resolve()
     if not target.is_dir() or target == root:
@@ -121,6 +133,10 @@ def install(manifest, target, force):
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(root / path, dest)
         copied.append(path)
+    if manifest_path.name in copied:
+        installed = json.loads((target / manifest_path.name).read_text())
+        installed['installed_from'] = source_identity()
+        (target / manifest_path.name).write_text(json.dumps(installed, indent=2) + '\n')
     print(f'Copied {len(copied)} files into {target}.')
     if skipped:
         print('Skipped existing files (merge by hand or rerun with --force):\n  ' + '\n  '.join(skipped))
@@ -139,9 +155,9 @@ def check_links(files, errors):
                 errors.append(f'{rel(path)}: unresolved or escaping link {link}')
 
 
-def check_shims(files, errors):
+def check_shims(files, errors, exempt):
     for path in files:
-        if path.name == 'AGENTS.md':
+        if path.name == 'AGENTS.md' and not rel(path).startswith(exempt):
             shim = path.with_name('CLAUDE.md')
             if not shim.is_file() or '@AGENTS.md' not in shim.read_text():
                 errors.append(f'{rel(path)}: needs a sibling CLAUDE.md containing @AGENTS.md for Claude Code')
@@ -203,7 +219,7 @@ def main():
 
     files = list(walk(include_repo_only=template, manifest=manifest))
     check_links(files, errors)
-    check_shims(files, errors)
+    check_shims(files, errors, tuple(manifest.get('shim_exempt', [])))
     check_adapters(manifest, errors)
     notes = []
     listed = {e['path']: e for e in manifest['files']}
@@ -226,7 +242,12 @@ def main():
         modified = [p for p in listed if (root / p).is_file() and sha256(root / p) != listed[p].get('sha256')]
         if absent:
             notes.append(f'{len(absent)} packaged files absent; record exclusions in PROJECT_PROFILE.md: ' + ', '.join(absent))
-        notes.append(f'{len(modified)} packaged files modified from upstream (expected for templates and registers).')
+        source = manifest.get('installed_from', {})
+        notes.append(f"Installed from {source.get('commit', 'an unrecorded commit')}"
+                     f"{' (dirty checkout)' if source.get('dirty') else ''}; upgrades start from that commit "
+                     '(docs/procedures/upgrade-guidance.md).')
+        notes.append(f'{len(modified)} packaged files modified since installation (expected for templates and registers)'
+                     + (': ' + ', '.join(modified) if modified else '.'))
 
     counts = placeholders(files, manifest)
     code_total = sum(c for c, _ in counts.values())

@@ -18,12 +18,15 @@
     "maintainer/",
     ".claude/settings.local.json"
   ],
+  "shim_exempt": [
+    "maintainer/fixtures/"
+  ],
   "files": [
     {
       "path": "AGENTS.md",
       "kind": "entry",
-      "bytes": 8586,
-      "sha256": "101764500e8af9e29c1d9fa63ebdffa6e3041ed032982b02418714a8e706cddc"
+      "bytes": 8727,
+      "sha256": "456f547dcc0a1c7e70c0347ce1a11095efb10aaf4b935b487687e6cdb410e071"
     },
     {
       "path": "CLAUDE.md",
@@ -34,8 +37,8 @@
     {
       "path": "README.md",
       "kind": "entry",
-      "bytes": 5063,
-      "sha256": "6e7deb413a144727e894ef9619e548c3515233625619a02b74b8c4f3c98fdf36"
+      "bytes": 5597,
+      "sha256": "6520c0a00fef2d1e78ea1479a16f23782850e974eecfe3bb753069a1c50ca117"
     },
     {
       "path": ".claude/settings.json",
@@ -213,6 +216,12 @@
       "sha256": "7651e4948e9fc27ab6c706428a8d50785e68d110c531e808153463b667305850"
     },
     {
+      "path": "docs/procedures/upgrade-guidance.md",
+      "kind": "procedure",
+      "bytes": 6875,
+      "sha256": "b6fbec3fe02700bdfe78d9cd2ee2645e587d16d02e1feda69f0dd86d3a001649"
+    },
+    {
       "path": "profiles/PRODUCTION_OPERATIONS.md",
       "kind": "profile",
       "bytes": 5849,
@@ -227,8 +236,8 @@
     {
       "path": "check_package.py",
       "kind": "tooling",
-      "bytes": 11580,
-      "sha256": "a5bcf7d9b6ae4286fe4d7d3fb33435333f9165a8eb5e598ff7a9afc6c9822145"
+      "bytes": 12954,
+      "sha256": "f72418b169d6032efbcaee136b6e0bb2da77b667fe6b2d1d3482346ca123e38b"
     },
     {
       "path": "scripts/hooks/pre-commit",
@@ -271,6 +280,18 @@
       "kind": "adapter",
       "bytes": 697,
       "sha256": "8bfe3cc368cb9f1532037b19df43c61fa1be67051c72aa04942846f623e4929f"
+    },
+    {
+      "path": ".agents/skills/upgrade-guidance/SKILL.md",
+      "kind": "adapter",
+      "bytes": 796,
+      "sha256": "e9b0bf8490f2a4b1655989ffe6d3ef75b819ef6594593b1b4d17aba4e1738efd"
+    },
+    {
+      "path": ".claude/skills/upgrade-guidance/SKILL.md",
+      "kind": "adapter",
+      "bytes": 786,
+      "sha256": "08e2d6de399c09c9df2a878938760ce41afe8459192250a545b80474c9066873"
     }
   ]
 }
