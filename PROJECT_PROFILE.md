@@ -77,7 +77,7 @@ Fill in before the first release at the adopted tier. Values left blank at a tie
 
 | Decision | Project value |
 |---|---|
-| Deployment environments and authorization scope | {{DEPLOYMENT_BOUNDARIES}} |
+| Deployment environments, including any owner review (UAT) environment, and authorization scope | {{DEPLOYMENT_BOUNDARIES}} |
 | Accessibility target and supported inputs | {{ACCESSIBILITY_TARGET}} |
 | Performance/load/capacity budgets | {{PERFORMANCE_BUDGETS}} |
 | Qualification dataset, concurrency, mix and durations | {{QUALIFICATION_PROTOCOL}} |

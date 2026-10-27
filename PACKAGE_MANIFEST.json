@@ -22,8 +22,8 @@
     {
       "path": "AGENTS.md",
       "kind": "entry",
-      "bytes": 8440,
-      "sha256": "4e7a0c68c76acb9a9dc4fc71d1ed5c45c6054692cfdaf71d52d149c1c13952c4"
+      "bytes": 8586,
+      "sha256": "101764500e8af9e29c1d9fa63ebdffa6e3041ed032982b02418714a8e706cddc"
     },
     {
       "path": "CLAUDE.md",
@@ -107,8 +107,8 @@
       "path": "PROJECT_PROFILE.md",
       "kind": "template",
       "stage": "code",
-      "bytes": 5332,
-      "sha256": "400b04f777712438c210f8e71cc00c681eaf2fd19b1c7b61eec57263f3377fcf"
+      "bytes": 5379,
+      "sha256": "06dea14465c82c508e71158c9c0cfe2cee36901c4396d07ba164b9822df833f4"
     },
     {
       "path": "DESIGN_DOC.md",
@@ -149,8 +149,8 @@
     {
       "path": "docs/UX_ACCEPTANCE_CHECKLIST.md",
       "kind": "template",
-      "bytes": 1721,
-      "sha256": "bd7a67a2e64d47a20e161c383ee6fd2cd3292ee3e12e05b9c18fb42e0dbb8bc0"
+      "bytes": 1965,
+      "sha256": "e4f34cc94bf558d6e834e7d6785ef42e47ece3f14e3a3ba7568a8746c57ab156"
     },
     {
       "path": "docs/VERIFICATION_REVIEW.md",
@@ -203,8 +203,8 @@
     {
       "path": "docs/procedures/final-audit.md",
       "kind": "procedure",
-      "bytes": 2705,
-      "sha256": "8d705368524d5983423fb384893260b88c9c8c00720c3a927a4c87d7b5f6ddef"
+      "bytes": 3134,
+      "sha256": "c5caf1d67087c9e3697e047f398d2fe8e9765c15dd79cbd220f076045bd1b2a5"
     },
     {
       "path": "docs/procedures/release-readiness.md",

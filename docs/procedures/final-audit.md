@@ -34,6 +34,7 @@ Report:
 - the actual commands and their results,
 - limitations, decisions made and evidence links,
 - open questions for the owner,
+- for UI or interactive workflow changes that benefit from owner review: deploy the verified changes to the review or target environment in PROJECT_PROFILE.md, but only when deployment is authorized (AGENTS.md rule 3). Then give the owner a concise set of user acceptance tests (UAT) to run and send feedback on. If deployment is not authorized, give the UAT steps for the owner to run locally and say that nothing was deployed,
 - these three states, each stated independently:
   - Implementation complete: yes, no or partial.
   - Verification complete: yes or no, with what is unverified.
