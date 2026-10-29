@@ -19,7 +19,7 @@ Cross-reference [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and domain invarian
 |---|---|---|---|---|
 | {{INTERFACE}} | {{VALIDATION_AND_AUTHORIZATION}} | {{STATUS_AND_RESULT}} | {{COMPATIBILITY_AND_FALLBACK}} | Planned; not implemented |
 
-For every public interaction boundary, document direct access, validation, permission, result and error semantics, session expiry and retry behavior. Adopted stack profiles add mechanism-specific contracts, such as full-page and fragment variants in the [server-rendered web profile](profiles/SERVER_RENDERED_WEB.md).
+For every public interaction boundary, document direct access, validation, permission, result and error semantics, session expiry and retry behavior. Adopted stack profiles add mechanism-specific contracts, such as full-page and fragment variants in the server-rendered web profiles ([Go](profiles/SERVER_RENDERED_WEB_GO.md), [Rust](profiles/SERVER_RENDERED_WEB_RUST.md)).
 
 ## Persistent model and transitions
 {{IDENTITIES_RELATIONSHIPS_TYPES_UNITS_CONSTRAINTS_AND_LIFECYCLES}}

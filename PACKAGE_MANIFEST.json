@@ -37,8 +37,8 @@
     {
       "path": "README.md",
       "kind": "entry",
-      "bytes": 5750,
-      "sha256": "20d62f815e165bb4e9e7bdbaa54d8034aef20bd52dddf89bd9b534b8f880e85f"
+      "bytes": 5806,
+      "sha256": "7fff76ecd0bdcb32cf70dd01a0d6d435dcab7c2b382e6adb6684d2feb694d454"
     },
     {
       "path": ".claude/settings.json",
@@ -128,8 +128,8 @@
     {
       "path": "DESIGN_DOC.md",
       "kind": "template",
-      "bytes": 2258,
-      "sha256": "0a9ab25916f5c1641a9b69c5aaf0385677e62c98b1662d3e922fa3547b1d2d10"
+      "bytes": 2313,
+      "sha256": "bd79e14d509eae63988c5190bad4cbde018b8d9bdd13965d253cc349492c3f9e"
     },
     {
       "path": "docs/BRANDING.md",
@@ -240,10 +240,16 @@
       "sha256": "ad1843169c83ffa5227a0d8b8b44a7e5ea1b1d0ced9e24eeaead0c0f7d8697b4"
     },
     {
-      "path": "profiles/SERVER_RENDERED_WEB.md",
+      "path": "profiles/SERVER_RENDERED_WEB_GO.md",
       "kind": "profile",
-      "bytes": 2122,
-      "sha256": "87785929cc4307e2b65f5f8e764abbfe6e184aef8befbbde816f520959bed747"
+      "bytes": 2127,
+      "sha256": "81f85b5f7d2c2152411ea4fc2fd8d30be417711110589717b270155b031948df"
+    },
+    {
+      "path": "profiles/SERVER_RENDERED_WEB_RUST.md",
+      "kind": "profile",
+      "bytes": 3447,
+      "sha256": "de7fcf64805221af8c82d2c75461e9b3786c9afb68149a04499c703f2c7a9d5c"
     },
     {
       "path": "check_package.py",

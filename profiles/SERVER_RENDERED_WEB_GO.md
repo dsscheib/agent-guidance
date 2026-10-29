@@ -1,4 +1,4 @@
-# Optional server-rendered web technology profile
+# Optional server-rendered web technology profile (Go)
 
 Kind: Profile. Status: Not selected. Adopt explicitly in PROJECT_PROFILE.md before treating these technology boundaries as binding. Other approved architectures may use the neutral core guides.
 
