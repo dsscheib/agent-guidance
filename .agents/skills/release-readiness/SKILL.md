@@ -6,4 +6,4 @@ description: "Assemble and evaluate the evidence for a release candidate against
 
 # release-readiness
 
-Read `docs/procedures/release-readiness.md` from the repository root and follow it exactly. That file is the authoritative procedure; this wrapper only makes it discoverable to Codex and Antigravity.
+Read `docs/procedures/release-readiness.md` from the repository root and follow it exactly. That file is the authoritative procedure; this wrapper only makes it discoverable as a skill.

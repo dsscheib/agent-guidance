@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "type": "command",
+        "matcher": "bash|powershell|view",
+        "bash": "python3 .github/hooks/guidance_guardrail.py",
+        "powershell": "python .github/hooks/guidance_guardrail.py",
+        "cwd": ".",
+        "timeoutSec": 10
+      }
+    ]
+  }
+}

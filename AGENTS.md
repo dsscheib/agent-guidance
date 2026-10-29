@@ -1,6 +1,6 @@
 # Agent instructions
 
-This is the single instruction source for every coding agent working in this repository: Codex, Antigravity, Claude Code and any other `AGENTS.md`-aware tool. Tool-specific files (`CLAUDE.md`, `.claude/`, `.codex/`, `.agents/`) only point back here or mechanically enforce rules stated here. If they ever disagree with this file, this file wins. See [docs/AGENT_TOOLS.md](docs/AGENT_TOOLS.md).
+This is the single instruction source for every coding agent working in this repository: Codex, Antigravity, Claude Code, Copilot CLI and any other `AGENTS.md`-aware tool. Tool-specific files (`CLAUDE.md`, `.claude/`, `.codex/`, `.agents/`, `.github/hooks/`) only point back here or mechanically enforce rules stated here. If they ever disagree with this file, this file wins. See [docs/AGENT_TOOLS.md](docs/AGENT_TOOLS.md).
 
 **Editing the guidance package itself?** If `MAINTAINING.md` exists at the repository root, you are in the template repository, not a project. Follow `MAINTAINING.md` instead of the project workflow below.
 
@@ -58,7 +58,7 @@ Each rule is stated once here and detailed in the linked document. Other documen
 15. **Finish with the audit.** Run the [final audit](docs/procedures/final-audit.md). Report implementation, verification and release acceptance as three separate states. A green local suite is not release acceptance.
 
 ## Procedures
-Reusable procedures live in `docs/procedures/`. Codex and Antigravity expose them as skills from `.agents/skills/`, and Claude Code from `.claude/skills/`. Any other agent reads the file directly.
+Reusable procedures live in `docs/procedures/`. Codex and Antigravity expose them as skills from `.agents/skills/`, Claude Code from `.claude/skills/`, and Copilot CLI from both. Any other agent reads the file directly.
 
 | Procedure | Use when |
 |---|---|

@@ -18,7 +18,7 @@ Repository-only. Use these to test whether agents actually follow the guidance a
    ```
 
    The runner installs the package, layers the fixtures, fills the profile, applies setup patches, makes the initial commit as "Scenario Fixture", and applies any uncommitted changes. It then confirms the profile and test state match the definition, and prints the prompt and pass criteria. `--list` shows all scenarios.
-2. Open that directory in the agent under test (Codex, Antigravity, Claude Code) and start a fresh session. Paste the prompt verbatim and give no other hints.
+2. Open that directory in the agent under test (Codex, Antigravity, Claude Code, Copilot CLI) and start a fresh session. Paste the prompt verbatim and give no other hints.
 3. Compare the agent's behavior with "Expected" and "Must not". Record the agent, its version, the date, the run number and the result in [RESULTS.md](RESULTS.md); the runner prints a row to fill in.
 
 A scenario passes only if every "Expected" item happens and no "Must not" item does. Run each scenario at least twice per agent, in fresh fixture directories, because one pass may be luck.

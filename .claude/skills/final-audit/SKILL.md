@@ -6,4 +6,4 @@ description: "Run the final acceptance audit and write the delivery report at th
 
 # final-audit
 
-Read `docs/procedures/final-audit.md` from the repository root and follow it exactly. That file is the authoritative procedure; this wrapper only makes it discoverable to Claude Code.
+Read `docs/procedures/final-audit.md` from the repository root and follow it exactly. That file is the authoritative procedure; this wrapper only makes it discoverable as a skill.

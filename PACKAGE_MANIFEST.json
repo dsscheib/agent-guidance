@@ -6,11 +6,11 @@
   "adapters": [
     {
       "dir": ".agents/skills",
-      "tools": "Codex and Antigravity"
+      "tools": "Codex, Antigravity and Copilot CLI"
     },
     {
       "dir": ".claude/skills",
-      "tools": "Claude Code"
+      "tools": "Claude Code and Copilot CLI"
     }
   ],
   "repo_only": [
@@ -25,8 +25,8 @@
     {
       "path": "AGENTS.md",
       "kind": "entry",
-      "bytes": 8727,
-      "sha256": "456f547dcc0a1c7e70c0347ce1a11095efb10aaf4b935b487687e6cdb410e071"
+      "bytes": 8781,
+      "sha256": "9010286d024b9763365104a3cbd99aebc53279c0401564a607274ae266cbd9b2"
     },
     {
       "path": "CLAUDE.md",
@@ -37,8 +37,8 @@
     {
       "path": "README.md",
       "kind": "entry",
-      "bytes": 5597,
-      "sha256": "6520c0a00fef2d1e78ea1479a16f23782850e974eecfe3bb753069a1c50ca117"
+      "bytes": 5750,
+      "sha256": "20d62f815e165bb4e9e7bdbaa54d8034aef20bd52dddf89bd9b534b8f880e85f"
     },
     {
       "path": ".claude/settings.json",
@@ -53,10 +53,22 @@
       "sha256": "77701ed0538278e882c73faab0be5ff39967b15771df3c1e151ed8526f04ea13"
     },
     {
+      "path": ".github/hooks/guidance.json",
+      "kind": "guardrail",
+      "bytes": 325,
+      "sha256": "e8b0f143ed3184a8bb7d67bcf1e75ec84c8c0c5c9051702df0fe4e4ae7e0243a"
+    },
+    {
+      "path": ".github/hooks/guidance_guardrail.py",
+      "kind": "guardrail",
+      "bytes": 2816,
+      "sha256": "1ef9619ba468fd804a44a3fa45de59af68516cefdfeea27f2b1ebc056c4c55e2"
+    },
+    {
       "path": "docs/AGENT_TOOLS.md",
       "kind": "policy",
-      "bytes": 6369,
-      "sha256": "8f81cb0ac9f20d202d9ea70634564d896761069440cf37a71bb86074a6204418"
+      "bytes": 8649,
+      "sha256": "f0b117c435e1409365216265d13cbea72a28e0b8ba6f006b14e44818c6e4cc89"
     },
     {
       "path": "docs/ARCHITECTURE.md",
@@ -236,8 +248,8 @@
     {
       "path": "check_package.py",
       "kind": "tooling",
-      "bytes": 12954,
-      "sha256": "f72418b169d6032efbcaee136b6e0bb2da77b667fe6b2d1d3482346ca123e38b"
+      "bytes": 12942,
+      "sha256": "177d7f444183906a6bb5c604ded8ebfa1cc2277f3bb8fba6a25a9e4d3d4b0531"
     },
     {
       "path": "scripts/hooks/pre-commit",
@@ -248,50 +260,50 @@
     {
       "path": ".agents/skills/bootstrap-project/SKILL.md",
       "kind": "adapter",
-      "bytes": 694,
-      "sha256": "bde82473dbb8f4daf27acea73e6ec29b9955db0122d2a8bb982e3619ec5f799a"
+      "bytes": 680,
+      "sha256": "ebdfdac8d60b9fe7aa4e9667b701f25535979313fe6a8f851d99de1e3e985f6e"
     },
     {
       "path": ".agents/skills/final-audit/SKILL.md",
       "kind": "adapter",
-      "bytes": 669,
-      "sha256": "08c6a28ee08e9559f57036c7e48114dd79c30a0786db73bf8270f60b6cc3a957"
+      "bytes": 655,
+      "sha256": "2b9d808e0a018d5d28f9cacf28f6845eecd33385f2d06a6639101026d7447e98"
     },
     {
       "path": ".agents/skills/release-readiness/SKILL.md",
       "kind": "adapter",
-      "bytes": 707,
-      "sha256": "c8bb3845a7060aa839b2d0d67c7db5ee5cdd5b6293bf3faa8a2099253a137f36"
+      "bytes": 693,
+      "sha256": "4174905b49a146cf1666c372c4275857aa4e883105d4175ef6752d1aa914f01e"
     },
     {
       "path": ".claude/skills/bootstrap-project/SKILL.md",
       "kind": "adapter",
-      "bytes": 684,
-      "sha256": "f14accf32f0b4e72045237688d954c2b74068b11834c93e5e16fa8591ab0889a"
+      "bytes": 680,
+      "sha256": "ebdfdac8d60b9fe7aa4e9667b701f25535979313fe6a8f851d99de1e3e985f6e"
     },
     {
       "path": ".claude/skills/final-audit/SKILL.md",
       "kind": "adapter",
-      "bytes": 659,
-      "sha256": "099d48a3e0faf6bd1aceb1fd8c26f77fa103f085e0e2efe183b71e8dfa685146"
+      "bytes": 655,
+      "sha256": "2b9d808e0a018d5d28f9cacf28f6845eecd33385f2d06a6639101026d7447e98"
     },
     {
       "path": ".claude/skills/release-readiness/SKILL.md",
       "kind": "adapter",
-      "bytes": 697,
-      "sha256": "8bfe3cc368cb9f1532037b19df43c61fa1be67051c72aa04942846f623e4929f"
+      "bytes": 693,
+      "sha256": "4174905b49a146cf1666c372c4275857aa4e883105d4175ef6752d1aa914f01e"
     },
     {
       "path": ".agents/skills/upgrade-guidance/SKILL.md",
       "kind": "adapter",
-      "bytes": 796,
-      "sha256": "e9b0bf8490f2a4b1655989ffe6d3ef75b819ef6594593b1b4d17aba4e1738efd"
+      "bytes": 782,
+      "sha256": "4f7437c9b972d12f2808b8daae517c3eff74876b8ca55f5159d68b50a38b0297"
     },
     {
       "path": ".claude/skills/upgrade-guidance/SKILL.md",
       "kind": "adapter",
-      "bytes": 786,
-      "sha256": "08e2d6de399c09c9df2a878938760ce41afe8459192250a545b80474c9066873"
+      "bytes": 782,
+      "sha256": "4f7437c9b972d12f2808b8daae517c3eff74876b8ca55f5159d68b50a38b0297"
     }
   ]
 }
