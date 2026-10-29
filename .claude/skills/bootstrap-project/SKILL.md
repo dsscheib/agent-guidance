@@ -6,4 +6,4 @@ description: "Configure a project that has just adopted this guidance package. U
 
 # bootstrap-project
 
-Read `docs/procedures/bootstrap-project.md` from the repository root and follow it exactly. That file is the authoritative procedure; this wrapper only makes it discoverable to Claude Code.
+Read `docs/procedures/bootstrap-project.md` from the repository root and follow it exactly. That file is the authoritative procedure; this wrapper only makes it discoverable as a skill.

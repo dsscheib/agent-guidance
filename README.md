@@ -1,6 +1,6 @@
 # Reusable project guidance
 
-This package gives coding agents instructions, policies, templates and procedures for starting a new project. It works with Codex, Antigravity, Claude Code and any other agent that reads `AGENTS.md`. It is a starting point for a project. It is not evidence of implementation, testing, deployment authorization or release acceptance.
+This package gives coding agents instructions, policies, templates and procedures for starting a new project. It works with Codex, Antigravity, Claude Code, Copilot CLI and any other agent that reads `AGENTS.md`. It is a starting point for a project. It is not evidence of implementation, testing, deployment authorization or release acceptance.
 
 ## Start here
 **Existing project, or one that adopted an earlier version?** Do not use `--install`. Ask your agent to "upgrade the project guidance from `<path to this checkout>`". It follows the [upgrade procedure](docs/procedures/upgrade-guidance.md): it maps each upstream change onto the project's own documents, asks you the policy questions, and records the source commit. The steps below are for new repositories.
@@ -25,6 +25,7 @@ This package gives coding agents instructions, policies, templates and procedure
 | Codex | `AGENTS.md` | `.agents/skills/` | `.codex/rules/guidance.rules` (trusted projects) |
 | Antigravity | `AGENTS.md` | `.agents/skills/` | User-level only: app permission settings, or CLI `~/.gemini/antigravity-cli/settings.json` |
 | Claude Code | `CLAUDE.md`, which imports `AGENTS.md` | `.claude/skills/` | `.claude/settings.json` |
+| Copilot CLI | `AGENTS.md` | `.agents/skills/` and `.claude/skills/` | `.github/hooks/guidance.json` (trusted folders) |
 | Other agents | `AGENTS.md` | Read `docs/procedures/` directly | Optional git hook in `scripts/hooks/` |
 
 [docs/AGENT_TOOLS.md](docs/AGENT_TOOLS.md) explains each adapter, how to keep them in sync, and how to add a tool.
@@ -32,7 +33,7 @@ This package gives coding agents instructions, policies, templates and procedure
 ## What is included
 | Kind | Files | Use |
 |---|---|---|
-| Entry and adapters | `AGENTS.md`, `CLAUDE.md`, `.agents/`, `.claude/`, `.codex/` | Agent entry points. Skill wrappers are generated; never edit them by hand |
+| Entry and adapters | `AGENTS.md`, `CLAUDE.md`, `.agents/`, `.claude/`, `.codex/`, `.github/hooks/` | Agent entry points. Skill wrappers are generated; never edit them by hand |
 | Policy | `docs/ARCHITECTURE.md`, `CHANGE_WORKFLOW.md`, `DOCUMENTATION.md`, `TESTING_SPEC.md`, `SECURITY_PRODUCTION_SPEC.md`, `UX_DESIGN_SPEC.md`, `UI_PATTERNS.md`, `DATA_PORTABILITY.md`, `AGENT_TOOLS.md` | Copy as-is; change only by owner decision |
 | Template | `PROJECT_PROFILE.md`, `DESIGN_DOC.md`, `docs/DOMAIN_RULES.md`, `BRANDING.md`, `RUNBOOKS.md`, review and handoff templates, ADR template | Fill in with project values |
 | Register | `docs/OPEN_WORK.md`, `VERIFICATION_MATRIX.md`, `PRODUCTION_READINESS.md`, `ROADMAP.md`, `SOURCES.md` | Start empty; append as work happens |

@@ -6,4 +6,4 @@ description: "Bring this guidance package into an existing project that already 
 
 # upgrade-guidance
 
-Read `docs/procedures/upgrade-guidance.md` from the repository root and follow it exactly. That file is the authoritative procedure; this wrapper only makes it discoverable to Claude Code.
+Read `docs/procedures/upgrade-guidance.md` from the repository root and follow it exactly. That file is the authoritative procedure; this wrapper only makes it discoverable as a skill.
