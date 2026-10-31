@@ -15,6 +15,7 @@
   ],
   "repo_only": [
     "MAINTAINING.md",
+    "LICENSE",
     "maintainer/",
     ".claude/settings.local.json"
   ],
