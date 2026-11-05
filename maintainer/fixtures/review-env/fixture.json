@@ -1,0 +1,6 @@
+{
+  "description": "Adds a reusable local review deployment (`scripts/deploy-review.sh`, which refuses a dirty tree) and records the review environment in the profile",
+  "profile": {
+    "DEPLOYMENT_BOUNDARIES": "Review (UAT) environment: `scripts/deploy-review.sh` copies a committed revision to `review/` on this machine. The owner authorizes each review deployment. No production environment yet"
+  }
+}

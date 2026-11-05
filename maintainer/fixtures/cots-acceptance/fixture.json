@@ -1,0 +1,4 @@
+{
+  "description": "Acceptance tests for a vendor-supplied CSV tool (csvsum 4.2, not ours, do not modify); one test fails because the tool contradicts its manual. Profile values are in cots-profile",
+  "profile": {}
+}

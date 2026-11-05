@@ -1,0 +1,8 @@
+{
+  "description": "Adds a requirements.txt that pins requests==2.19.0, a release with a published vulnerability; no audit tool is configured",
+  "profile": {
+    "TECHNOLOGY_STACK": "Python 3.10+; one third-party HTTP library, pinned in requirements.txt for the planned upload feature and not yet used; no storage",
+    "SCOPE": "Included: counting and output formats. Planned: optional HTTP upload of counts. Excluded: GUIs, binary files",
+    "DATA_AND_TRUST_BOUNDARIES": "Reads local files the user names; the planned upload will send counts to a URL the user gives; no personal or confidential data"
+  }
+}

@@ -2,6 +2,7 @@
 """Build guidance-scenario fixtures for agent testing (repository-only).
 
   run_scenario.py S2 /path/to/new-dir   build one scenario and print its prompt
+  run_scenario.py S2 DIR --no-install   build it without the package, for a no-guidance baseline
   run_scenario.py --list                list scenarios
   run_scenario.py --write-table         regenerate the catalog in SCENARIOS.md
   run_scenario.py --check               build every scenario in a temporary directory and check the catalog
@@ -45,7 +46,10 @@ def apply(target, spec):
         path.write_text(text.replace(patch['old'], patch['new']))
 
 
-def fill_profile(path, values):
+def fill_profile(target, values, strict=True):
+    """Fill fixture values into PROJECT_PROFILE.md and, when installed, docs/ENTERPRISE.md.
+
+    An earlier release's template lacks some placeholders, so strict=False skips values it has no place for."""
     used = set()
 
     def replace(match):
@@ -55,10 +59,12 @@ def fill_profile(path, values):
             return values[key]
         return match.group(0)
 
-    path.write_text(PLACEHOLDER.sub(replace, path.read_text()))
+    for path in (target / 'PROJECT_PROFILE.md', target / 'docs' / 'ENTERPRISE.md'):
+        if path.is_file():
+            path.write_text(PLACEHOLDER.sub(replace, path.read_text()))
     unknown = values.keys() - used
-    if unknown:
-        raise SystemExit('Fixture profile keys match no PROJECT_PROFILE.md placeholder: ' + ', '.join(sorted(unknown)))
+    if unknown and strict:
+        raise SystemExit('Fixture profile keys match no PROJECT_PROFILE.md or ENTERPRISE.md placeholder: ' + ', '.join(sorted(unknown)))
 
 
 def build(scenario, target):
@@ -68,8 +74,26 @@ def build(scenario, target):
         raise SystemExit(f'Target must be empty or absent: {target}')
     target.mkdir(parents=True, exist_ok=True)
     install = scenario.get('install', True)
-    if install:
-        result = run([sys.executable, str(root / 'check_package.py'), '--install', str(target)], root)
+    # SCENARIO_OLD_GUIDANCE installs an earlier release into every scenario, for an old-guidance comparison.
+    ref = scenario.get('install_ref') or os.environ.get('SCENARIO_OLD_GUIDANCE')
+    if install and ref:
+        # An earlier release, as a project that adopted it would have it: a shared clone at that commit runs its own installer.
+        with tempfile.TemporaryDirectory() as tmp:
+            old = Path(tmp) / 'guidance'
+            # A harness snapshot has no history; the harness names the repository that has it.
+            history = os.environ.get('SCENARIO_HISTORY_REPO') or str(root)
+            for cmd, cwd in ((['git', 'clone', '-q', '--shared', history, str(old)], root),
+                             (['git', '-c', 'advice.detachedHead=false', 'checkout', '-q', ref], old)):
+                result = run(cmd, cwd)
+                if result.returncode:
+                    raise SystemExit(f"{' '.join(cmd)} failed: {result.stderr}")
+            result = run([sys.executable, str(old / 'check_package.py'), '--install', str(target)], old)
+            if result.returncode:
+                raise SystemExit(result.stdout + result.stderr)
+    elif install:
+        tier = ['--tier', scenario['tier']] if scenario.get('tier') else []
+        tier += ['--features', ','.join(scenario['features'])] if scenario.get('features') else []
+        result = run([sys.executable, str(root / 'check_package.py'), '--install', str(target), *tier], root)
         if result.returncode:
             raise SystemExit(result.stdout + result.stderr)
     values = {}
@@ -81,8 +105,8 @@ def build(scenario, target):
                 dest = target / src.relative_to(files)
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(src, dest)
-    if install:
-        fill_profile(target / 'PROJECT_PROFILE.md', values)
+    if install and not scenario.get('install_ref'):  # an earlier adoption's profile is the project's own filled-in file
+        fill_profile(target, values, strict=not ref)
     apply(target, scenario.get('setup', {}))
     git = ['git', '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null']
     for cmd in (git + ['init', '-q', '-b', 'main'], git + ['add', '-A'], git + ['commit', '-q', '-m', f"Scenario {scenario['id']} fixture"]):
@@ -114,6 +138,11 @@ def prompt(scenario):
     return scenario['prompt'].replace('{guidance}', str(root))
 
 
+def followups(scenario):
+    """Later prompts for a longitudinal scenario, pasted one at a time into the same session."""
+    return [f.replace('{guidance}', str(root)) for f in scenario.get('followups', [])]
+
+
 def cell(text):
     return text.replace('|', '\\|').replace('\n', ' ')
 
@@ -131,7 +160,8 @@ def table():
         extras = [label for key, label in (('setup', 'setup patch'), ('dirty', 'uncommitted changes')) if key in s]
         if extras:
             state += ' + ' + ', '.join(extras)
-        lines.append(f"| {s['id']} | {state} | \"{cell(s['prompt'])}\" | {cell('; '.join(s['expected']))} | {cell('; '.join(s['must_not']))} |")
+        asked = ' → '.join(f'"{p}"' for p in [s['prompt']] + s.get('followups', []))
+        lines.append(f"| {s['id']} | {state} | {cell(asked)} | {cell('; '.join(s['expected']))} | {cell('; '.join(s['must_not']))} |")
     return '\n'.join(lines)
 
 
@@ -148,6 +178,7 @@ def main():
     parser.add_argument('--list', action='store_true')
     parser.add_argument('--write-table', action='store_true')
     parser.add_argument('--check', action='store_true')
+    parser.add_argument('--no-install', action='store_true', help='build without the package (no-guidance baseline)')
     args = parser.parse_args()
     scenarios = {s['id']: s for s in load()}
 
@@ -180,6 +211,8 @@ def main():
         parser.error('give a scenario ID (see --list) and a new or empty target directory')
 
     s = scenarios[args.scenario]
+    if args.no_install:
+        s = {**s, 'install': False, 'configured': None}
     problems = build(s, args.target)
     if problems:
         sys.exit('Fixture does not match its definition:\n' + '\n'.join(problems))
@@ -187,6 +220,12 @@ def main():
     print(f"Built {s['id']} in {target}\n")
     print('Open that directory in the agent under test, start a fresh session and paste this prompt verbatim:\n')
     print('    ' + prompt(s) + '\n')
+    later = followups(s)
+    if later:
+        print('Then, in the same session, paste each follow-up after the agent finishes the previous step:\n')
+        print(''.join(f'    {n}. {f}\n' for n, f in enumerate(later, 2)))
+        print('At the end, also measure the fixture: line counts of PROJECT_PROFILE.md and docs/OPEN_WORK.md, new files under docs/ '
+              'and scripts/, and `git log` (every review deployment must match a commit).\n')
     print('Expected:\n' + ''.join(f'  - {e}\n' for e in s['expected']))
     print('Must not:\n' + ''.join(f'  - {m}\n' for m in s['must_not']))
     print('Record the result in maintainer/RESULTS.md:')

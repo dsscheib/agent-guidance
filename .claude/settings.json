@@ -7,7 +7,10 @@
       "Bash(git clean:*)",
       "Bash(git branch -D:*)",
       "Bash(git rebase:*)",
-      "Bash(git checkout -- .)"
+      "Bash(git checkout -- .)",
+      "Bash(gh pr merge:*)",
+      "Bash(gh pr review:*)",
+      "Bash(gh release create:*)"
     ],
     "deny": [
       "Read(./.env)",

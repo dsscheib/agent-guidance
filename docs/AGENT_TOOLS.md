@@ -20,19 +20,39 @@ Never put a rule only in an adapter, because the other agents would never see it
 
 ## Rules for maintaining adapters
 - **Keep AGENTS.md small.** Every supported tool loads it on every session or turn. Aim to keep it under about 10 KB; move detail into routed documents and procedures. Antigravity's always-on content shares a token budget, and Codex truncates instructions beyond its byte cap.
-- **Don't add a second always-on file.** Do not add `GEMINI.md`, `.github/copilot-instructions.md` or an `always_on` Antigravity rule that repeats AGENTS.md. Antigravity and Copilot CLI already read AGENTS.md, and a copy would drift. Copilot CLI also loads the `CLAUDE.md` shim; the docs do not say whether it expands `@AGENTS.md`, and either way the shim adds no rule of its own.
+- **Don't add a second always-on file.** Do not add `GEMINI.md`, `.github/copilot-instructions.md` or an `always_on` Antigravity rule that repeats AGENTS.md. Antigravity and Copilot CLI already read AGENTS.md, and a copy would drift. `check_package.py` fails when a `GEMINI.md` or `.github/copilot-instructions.md` holds more than a short pointer to AGENTS.md. Copilot CLI also loads the `CLAUDE.md` shim; the docs do not say whether it expands `@AGENTS.md`, and either way the shim adds no rule of its own.
 - **Generate the skill wrappers.** Edit `docs/procedures/<name>.md`; its YAML frontmatter needs `name` and `description`, and the description says when to use the procedure. Then run `python3 check_package.py --sync-adapters`. The checker fails when the wrappers are stale. The wrappers in every adapter directory are byte-identical, because Copilot CLI loads more than one directory and does not document which copy of a duplicate name wins.
 - **Shim every nested AGENTS.md.** For a subdirectory that needs its own instructions, add `<dir>/AGENTS.md`, which Codex, Antigravity and Copilot CLI read, and a sibling `<dir>/CLAUDE.md` containing `@AGENTS.md`. The checker fails if the shim is missing.
 - **Mirror only the authorization rules in guardrails.** Guardrails mirror AGENTS.md rules 2, 3 and 9: remote and destructive git operations ask for confirmation, and secret files are unreadable to Claude Code and Copilot CLI. Align them with the adopted git policy in PROJECT_PROFILE.md. A guardrail may be looser than the default only when the policy allows it. Guardrails are defense in depth, not the source of the rule.
 
 ## Shipped guardrails
-- **`.claude/settings.json`** asks before `git push`, `git reset --hard`, `git clean`, `git branch -D`, `git rebase` and `git checkout -- .`. It denies reading `.env` and `.env.*.local` files. Personal overrides belong in `.claude/settings.local.json`, which should not be committed.
+- **`.claude/settings.json`** asks before `git push`, `git reset --hard`, `git clean`, `git branch -D`, `git rebase` and `git checkout -- .`, and before `gh pr merge`, `gh pr review` and `gh release create`, which merge, approve or publish. It denies reading `.env` and `.env.*.local` files. Personal overrides belong in `.claude/settings.local.json`, which should not be committed.
 - **`.codex/rules/guidance.rules`** prompts for the same git commands. Codex loads it only after you trust the project.
-- **`.github/hooks/guidance.json`** runs `.github/hooks/guidance_guardrail.py` before each Copilot CLI `bash`, `powershell` and `view` call. The script asks before the same git commands, including inside compound commands and after `git -C <dir>`, and denies viewing `.env` and `.env.*.local` files. Every other call keeps Copilot's normal permission flow. It needs `python3` (`python` under PowerShell), which the package checker already requires. Limits:
+- **`.github/hooks/guidance.json`** runs `.github/hooks/guidance_guardrail.py` before each Copilot CLI `bash`, `powershell` and `view` call. The script asks before the same git and `gh` commands, including inside compound commands and after `git -C <dir>`, and denies viewing `.env` and `.env.*.local` files. Every other call keeps Copilot's normal permission flow. It needs `python3` (`python` under PowerShell), which the package checker already requires. Limits:
   - Copilot applies a folder's configuration only after the folder is trusted. The hooks docs don't say this; it comes from the `--trust-folder` entry in `copilot --help`.
   - With no one to approve, `ask` becomes `deny`. That happens in autopilot mode, under the cloud agent, and in non-interactive `copilot -p` runs.
   - A hook that times out lets the call through.
   - Like the other guardrails, it matches command text, so indirection such as an alias or a script that pushes is not caught.
+- **`.github/hooks/guidance.json`** also runs `.github/hooks/guidance_stop.py` when the Copilot agent ends its turn (`agentStop`). It enforces AGENTS.md rule 4: Copilot's prompt mode steers models to state open requirements instead of asking, so if a register (`OPEN_WORK.md`, or a project's own `TODO*.md` or `DECISIONS*.md`) changed in the working tree and the final reply contains no question, the hook blocks the stop once and has the agent ask. It reads the reply from the session transcript, which Copilot writes shortly after the hook starts, and waits up to 3 seconds for it. A forced turn is never blocked again, and any error or missing transcript lets the stop through. It needs a trusted folder, and Copilot loads hooks only at startup, so it does not apply to a session that installs the package.
+- **Optional user-level Copilot stop hook.** To cover sessions that start before a project has the package (adopting the guidance, or a folder you have not trusted), install the same hook once per machine. Create `~/.copilot/hooks/guidance.json` with the absolute path of `guidance_stop.py` in a guidance checkout you keep:
+
+    ```json
+    {
+      "version": 1,
+      "hooks": {
+        "agentStop": [
+          {
+            "type": "command",
+            "bash": "python3 /path/to/agent-guidance/.github/hooks/guidance_stop.py",
+            "powershell": "python C:\\path\\to\\agent-guidance\\.github\\hooks\\guidance_stop.py",
+            "timeoutSec": 10
+          }
+        ]
+      }
+    }
+    ```
+
+  It applies to every Copilot session for that user, and acts only in a git working tree where a register changed. In a project that also has the repository hook, the first copy to see a stop handles it and the other stays silent, so the agent is asked once. The hook runs when the agent ends its turn, so it makes the agent ask but cannot make it wait: in scenario runs Copilot still applied an upgrade before asking. Start a Copilot upgrade with an explicitly read-only request ("Inspect and propose; change nothing"), then approve in a second prompt. Updating the checkout updates the hook; remove the file to turn it off. Copilot reads hook files at startup.
 - **Antigravity** reads no command policy from the repository, so each person configures it once per machine. Rules use `command(<prefix>)` and are evaluated deny > ask > allow. The app and the CLI are configured separately; set up both if you use both.
   - **App:** in Settings > General > Global Permissions, choose a review-requiring preset, or add ask rules for the commands above. Under the app's Default preset, commands with no rule run in a sandbox without asking.
   - **CLI:** add an `ask` list to `~/.gemini/antigravity-cli/settings.json`, or add the rules interactively with `/permissions`:

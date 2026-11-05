@@ -14,7 +14,7 @@
     "RUN_COMMAND": "`python3 -m app.server` then open http://127.0.0.1:8000",
     "TEST_COMMAND": "`python3 -m unittest`",
     "TEST_ENVIRONMENT": "Local shell",
-    "UI_TEST_COMMANDS_OR_JUSTIFIED_EXCLUSION": "None configured yet (required at Internal tool tier)",
+    "UI_TEST_COMMANDS_OR_JUSTIFIED_EXCLUSION": "None configured yet (required at the Internal tier)",
     "BROWSER_MATRIX": "Firefox and Chromium, current stable"
   }
 }

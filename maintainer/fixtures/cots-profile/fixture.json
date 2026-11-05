@@ -1,0 +1,21 @@
+{
+  "description": "Project profile for cots-acceptance: what bootstrap would record for an acceptance suite of a vendor tool",
+  "profile": {
+    "PROJECT_NAME_AND_PURPOSE": "csvsum-acceptance: acceptance tests for the vendor's csvsum 4.2 before the finance team adopts it",
+    "PRIMARY_JOURNEYS": "Run the acceptance suite against a vendor release; report failures to the vendor; record accepted deviations",
+    "SCOPE": "Included: acceptance tests derived from REQUIREMENTS.md and the vendor manual. Excluded: changing csvsum, which the vendor owns",
+    "TECHNOLOGY_STACK": "Python 3.10+ `unittest` driving the vendor-supplied `vendor/csvsum/` (not ours; do not modify)",
+    "REPOSITORY_LAYOUT": "`tests/` acceptance suite, `vendor/csvsum/` vendor release as delivered, `REQUIREMENTS.md`",
+    "SUPPORTED_ENVIRONMENTS": "Linux with Python 3.10 or later",
+    "DATA_AND_TRUST_BOUNDARIES": "Synthetic CSV files only; no finance data in this repository",
+    "EXCLUDED_GUIDES_OR_NONE": "UI guides (no UI), DATA_PORTABILITY (we test the vendor's import, we do not define formats)",
+    "INSTALL_COMMAND": "None needed (standard library; the vendor release is checked in)",
+    "DEV_ENVIRONMENT": "Local shell",
+    "RUN_COMMAND": "Not applicable: this repository is a test suite",
+    "TEST_COMMAND": "`python3 -m unittest`",
+    "TEST_ENVIRONMENT": "Local shell",
+    "BUILD_COMMAND": "Not applicable: nothing of ours to build",
+    "BUILD_ENVIRONMENT": "Not applicable",
+    "UI_TEST_COMMANDS_OR_JUSTIFIED_EXCLUSION": "Not applicable: no user interface"
+  }
+}

@@ -13,6 +13,7 @@
     "DEV_ENVIRONMENT": "Local shell",
     "TEST_COMMAND": "`python3 -m unittest`",
     "TEST_ENVIRONMENT": "Local shell with in-memory SQLite",
-    "DEPLOYMENT_BOUNDARIES": "Production at prod.example.invalid; deploys and production migrations only by the owner, per operation"
+    "DEPLOYMENT_BOUNDARIES": "Production at prod.example.invalid; deploys and production migrations only by the owner, per operation",
+    "UI_TEST_COMMANDS_OR_JUSTIFIED_EXCLUSION": "Not applicable: no user interface"
   }
 }

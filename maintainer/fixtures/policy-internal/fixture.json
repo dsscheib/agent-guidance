@@ -1,8 +1,8 @@
 {
-  "description": "Internal tool tier; agent commits only when asked and never pushes",
+  "description": "Internal tier; agent commits only when asked and never pushes",
   "profile": {
     "OWNER": "Scenario Owner (fixture maintainer)",
-    "PROJECT_TIER": "Internal tool (adopted by Scenario Owner)",
+    "PROJECT_TIER": "Internal (adopted by Scenario Owner)",
     "ADOPTED_PROFILES": "None",
     "AGENT_MAY_COMMIT": "When asked",
     "BRANCH_POLICY": "Work on main is allowed",

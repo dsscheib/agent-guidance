@@ -13,5 +13,5 @@ Map unit/integration, security, static/concurrency/build, browser/manual accessi
 
 ## Evidence and final audit
 {{CANDIDATE_ARTIFACTS_ENVIRONMENT_DATES_OPERATORS_COMMANDS_RAW_RESULTS_AND_REUSE_RATIONALE}}
-Use the status vocabulary in [DOCUMENTATION.md](DOCUMENTATION.md) and the [final audit procedure](procedures/final-audit.md). Keep unresolved status in OPEN_WORK.md rather than duplicating a second backlog. This map does not replace authoritative requirements.
+Keep one row per requirement and update it in place with the latest evidence; do not add a row per run. Link bulky raw evidence rather than committing it ([document budget](DOCUMENTATION.md#document-budget)). Use the status vocabulary in [DOCUMENTATION.md](DOCUMENTATION.md) and the [final audit procedure](procedures/final-audit.md). Keep unresolved status in OPEN_WORK.md rather than duplicating a second backlog. This map does not replace authoritative requirements.
 

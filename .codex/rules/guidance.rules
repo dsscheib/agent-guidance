@@ -1,4 +1,5 @@
-# Mirrors AGENTS.md rules 2 and 3: remote and destructive git operations need confirmation.
+# Mirrors AGENTS.md rules 2 and 3: remote and destructive git operations, merges, approvals and
+# releases need confirmation.
 # Codex loads project rules only when this project's .codex/ layer is trusted.
 # Loosen only to match the agent git policy adopted in PROJECT_PROFILE.md.
 
@@ -36,4 +37,22 @@ prefix_rule(
     pattern = ["git", "checkout", "--"],
     decision = "prompt",
     justification = "AGENTS.md rule 2: may discard uncommitted work.",
+)
+
+prefix_rule(
+    pattern = ["gh", "pr", "merge"],
+    decision = "prompt",
+    justification = "AGENTS.md rule 3: merge only with explicit authorization; never your own work.",
+)
+
+prefix_rule(
+    pattern = ["gh", "pr", "review"],
+    decision = "prompt",
+    justification = "AGENTS.md rule 3: reviews and approvals belong to the approver, never your own work.",
+)
+
+prefix_rule(
+    pattern = ["gh", "release", "create"],
+    decision = "prompt",
+    justification = "AGENTS.md rule 3: publish only with explicit authorization.",
 )
