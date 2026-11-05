@@ -312,8 +312,8 @@
     {
       "path": "docs/TESTING_SPEC.md",
       "kind": "policy",
-      "bytes": 8369,
-      "sha256": "05f67179a24e5c1df8c5c1fef112c90dae6e1cb348d507d19714b848f46807ba",
+      "bytes": 8457,
+      "sha256": "cebe78812eda70444a511cbb9a6190a64e54397f2ce5454193fb661369931f44",
       "module": "core"
     },
     {
@@ -474,8 +474,8 @@
     {
       "path": "docs/procedures/upgrade-guidance.md",
       "kind": "procedure",
-      "bytes": 9364,
-      "sha256": "af3c70dba5483dc44e1b2ba69d1e2e42489ac4c5bae3ec0b7ec6ea84225f5ee8",
+      "bytes": 9535,
+      "sha256": "278932ecce7844e64d516fcb3d895128b088e1762579a108ed9478265d22caab",
       "module": "core"
     },
     {
@@ -502,8 +502,8 @@
     {
       "path": "check_package.py",
       "kind": "tooling",
-      "bytes": 40363,
-      "sha256": "be7b48a35bd6c3c303997a8b7310aa7fd2a70a4989dd826d1289ff24cacfe495",
+      "bytes": 40902,
+      "sha256": "81c16b2f89fe62c4113e9c92cdb39bd063c5562bf387aa9755979db531ed7ec0",
       "module": "core"
     },
     {
