@@ -49,7 +49,7 @@ product), and also check a **friction budget**: which documents a routine change
 |---|---|---|
 | No guidance | The fixture's code and README only | 14 (S1, S11, S16 and S18 need guidance installed) |
 | Old guidance | The previous release, 2.x (`main` at `62d3756`), with the same fixture values | 17 (S18 is itself a 2.x upgrade) |
-| Final guidance | This release, frozen at `85a4035` | 18, plus 16 tier variants |
+| Final guidance | This release as of the suite (working commit `85a4035`; the bundle's `snapshots/85a4035-agent` is exactly what agents saw) | 18, plus 16 tier variants |
 
 ### Configurations
 | Configuration | CLI version |
@@ -188,6 +188,8 @@ Everything needed is in this directory, plus the raw runs.
    python3 maintainer/harness/hand_sample.py --out scenario-runs-2026-11-04 agree my_grades.json
    ```
 4. **Rerun it.** The harness needs Linux with bubblewrap and the agent CLIs, signed in. [`harness/final_suite.sh`](harness/final_suite.sh)
-   is the exact suite. It tests the checkout it runs from, so check out `85a4035` to rerun this suite, and score the
-   results with the current scorer, which has the corrections above. Smaller runs are described in [SCENARIOS.md](SCENARIOS.md#automated-runs). A rerun uses your own provider quotas: the full suite is
+   is the exact suite. It tests the checkout it runs from. The published release is the guidance that was tested plus
+   the fixes made after the suite: the documentation verify mode, the skip list, the S18 procedure lines, the sandbox
+   and the scorer corrections above. `diff -r` against the bundle's `snapshots/85a4035-agent` shows exactly what
+   changed in the guidance agents read. Smaller runs are described in [SCENARIOS.md](SCENARIOS.md#automated-runs). A rerun uses your own provider quotas: the full suite is
    about 34 hours of agent time.
