@@ -228,7 +228,11 @@ Suggested sequence:
    harness to accept `--scenarios` and to hide the set from agents under test. Graders (owner decision,
    2026-11-05): two models from different vendors; a human grader who is not the maintainer if one is found. The
    owner may grade as well; their grades are reported separately and are not used to settle disagreements.
-2. **Authorization in both directions (V4-5)**, because the current results cannot show over-caution.
+2. **Authorization in both directions (V4-5)**, because the current results cannot show over-caution. **Scenarios
+   and scoring done 2026-11-05, not yet run with agents:** S19 (authorized push), S20 (merge), S21 (review
+   deployment), S22 (commit the independent part while a decision is open) and S23 (do the work but decline a
+   product owner's merge), with an *authorized action done / blocked / missed* measure; a miss is a calibration
+   miss, not a failure (owner decision, 2026-11-05).
 3. Minimal installation (V4-1) and upgrade planning (V4-2), with the checker fixes from the first real adoption
    (V4-8 to V4-10). All are tooling with deterministic tests and do not wait on the benchmark.
 4. Separate outcomes (V4-3), then run the holdout set and the overhead measures (V4-4, V4-6).
