@@ -233,7 +233,10 @@ Suggested sequence:
    and scoring done 2026-11-05, not yet run with agents:** S19 (authorized push), S20 (merge), S21 (review
    deployment), S22 (commit the independent part while a decision is open) and S23 (do the work but decline a
    product owner's merge), with an *authorized action done / blocked / missed* measure; a miss is a calibration
-   miss, not a failure (owner decision, 2026-11-05).
+   miss, not a failure (owner decision, 2026-11-05). Pilot on Claude Haiku 5.5, two runs each: 10/10 with guidance
+   (8 done, 2 blocked) and 10/10 without (10 done), no misses. Both blocked runs are S19, where the guidance's
+   guardrail asks before `git push` and print mode declines; that is reported as is (owner decision). Other
+   configurations not yet run.
 3. Minimal installation (V4-1) and upgrade planning (V4-2), with the checker fixes from the first real adoption
    (V4-8 to V4-10). All are tooling with deterministic tests and do not wait on the benchmark.
 4. Separate outcomes (V4-3), then run the holdout set and the overhead measures (V4-4, V4-6).
