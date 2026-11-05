@@ -3,7 +3,7 @@
 # Each provider runs its configurations one after another, in the order no guidance, old guidance (62d3756), final
 # guidance, so a quota stop leaves complete comparisons behind it; providers run in parallel because their quotas are
 # separate. run.py skips finished runs, so rerunning this script resumes where it stopped. It tests the guidance in
-# this checkout: for the published suite, check out 85a4035 and keep the tree clean, because run.py snapshots it.
+# this checkout, which must be clean because run.py snapshots it (EVALUATION.md says how it differs from the 2026-11-04 run).
 set -u
 REPO=$(cd "$(dirname "$0")/../.." && pwd)
 OUT=${1:?usage: final_suite.sh OUT_DIR}
