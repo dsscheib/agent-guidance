@@ -244,6 +244,23 @@ def case_documentation_mode(tmp):
     out = verify_output(target, 'documentation')
     expect(out.startswith('Verification: complete (documentation gates: 1 passed)'),
            'a README edit should pass documentation mode on the Guidance integrity row alone:\n    ' + out[-400:])
+    # A guidance upgrade records itself in the manifest and the provenance file; those are guidance records, not code.
+    manifest = json.loads((target / 'PACKAGE_MANIFEST.json').read_text())
+    manifest['installed_from']['commit'] = 'f' * 40
+    (target / 'PACKAGE_MANIFEST.json').write_text(json.dumps(manifest, indent=2) + '\n')
+    (target / 'docs' / 'guidance-provenance.json').write_text('{"records": []}\n')
+    out = verify_output(target, 'documentation')
+    expect(out.startswith('Verification: complete (documentation gates: 1 passed)'),
+           'an upgrade touching only the manifest and provenance should pass documentation mode:\n    ' + out[-400:])
+    (target / 'docs' / 'guidance-provenance.json').write_text('{"records": [\n')
+    out = verify_output(target, 'documentation')
+    expect(out.startswith('Verification: failed') and 'guidance-provenance.json' in out,
+           'a provenance file that does not parse should fail the integrity gate:\n    ' + out[-400:])
+    (target / 'docs' / 'guidance-provenance.json').write_text('{"records": []}\n')
+    (target / 'docs' / 'settings.json').write_text('{}\n')
+    out = verify_output(target, 'documentation')
+    expect('failed    Change scope' in out and 'settings.json' in out, 'other JSON files are not guidance records:\n    ' + out[-400:])
+    (target / 'docs' / 'settings.json').unlink()
     (target / 'app.py').write_text('print("hi")\n')
     out = verify_output(target, 'documentation')
     expect('failed    Change scope' in out and 'app.py' in out, 'untracked code should fail documentation mode:\n    ' + out[-400:])

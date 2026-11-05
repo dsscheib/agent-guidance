@@ -64,7 +64,7 @@ Work in a guidance checkout; ask for its path if you don't know it. Confirm the 
 
 ## 5. Record
 - **Disposition table:** put the table from step 3 in the pull request description, or in the project's guidance-provenance file if it keeps one. Do not add a dated section to PROJECT_PROFILE.md.
-- **Provenance:** add a new record to the provenance file or manifest. Include the source repository, the previous and new commits, the dirty state, SHA-256 hashes of the upstream files you drew on, the authority (owner decisions), and the validation results from step 6. Keep earlier records.
+- **Provenance:** add a new record to the project's provenance file; in package-layout projects that is `docs/guidance-provenance.json`, which `--verify documentation` treats as documentation and `check_package.py` requires to be valid JSON. Include the source repository, the previous and new commits, the dirty state, SHA-256 hashes of the upstream files you drew on, the authority (owner decisions), and the validation results from step 6. Keep earlier records.
 - **Registers:** add work-register entries only for open follow-ups, and one RELEASE_NOTES entry for the upgrade.
 - **Package-layout projects:** set `installed_from` in the installed `PACKAGE_MANIFEST.json` to the new commit.
 

@@ -369,6 +369,8 @@ GAP_HINT = ('add a command in backticks, or propose "Proposed: Not applicable: <
 
 
 PROSE_SUFFIXES = {'.md', '.txt', '.rst'}
+# Files a guidance upgrade writes to record itself (upgrade-guidance step 5): documentation, not code, but they must parse.
+GUIDANCE_RECORDS = ('PACKAGE_MANIFEST.json', 'docs/guidance-provenance.json')
 TOKEN = re.compile(r'\w+|\s+|[^\w\s]')
 
 
@@ -431,7 +433,7 @@ def rename_scope(git, packaged):
 
 
 def non_documentation_changes(git, packaged):
-    """Files this work changed that are neither prose nor packaged guidance, or None without git.
+    """Files this work changed that are neither prose, packaged guidance nor guidance records, or None without git.
 
     The work is everything not yet on the branch's upstream (or the default branch): unpushed commits, uncommitted
     and untracked files. Documentation mode may skip product gates only when none of them is code."""
@@ -439,7 +441,8 @@ def non_documentation_changes(git, packaged):
         return None
     base = next((b for b in (git('merge-base', 'HEAD', ref) for ref in ('@{upstream}', 'origin/HEAD', 'main', 'master')) if b), 'HEAD')
     changed = set(git('diff', '--name-only', base).splitlines()) | set(git('ls-files', '--others', '--exclude-standard').splitlines())
-    return sorted(p for p in changed if p and Path(p).suffix not in PROSE_SUFFIXES and p not in packaged)
+    return sorted(p for p in changed if p and Path(p).suffix not in PROSE_SUFFIXES and p not in packaged
+                  and p not in GUIDANCE_RECORDS)
 
 
 def inventory_gates(phase):
@@ -694,6 +697,12 @@ def main():
             notes.append(f"Installed: tier {installed.get('tier') or 'unspecified'}; modules {', '.join(installed['modules'])}"
                          + (f'; {linked_elsewhere} links point to modules not installed' if linked_elsewhere else ''))
         modified = [p for p in listed if (root / p).is_file() and sha256(root / p) != listed[p].get('sha256')]
+        provenance = root / GUIDANCE_RECORDS[1]
+        if provenance.is_file():
+            try:
+                json.loads(provenance.read_text())
+            except ValueError as error:
+                errors.append(f'{GUIDANCE_RECORDS[1]}: not valid JSON ({error})')
         if absent:
             notes.append(f'{len(absent)} packaged files absent; record exclusions in PROJECT_PROFILE.md: ' + ', '.join(absent))
         source = manifest.get('installed_from', {})
