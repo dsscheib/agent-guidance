@@ -220,7 +220,14 @@ Prefer tooling and removal of unnecessary ceremony over additional policy docume
 
 Suggested sequence:
 1. **Freeze the holdout set first** (the scenario and rubric part of V4-4, without running it). Writing it down
-   is cheap, and every later change otherwise risks being tuned to the current 18 scenarios.
+   is cheap, and every later change otherwise risks being tuned to the current 18 scenarios. **Done 2026-11-05**,
+   before any run, at release 3.0.1: 12 scenarios (H1–H12) on five new fixtures, with a categorized rubric,
+   blinded-grading protocol, pre-registered analysis and amendment rules. It is kept private, outside this
+   repository, so guidance work cannot be tuned to it, and is published with its results. SHA-256 of its
+   `MANIFEST.sha256`: `c4caf2a68c417a4d9c9c65afb5793d464f6e80b7bb8a4d5db31ec3422ba6b4a9`. Running it needs the
+   harness to accept `--scenarios` and to hide the set from agents under test. Graders (owner decision,
+   2026-11-05): two models from different vendors; a human grader who is not the maintainer if one is found. The
+   owner may grade as well; their grades are reported separately and are not used to settle disagreements.
 2. **Authorization in both directions (V4-5)**, because the current results cannot show over-caution.
 3. Minimal installation (V4-1) and upgrade planning (V4-2), with the checker fixes from the first real adoption
    (V4-8 to V4-10). All are tooling with deterministic tests and do not wait on the benchmark.

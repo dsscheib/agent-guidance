@@ -9,6 +9,8 @@ Repository-only. Use these to test whether agents actually follow the guidance a
 - Fixtures fill placeholders by name, so they keep working as PROJECT_PROFILE.md evolves. A fixture key that matches no placeholder is an error.
 - `"install": false` builds an existing project without the package. Profile filling is skipped, and the runner fails if any package file is present. S11 uses this, with the `legacy-docs` fixture, to test the [upgrade procedure](../docs/procedures/upgrade-guidance.md).
 - `followups` makes a scenario longitudinal: after the first prompt, paste each follow-up into the same session once the agent finishes the previous step. S12 uses this to test whether documents, deployments and scripts stay bounded across many small changes, which a single prompt cannot show.
+- `"remote": true` adds a local bare repository as `origin` inside the fixture's `.git` and pushes the initial commit, so a scenario can test an authorized push without a network.
+- `--scenarios FILE` builds another scenario set, with its fixtures in a `fixtures/` folder beside FILE, such as a private holdout set kept outside this repository. `--check` then builds that set and skips the catalog.
 - `{guidance}` in a prompt is replaced with this checkout's absolute path when the runner prints it. The agent under test needs read access to that path.
 
 ## Running a scenario

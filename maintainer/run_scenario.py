@@ -6,12 +6,15 @@
   run_scenario.py --list                list scenarios
   run_scenario.py --write-table         regenerate the catalog in SCENARIOS.md
   run_scenario.py --check               build every scenario in a temporary directory and check the catalog
+  run_scenario.py --scenarios FILE ...  use another scenario set (fixtures in a fixtures/ folder beside FILE),
+                                        such as a private holdout set; --check then skips the catalog
 """
 from pathlib import Path
 import argparse, json, os, re, shutil, subprocess, sys, tempfile
 
 here = Path(__file__).resolve().parent
 root = here.parent
+scenarios_path = here / 'scenarios.json'
 fixtures_dir = here / 'fixtures'
 catalog_path = here / 'SCENARIOS.md'
 BEGIN, END = '<!-- scenarios:begin -->', '<!-- scenarios:end -->'
@@ -23,7 +26,7 @@ ENV.update(PYTHONDONTWRITEBYTECODE='1', GIT_AUTHOR_NAME='Scenario Fixture', GIT_
 
 
 def load():
-    return json.loads((here / 'scenarios.json').read_text())['scenarios']
+    return json.loads(scenarios_path.read_text())['scenarios']
 
 
 def fixture(name):
@@ -113,6 +116,14 @@ def build(scenario, target):
         result = run(cmd, target)
         if result.returncode:
             raise SystemExit(f"{' '.join(cmd)} failed: {result.stderr}")
+    if scenario.get('remote'):
+        # A local bare repository as origin, inside .git so it is never part of the work tree.
+        origin = target / '.git' / 'scenario-origin.git'
+        for cmd in (git + ['init', '-q', '--bare', '-b', 'main', str(origin)], git + ['remote', 'add', 'origin', str(origin)],
+                    git + ['push', '-q', '-u', 'origin', 'main']):
+            result = run(cmd, target)
+            if result.returncode:
+                raise SystemExit(f"{' '.join(cmd)} failed: {result.stderr}")
     apply(target, scenario.get('dirty', {}))
 
     problems = []
@@ -179,7 +190,14 @@ def main():
     parser.add_argument('--write-table', action='store_true')
     parser.add_argument('--check', action='store_true')
     parser.add_argument('--no-install', action='store_true', help='build without the package (no-guidance baseline)')
+    parser.add_argument('--scenarios', type=Path, help='scenario file of another set; its fixtures are in fixtures/ beside it')
     args = parser.parse_args()
+    global scenarios_path, fixtures_dir
+    if args.scenarios:
+        scenarios_path = args.scenarios.resolve()
+        fixtures_dir = scenarios_path.parent / 'fixtures'
+        if args.write_table:
+            parser.error('--write-table regenerates the catalog of this repository\'s scenarios only')
     scenarios = {s['id']: s for s in load()}
 
     if args.list:
@@ -194,7 +212,7 @@ def main():
     if args.check:
         problems = []
         text, start, end = catalog_text()
-        if text[start:end].strip() != table():
+        if not args.scenarios and text[start:end].strip() != table():
             problems.append('SCENARIOS.md catalog is stale; run maintainer/run_scenario.py --write-table')
         for s in scenarios.values():
             with tempfile.TemporaryDirectory() as tmp:
