@@ -198,9 +198,9 @@ Moved to [SCENARIOS.md](SCENARIOS.md#automated-runs) with the harness itself (DO
 
 ## Version 4 roadmap
 
-Status: Proposed. Recommendations by Codex, saved at the owner's request. Recording this roadmap does not
+Status: Proposed. Recommendations by Astra (an OpenAI Codex agent), saved at the owner's request, with the order and some scope revised after Claude's review. Recording this roadmap does not
 approve implementation, a release scope, or changes to existing project policy. Version 3 is the baseline;
-see the [evaluation and statistical audit](EVALUATION.md#codex-statistical-audit) for evidence and limitations.
+see the [evaluation and statistical audit](EVALUATION.md#statistical-audit) for evidence and limitations.
 
 Goal: make adoption easier, upgrades safer, and evaluation more credible while keeping guidance overhead low.
 Prefer tooling and removal of unnecessary ceremony over additional policy documents.
@@ -210,14 +210,22 @@ Prefer tooling and removal of unnecessary ceremony over additional policy docume
 | V4-1 | Make minimal installation the default | Require an explicit tier or offer an interactive selection, preview the files to install, and make installing everything an explicit option. Update the README's first command. Test that the default path cannot silently install every module, and retain an explicit compatibility path for full installs. Owner decision needed on the selection interface. |
 | V4-2 | Make upgrades reviewable and repeatable | Compare the installed baseline, local customizations, and new package; produce a proposed diff and identify conflicts. Start with planning and validation, leaving conflict resolution to review. Check preservation of open items, deployed revisions, custom policy, and script references; check generated adapters and report permission blockers. Extend S18 with customized and conflicting files and verify that planning changes no project content. |
 | V4-3 | Separate evaluation outcomes | Report task success, compliance with available policy, verification honesty, and environment blockers separately. Retain the underlying evidence so a correct rename without verification and a permission-blocked upgrade remain distinguishable from incorrect implementation. Apply the categories consistently across agents and guidance conditions. |
-| V4-4 | Give benchmark conditions equal business requirements | Supply ticket requirements, authority roles, and domain constraints in every condition, varying the guidance around them. Create a fresh holdout set, freeze its rubric before running, and blind graders to agent identity and prior verdicts. Publish sampling, exclusions, disagreements, and uncertainty; avoid treating repeated runs of one task as independent tasks. |
-| V4-5 | Test authorization in both directions | Add scenarios for proceeding after explicit permission to commit, push, merge, or deploy, alongside existing unauthorized-action cases. Test independent progress while a decision remains open and preserve stricter project role policies. Measure unnecessary reconfirmation separately from legitimate tool permission prompts and unauthorized actions. Use isolated fixtures and simulated external actions. |
-| V4-6 | Measure whether guidance earns its overhead | Track task completion, elapsed time, token usage where available, owner interruptions, and unnecessary document edits. Add longer sequences of ordinary maintenance work and compare against a baseline with the same task requirements. Use results to simplify instructions that add ceremony without improving outcomes; propose success thresholds before tuning. |
-| V4-7 | Refresh maintainer planning documents | Reconcile completed version 3 work and remaining proposals in this document and RESTRUCTURE_DESIGN.md. Make historical findings distinguishable from current plans, keep one home for each current recommendation, and leave shipped project templates empty. |
+| V4-4 | Give benchmark conditions equal business requirements | Supply ticket requirements, authority roles, and domain constraints in every condition, varying the guidance around them. Create a fresh holdout set, freeze its rubric before running, and blind graders to agent identity and prior verdicts. Replies reveal the CLI (instruction file names, output formats, permission messages), so blinding needs normalized transcripts and is partial at best; grading before seeing earlier verdicts is the achievable part. Publish sampling, exclusions, disagreements, and uncertainty; avoid treating repeated runs of one task as independent tasks. |
+| V4-5 | Test authorization in both directions | Add scenarios for proceeding after explicit permission to commit, push, merge, or deploy, alongside existing unauthorized-action cases. Test independent progress while a decision remains open and preserve stricter project role policies. Measure unnecessary reconfirmation separately from legitimate tool permission prompts and unauthorized actions. Use isolated fixtures and simulated external actions. Today the suite mostly rewards caution: an agent that asks or refuses too often rarely fails a scenario, so these cases are needed before reading the final-guidance pass rates as calibrated. |
+| V4-6 | Measure whether guidance earns its overhead | Track task completion, elapsed time, token usage where available, owner interruptions, and unnecessary document edits. Add longer sequences of ordinary maintenance work and compare against a baseline with the same task requirements. Use results to simplify instructions that add ceremony without improving outcomes; propose success thresholds before tuning. Report results per model, so the first goal (cheaper models doing real work) stays visible. |
+| V4-7 | Refresh maintainer planning documents | Reconcile completed version 3 work and remaining proposals in this document and RESTRUCTURE_DESIGN.md. Make historical findings distinguishable from current plans, keep one home for each current recommendation, and leave shipped project templates empty. First targets: the adoption-cleanup and publishing-plan sections below, which S18 and EVALUATION.md have largely done. |
 
-Suggested sequence: minimal installation → upgrade planning and validation → evaluation redesign (V4-3 and
-V4-4) → authorization and longer-term friction testing (V4-5 and V4-6). Refresh planning documents alongside
-that work. Define acceptance criteria and preserve baseline evidence before tuning each change.
+Suggested sequence:
+1. **Freeze the holdout set first** (the scenario and rubric part of V4-4, without running it). Writing it down
+   is cheap, and every later change otherwise risks being tuned to the current 18 scenarios.
+2. **Authorization in both directions (V4-5)**, because the current results cannot show over-caution.
+3. Minimal installation (V4-1) and upgrade planning (V4-2). Both are tooling with deterministic tests and do not
+   wait on the benchmark.
+4. Separate outcomes (V4-3), then run the holdout set and the overhead measures (V4-4, V4-6).
+
+Refresh planning documents (V4-7) alongside. Define acceptance criteria and preserve baseline evidence before
+tuning each change. Full runs spend monthly provider quotas (Copilot's ran out on 2026-11-04), so the owner
+approves each run's size before it starts.
 
 Reserve a major version for changes to the installation or upgrade contract. Documentation cleanup and benchmark
 improvements may ship incrementally; inclusion here does not require waiting for version 4. Final interface choices,
