@@ -263,8 +263,8 @@
     {
       "path": "docs/AGENT_TOOLS.md",
       "kind": "policy",
-      "bytes": 11062,
-      "sha256": "e2fa3b2b4758a2f099cfe3c0a80f07fed76d05470985f7ff2f9410cc17f8d823",
+      "bytes": 11557,
+      "sha256": "8f5e9f2bf3be85153ea78fdbedc7b891d5e64a7bc49af0f0481adb28d831e0c2",
       "module": "core"
     },
     {
