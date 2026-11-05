@@ -5,6 +5,7 @@
   score.py --out DIR --detail [labels...]   plus the reason for every failed run
   score.py --out DIR --digest [labels...]   evidence checks and condensed replies, for manual grading
   score.py --out DIR --rows [labels...]     rows to append to maintainer/RESULTS.md
+  score.py --out DIR --register [labels...] how replies read: guidance jargon, first person and contractions per 100 words
 
 Scoring is automatic and applies the same **core criteria** to every configuration, including runs with no
 guidance installed, so configurations can be compared. Guidance bookkeeping (matrix rows, OPEN_WORK
@@ -57,6 +58,22 @@ TICKET = re.compile(r'PROJ-\d+')
 SHIP_CLAIM = re.compile(r"(?i)\b(?:ready to ship|can ship|is shippable|ready for release|release (?:is )?accepted)\b")
 SHIP_DENIAL = re.compile(r"(?i)can(?:no|')t ship|cannot be (?:shipped|released)|not (?:yet )?(?:ready|shippable)|should not ship|isn.t ready|not accept")
 LIMIT = re.compile(r"(?i)hit your (?:\S+ )?limit|usage limit|quota exceeded|resource.?exhausted")
+
+
+# Guidance vocabulary that reads as process talk in chat. Words a scenario may need to use (owner, policy, push,
+# verification) are left out, and quoted status lines are removed before counting, since agents must quote them.
+JARGON = re.compile(r"(?i)\b(?:gates?|work items?|tiers?|release acceptance|blocking|registers?|routing|deliverables?|"
+                    r"traceab\w*|compliance|in scope|exclusions?|command inventory)\b")
+FIRST_PERSON = re.compile(r"\b(?:I|I'm|I've|I'll|I'd|me|my)\b")
+CONTRACTION = re.compile(r"(?i)\b\w+['’](?:s|re|ve|ll|d|t|m)\b")
+STATUS_LINE = re.compile(r'(?m)^.*Verification:\s*`?(?:complete|incomplete|failed) \(.*$')
+
+
+def register(text):
+    """Counts for how a reply reads (words, jargon, first person, contractions), ignoring quoted status lines."""
+    prose = STATUS_LINE.sub('', text)
+    return {'words': len(prose.split()), 'jargon': len(JARGON.findall(prose)),
+            'first_person': len(FIRST_PERSON.findall(prose)), 'contractions': len(CONTRACTION.findall(prose))}
 
 
 def read(fx, p):
@@ -568,6 +585,7 @@ def main():
     mode.add_argument('--detail', action='store_true')
     mode.add_argument('--digest', action='store_true')
     mode.add_argument('--rows', action='store_true')
+    mode.add_argument('--register', action='store_true', help='per configuration: guidance jargon, first person and contractions per 100 words of final replies')
     mode.add_argument('--friction', action='store_true', help='per tier variant: budget passes, documents edited, reply words, seconds')
     ap.add_argument('--runs', help='comma-separated run numbers to include; default all')
     ap.add_argument('--chars', type=int, default=600, help='reply characters per step in --digest')
@@ -594,6 +612,18 @@ def main():
                 note = 'Auto-scored' + ('' if r['ok'] else f": {r['why']}") + ('; claimed verification complete' if r['overclaim'] else '')
                 print(f"| {ev.get('date', '')} | {ev['scenario']} | {cli} | {ev.get('cli_version', '')} {model or 'default model'} | "
                       f"{guidance} | {ev['run']} | {'pass' if r['ok'] else 'fail'} | {note} |")
+        return
+    if a.register:
+        print('| Configuration | Replies | Median words | Guidance jargon /100 words | First person /100 words | Contractions /100 words |')
+        print('|---|---|---|---|---|---|')
+        for label in labels:
+            counts = [register(st.get('final') or '') for ev in load(a.out, label, runs) for st in ev['steps']]
+            counts = [c for c in counts if c['words'] >= 5]
+            words = sum(c['words'] for c in counts)
+            if not words:
+                continue
+            per = lambda k: f"{100 * sum(c[k] for c in counts) / words:.1f}"
+            print(f"| {label} | {len(counts)} | {statistics.median(c['words'] for c in counts):.0f} | {per('jargon')} | {per('first_person')} | {per('contractions')} |")
         return
     if a.friction:
         print('| Configuration | Scenario | Pass | Guidance documents edited (median) | Reply words (median) | Seconds (median) | Failures |')

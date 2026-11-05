@@ -43,6 +43,7 @@ python3 maintainer/harness/run.py --out ~/scenario-runs/2026-11-10 --agents clau
 python3 maintainer/harness/score.py --out ~/scenario-runs/2026-11-10 --detail   # summary and failure reasons
 python3 maintainer/harness/score.py --out ~/scenario-runs/2026-11-10 --digest   # replies, for manual grading
 python3 maintainer/harness/score.py --out ~/scenario-runs/2026-11-10 --rows     # rows for RESULTS.md
+python3 maintainer/harness/score.py --out ~/scenario-runs/2026-11-10 --register # how replies read: jargon, first person, contractions
 ```
 
 - **Agents** are `claude`, `codex`, `copilot` and `agy`, optionally with a model as `cli@model`. Follow-up prompts (S12) resume the same session.

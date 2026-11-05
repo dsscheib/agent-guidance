@@ -110,6 +110,20 @@ class GuidanceOnlyChecks(unittest.TestCase):
         self.assertTrue(score.has_proposed_exclusions({'guidance': '/x/snapshots/85a4035-agent'}))
 
 
+class Register(unittest.TestCase):
+    """--register: how replies read. Quoted status lines are required by the guidance, so they never count as jargon."""
+
+    def test_quoted_status_line_is_not_jargon(self):
+        r = score.register('Verification: incomplete (development gates: 1 passed; 1 gap: Lint)\nI added the flag.')
+        self.assertEqual((r['jargon'], r['first_person'], r['words']), (0, 1, 4))
+
+    def test_process_talk_and_plain_talk(self):
+        stiff = score.register('Work item complete. Gates recorded in the command inventory; release acceptance is out of scope.')
+        plain = score.register("I've added the flag, and it's in the README. You can try it now.")
+        self.assertEqual((stiff['jargon'], stiff['first_person'], stiff['contractions']), (4, 0, 0))
+        self.assertEqual((plain['jargon'], plain['first_person'], plain['contractions']), (0, 1, 2))
+
+
 sys.path.insert(0, str(score.REPO / 'maintainer'))
 import run_scenario  # noqa: E402
 
