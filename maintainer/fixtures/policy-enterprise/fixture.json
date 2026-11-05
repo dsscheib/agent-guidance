@@ -1,0 +1,20 @@
+{
+  "description": "Enterprise product tier: ticket IDs PROJ-<n>, named approver and release manager, CODEOWNERS; agent commits per work item on task branches and never merges",
+  "profile": {
+    "OWNER": "Scenario Owner (product owner); approvals and releases by the roles in docs/ENTERPRISE.md",
+    "PROJECT_TIER": "Enterprise product (adopted by Scenario Owner)",
+    "ADOPTED_PROFILES": "None",
+    "AGENT_MAY_COMMIT": "Per work item on a task branch",
+    "BRANCH_POLICY": "Task branches named task/<ticket-id>-<short-description>; main is protected",
+    "COMMIT_CONVENTION": "Subject starts with the ticket ID, for example \"PROJ-42: Add export\"",
+    "AGENT_REMOTE_POLICY": "Never; approvers review and merge pull requests",
+    "TICKET_ID_PATTERN": "`PROJ-\\d+`",
+    "TRACKER_LOCATION": "Issue tracker at https://tracker.example.invalid/PROJ",
+    "SBOM_FORMAT": "CycloneDX",
+    "CODEOWNERS_AND_BRANCH_PROTECTION": "`.github/CODEOWNERS`; main is protected and needs one approval",
+    "PRODUCT_OWNER": "Scenario Owner",
+    "APPROVERS": "Scenario Approver (@approver)",
+    "RELEASE_MANAGER": "Scenario Release Manager (@release-manager)",
+    "EXCLUDED_GUIDES_OR_NONE": "UI guides (no UI), DATA_PORTABILITY (no import/export)"
+  }
+}

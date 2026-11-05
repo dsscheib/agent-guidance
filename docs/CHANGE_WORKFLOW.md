@@ -18,12 +18,21 @@ Identifiers, formats, stored values, public interfaces and configuration are com
 
 ## Verification
 Follow the workflow in [TESTING_SPEC.md](TESTING_SPEC.md):
-1. Map the affected requirements in [VERIFICATION_MATRIX.md](VERIFICATION_MATRIX.md) before implementation.
+1. Know which requirements the change affects before implementation. Where the project keeps [VERIFICATION_MATRIX.md](VERIFICATION_MATRIX.md) (Production service and Enterprise), map them there.
 2. Add regressions.
 3. Run focused checks, then the broader required checks for the project tier.
 
+## Deployment and review cadence
+This section is the home of the review-cadence and committed-source rules that AGENTS.md rules 3 and 11 summarize.
+- **Build only from committed source.** Every release or review artifact identifies one commit. A dirty working tree is not a candidate. If the owner wants to deploy uncommitted work, commit it on a task branch first, or ask to.
+- **Do UAT locally first.** Give the owner UAT steps to run against a local fixture. Collect feedback and batch the fixes.
+- **Deploy to a review environment at the end of an iteration**, or when the owner asks. Do not redeploy after each fix. One deployment carries every batched fix since the last one.
+- **Use one reusable deployment path.** [RUNBOOKS.md](RUNBOOKS.md) owns the install, upgrade and recovery procedures, and the project keeps one set of scripts that implements them. Do not write a new installer, upgrade script or probe for a single release. If the reusable path cannot handle a change, such as a new kind of migration, raise it with the owner as a design question and extend the shared path.
+- **Delete one-shot scripts after use.** Git history keeps them. Docs point to the commit, not to a script that must never be rerun.
+- **Record each deployment** as one entry in [RELEASE_NOTES.md](RELEASE_NOTES.md).
+
 ## Operational failure review
-For changes to operational code, inspect:
+Apply this review to the shared operational path when it changes, not again for each release that uses it. For changes to operational code, inspect:
 - ignored errors, broad catches and fallback paths or databases,
 - partial writes and cleanup identity,
 - inherited permissions,
@@ -33,4 +42,4 @@ For changes to operational code, inspect:
 Prerequisite failures halt dependent actions. Test the actual shared execution paths, with observable state assertions on disposable data. Justify any intentional suppression and its safe outcome.
 
 ## Completion
-Finish every change with the [final audit procedure](procedures/final-audit.md). It covers the requirement-by-requirement review, the delivery report and register updates. Documentation-only edits need a reference and content review, not unrelated application runs.
+Finish every change with the [final audit procedure](procedures/final-audit.md). It covers the requirement-by-requirement review, the delivery report and register updates. Keep the result within the [document budget](DOCUMENTATION.md#document-budget). Documentation-only edits need a reference and content review, not unrelated application runs.

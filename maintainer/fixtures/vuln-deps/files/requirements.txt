@@ -1,0 +1,2 @@
+# Runtime dependencies for the optional HTTP upload feature.
+requests==2.19.0

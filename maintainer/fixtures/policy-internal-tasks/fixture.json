@@ -1,0 +1,12 @@
+{
+  "description": "Internal tier for one owner's valuable data; agent commits per work item on task branches and never pushes",
+  "profile": {
+    "OWNER": "Scenario Owner (fixture maintainer)",
+    "PROJECT_TIER": "Internal (adopted by Scenario Owner): one owner's valuable data on their own machine",
+    "ADOPTED_PROFILES": "None",
+    "AGENT_MAY_COMMIT": "Per work item on a task branch",
+    "BRANCH_POLICY": "Task branches named task/<short-description>; no direct work on main",
+    "COMMIT_CONVENTION": "Imperative subject line under 72 characters",
+    "AGENT_REMOTE_POLICY": "Never; the owner pushes and merges"
+  }
+}

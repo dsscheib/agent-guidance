@@ -2,7 +2,8 @@
 """Copilot CLI preToolUse guardrail, loaded through .github/hooks/guidance.json.
 
 Mirrors AGENTS.md rules 2, 3 and 9 as .claude/settings.json and .codex/rules/guidance.rules do:
-remote and destructive git commands ask for confirmation, and .env files cannot be viewed.
+remote and destructive git commands, merges, approvals and releases ask for confirmation, and .env files
+cannot be viewed.
 Loosen only to match the agent git policy adopted in PROJECT_PROFILE.md.
 Prints nothing, which keeps Copilot's normal permission flow, for every other tool call.
 """
@@ -18,20 +19,26 @@ ASK = [
     (['rebase'], 'AGENTS.md rule 2: rewrites history.'),
     (['checkout', '--'], 'AGENTS.md rule 2: may discard uncommitted work.'),
 ]
+# (gh subcommand prefix, reason) for GitHub CLI commands that merge, approve or publish.
+GH_ASK = [
+    (['pr', 'merge'], 'AGENTS.md rule 3: merge only with explicit authorization; never your own work.'),
+    (['pr', 'review'], 'AGENTS.md rule 3: reviews and approvals belong to the approver, never your own work.'),
+    (['release', 'create'], 'AGENTS.md rule 3: publish only with explicit authorization.'),
+]
 SECRET = re.compile(r'^\.env(\..+\.local)?$')
 SEPARATORS = re.compile(r'&&|\|\||[;|&\n()]')
 GIT_OPTIONS_WITH_VALUE = {'-C', '-c', '--git-dir', '--work-tree', '--namespace'}
 
 
-def git_args(segment):
-    """Arguments after `git` and its global options, or None when the segment is not a git command."""
+def git_args(segment, program='git'):
+    """Arguments after the program (git or gh) and its global options, or None when the segment runs something else."""
     try:
         words = shlex.split(segment)
     except ValueError:
         words = segment.split()
     while words and re.match(r'^\w+=', words[0]):
         words.pop(0)
-    if not words or PurePath(words[0]).name not in ('git', 'git.exe'):
+    if not words or PurePath(words[0]).name not in (program, program + '.exe'):
         return None
     words = words[1:]
     while words and words[0].startswith('-'):
@@ -44,10 +51,11 @@ def git_args(segment):
 def decide(tool, args):
     if tool in ('bash', 'powershell'):
         for segment in SEPARATORS.split(str(args.get('command', ''))):
-            words = git_args(segment)
-            for prefix, reason in ASK if words else []:
-                if words[:len(prefix)] == prefix:
-                    return {'permissionDecision': 'ask', 'permissionDecisionReason': reason}
+            for program, rules in (('git', ASK), ('gh', GH_ASK)):
+                words = git_args(segment, program)
+                for prefix, reason in rules if words else []:
+                    if words[:len(prefix)] == prefix:
+                        return {'permissionDecision': 'ask', 'permissionDecisionReason': reason}
     if tool == 'view' and SECRET.match(PurePath(str(args.get('path', ''))).name):
         return {'permissionDecision': 'deny', 'permissionDecisionReason': 'AGENTS.md rule 9: secret files are not readable.'}
     return None

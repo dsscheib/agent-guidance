@@ -1,10 +1,10 @@
 # UX and accessibility specification
 
-Kind: Policy. It applies as written; changing it needs an owner decision. The product-context field is a template. Applies only to projects with a UI.
+Kind: Policy. It applies as written; changing it needs an owner decision. The product-context field is a template, filled at bootstrap or by owner decision; a feature change does not edit this document. Applies only to projects with a UI.
 
 ## Adopted product context
 {{USERS_PRIMARY_JOURNEYS_NAVIGATION_DENSITY_AND_SUPPORTED_DEVICES}}
-Preserve existing presentation defaults until an authorized decision changes them. Density, navigation shell and presentation mode are distinct choices. Show only supported actions and model-backed values; distinguish identities, units, unknown and zero.
+Keep existing presentation defaults until an authorized decision changes them. Density, navigation shell and presentation mode are separate choices. Show only actions the product supports and values the model actually holds. Keep identities, units, "unknown" and zero visibly distinct.
 
 ## Native HTML semantics
 Choose elements by content/behavior before styling. Prefer native semantics over generic nested containers; a styling framework does not justify discarding meaning.
@@ -29,14 +29,27 @@ Do not mechanically replace wrappers with section/article, set numeric div limit
 Full documents own landmarks. Partial updates must fit their targets without duplicate main elements, nested forms or invalid children. Preserve IDs, labels, focus, fallback behavior and authoritative-state contracts after each update. Semantics do not authorize indexing private content.
 
 ## Interaction and state
-Use approved tokens/components and test supported themes. Provide persistent input labels, visible keyboard focus, non-color-only status, accessible control names and logical tab order. Provide any no-script or plain-form fallback the adopted stack profile requires. Confirmation is selective for irreversible destruction; undo requires a real reversal contract.
+Use approved tokens and components, and test every supported theme. Every interface provides:
+- labels that stay visible on inputs,
+- visible keyboard focus and a logical tab order,
+- status that does not rely on color alone,
+- accessible names for every control,
+- any no-script or plain-form fallback the adopted stack profile requires.
 
-Preserve submitted values on validation/network errors. Show field errors and an accessible summary; distinguish empty first use, no matching results, unavailable data, loading, success, conflict and permission failure. Do not claim success before authoritative persistence or leave indefinite loading states. Modal focus placement, containment, dismissal and return must be verified.
+Ask for confirmation only before irreversible destruction. Offer undo only when there is a real way to reverse the action.
+
+Keep submitted values when validation or the network fails. Show errors next to their fields, plus an accessible summary. Show each of these states distinctly: empty on first use, no matching results, data unavailable, loading, success, conflict and permission denied. Never report success before the authoritative store has saved the change, and never leave a loading state running indefinitely. Verify where a modal places focus, that focus stays inside it, how it is dismissed, and where focus returns.
 
 ## Responsive and accessible behavior
-Adopt the target and matrix in PROJECT_PROFILE.md; for web projects consider WCAG 2.2 AA as the baseline target unless another requirement governs. Test narrow-screen overflow, configured breakpoints, text resizing/zoom, contrast, reduced motion, keyboard and focus-not-obscured behavior. Isolate deliberate wide-table scrolling in a labelled usable region. Prefer summaries on narrow screens when the task permits; preserve tabular comparison where needed.
+Adopt the accessibility target and test matrix in PROJECT_PROFILE.md. For web projects, consider WCAG 2.2 AA the baseline unless another requirement governs. Test:
+- overflow on narrow screens and at the configured breakpoints,
+- text resizing and zoom,
+- contrast and reduced motion,
+- keyboard use, including focus that is never hidden behind other content.
 
-Record manual touch, assistive-technology, forced-colors and environmental checks separately from automated checks. A framework class or zero automated accessibility violations is not complete conformance evidence.
+When a wide table must scroll, put it in its own labelled scrolling region. On narrow screens, prefer a summary when the task allows it, and keep the table when users need to compare rows.
+
+Record manual checks (touch, assistive technology, forced colors, real use environments) separately from automated ones. A framework class, or a scan with zero violations, is not full conformance evidence.
 
 ## Visual design direction
 
@@ -50,7 +63,7 @@ When creating or substantially redesigning an interface, establish a coherent vi
 - Follow the verification requirements in [UX_ACCEPTANCE_CHECKLIST.md](UX_ACCEPTANCE_CHECKLIST.md). A design tool's self-review does not replace project acceptance criteria.
 
 ## Search and performance
-For supported searchable collections, expose active filters, result counts and clear actions. Represent shareable state in coherent navigable URLs where applicable; preserve Back/Forward behavior. Live search needs bounded debounce and stale-response protection plus usable direct submission. Announce meaningful changes politely, not every keystroke. Use pagination/bounded data access according to the adopted contract.
+For searchable collections, show the active filters, the result count and a way to clear them. Put shareable state, such as the query, filters and page, in the URL where it applies, and keep Back and Forward working. Live search needs a bounded debounce, protection against stale responses, and a submit action that works on its own. Announce meaningful result changes politely, not on every keystroke. Page or bound data access as the adopted contract says.
 
 ## Done
-All affected required journeys, states, semantic composition, supported viewports/themes/engines, focus/input and fallback behaviors must have evidence. Documentation updates follow the routing table in [AGENTS.md](../AGENTS.md).
+A UI change is done when the affected journeys, states, semantic structure, focus and input behavior, and fallbacks have evidence for the phase you are in: the development gates for each change, and the full viewport, theme and engine matrix at release ([TESTING_SPEC.md](TESTING_SPEC.md#development-and-release-gates)). Documentation updates follow the routing table in [AGENTS.md](../AGENTS.md).

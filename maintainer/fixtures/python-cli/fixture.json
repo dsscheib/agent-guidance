@@ -16,7 +16,8 @@
     "STATIC_AND_CONCURRENCY_COMMANDS": "None configured",
     "TEST_COMMAND": "`python3 -m unittest`",
     "TEST_ENVIRONMENT": "Local shell",
-    "BUILD_COMMAND": "None (pure Python)",
-    "BUILD_ENVIRONMENT": "Not applicable"
+    "BUILD_COMMAND": "Not applicable: pure Python, nothing to build",
+    "BUILD_ENVIRONMENT": "Not applicable",
+    "UI_TEST_COMMANDS_OR_JUSTIFIED_EXCLUSION": "Not applicable: no user interface"
   }
 }

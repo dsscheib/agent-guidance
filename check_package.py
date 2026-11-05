@@ -1,23 +1,30 @@
 #!/usr/bin/env python3
-"""Install, integrity, link, adapter and placeholder checks for the reusable guidance package.
+"""Install, integrity, link, adapter, placeholder and document-budget checks for the reusable guidance package.
 
 Template mode (MAINTAINING.md present) checks the package itself; project mode checks an installed copy.
-Only --install, --sync-adapters and --update-manifest write files.
+Only --install, --sync-adapters and --update-manifest write files. --verify runs the project's gate commands.
 """
 from datetime import date
 from pathlib import Path
-import argparse, hashlib, json, re, shutil, subprocess, sys
+import argparse, hashlib, json, os, re, shutil, subprocess, sys, time
 
 root = Path(__file__).resolve().parent
 manifest_path = root / 'PACKAGE_MANIFEST.json'
 STAGE_MARKER = '<!-- stage: release -->'
-SKIP_DIRS = {'.git', '__pycache__'}
+SKIP_DIRS = {'.git', '__pycache__', 'node_modules', 'target'}  # dependency and build trees are not the project's documents
 PLACEHOLDER = re.compile(r'\{\{[^}]+\}\}')
 LINK = re.compile(r'\]\(([^)\s]+)(?:\s+"[^"]*")?\)')
 FENCE = re.compile(r'^(```|~~~).*?^\1[ \t]*$', re.M | re.S)
 INLINE_CODE = re.compile(r'`[^`\n]*`')
 DATED = re.compile(r'\b20\d\d-\d\d-\d\d\b')
 NAME = re.compile(r'^[a-z0-9][a-z0-9-]*$')
+HEADING = re.compile(r'^#{1,6} .*$', re.M)
+# Document budget (docs/DOCUMENTATION.md#document-budget). Raising a limit is an owner decision.
+LINE_LIMITS = {'PROJECT_PROFILE.md': 250, 'docs/OPEN_WORK.md': 150}
+UNDATED_HEADINGS = ('PROJECT_PROFILE.md',)
+# Second always-on instruction files that agents load beside AGENTS.md (docs/AGENT_TOOLS.md).
+POINTER_FILES = ('GEMINI.md', '.github/copilot-instructions.md')
+POINTER_MAX_LINES = 10
 
 
 def sha256(path):
@@ -80,7 +87,11 @@ def existing_adapters(manifest):
     return {rel(p) for adapter in manifest['adapters'] for p in (root / adapter['dir']).glob('*/SKILL.md')}
 
 
-def sync_adapters(manifest, errors):
+def sync_adapters(manifest, errors, template=True):
+    agents = generate_agents(root / 'AGENTS.md', manifest, modules_in_checkout(manifest, template))
+    if agents is not None and agents != (root / 'AGENTS.md').read_text():
+        (root / 'AGENTS.md').write_text(agents)
+        print('Regenerated the AGENTS.md routing and procedure tables')
     expected = expected_adapters(manifest, errors)
     for path in existing_adapters(manifest) - expected.keys():
         (root / path).unlink()
@@ -120,12 +131,111 @@ def source_identity():
             'dirty': None if status is None else bool(status), 'date': date.today().isoformat()}
 
 
-def install(manifest, target, force):
+GENERATED = re.compile(r'(<!-- generated: (\w+)\b[^\n]*-->\n)(.*?)(<!-- end generated: \2 -->)', re.S)
+TABLE_HEADERS = {
+    'routing': '| When the change touches… | Read before | Update after |\n|---|---|---|\n',
+    'procedures': '| Procedure | Use when |\n|---|---|\n',
+}
+
+
+def render_block(manifest, name, modules):
+    """A generated AGENTS.md block: the manifest's rows for the given modules, in manifest order."""
+    tables = manifest.get('agents_tables', {})
+    rows = [r['row'] for r in tables.get(name, []) if r['module'] in modules]
+    text = TABLE_HEADERS[name] + ''.join(row + '\n' for row in rows)
+    notes = [r['row'] for r in tables.get(name + '_notes', []) if r['module'] in modules]
+    if notes:
+        text += '\n' + ' '.join(notes) + '\n'
+    return text
+
+
+def generate_agents(path, manifest, modules):
+    """AGENTS.md text with every generated block rendered for these modules, or None if there is no file."""
+    if not path.is_file():
+        return None
+    return GENERATED.sub(lambda m: m.group(1) + render_block(manifest, m.group(2), modules) + m.group(4), path.read_text())
+
+
+def modules_in_checkout(manifest, template):
+    """Modules present in this checkout: all of them in the template repository or a 2.x install."""
+    record = None if template else manifest.get('installed')
+    return set(record['modules']) if record else set(manifest.get('modules', {})) or {'core'}
+
+
+def resolve_modules(manifest, tier, features):
+    """Modules for a tier plus features. No tier and no features means every module except enterprise, which is
+    what 2.x installed; Enterprise controls are only added by choosing that tier."""
+    if not tier and not features:
+        return sorted(m for m in manifest['modules'] if m != 'enterprise')
+    unknown = [f for f in features if f not in manifest['features']]
+    if unknown:
+        sys.exit(f"Unknown feature(s): {', '.join(unknown)}; choose from {', '.join(manifest['features'])}")
+    modules = set(manifest['tiers'][tier or 'prototype'])
+    for feature in features:
+        modules.update(manifest['features'][feature])
+    return sorted(modules)
+
+
+def add_profile_rows(profile, manifest, modules):
+    """Add the installed modules' command-inventory rows (for example the enterprise release gates) to the project's
+    PROJECT_PROFILE.md once, before the Guidance integrity row. Rows whose purpose is already listed are left alone,
+    so an owner's filled-in commands are never overwritten. Returns the purposes added."""
+    if not profile.is_file():
+        return []
+    text = profile.read_text()
+    purpose = lambda row: row.strip().strip('|').split('|')[0].strip()
+    present = {purpose(l) for l in text.splitlines() if l.lstrip().startswith('|')}
+    new = [r['row'] for r in manifest.get('profile_rows', []) if r['module'] in modules and purpose(r['row']) not in present]
+    if not new:
+        return []
+    anchor = next((l for l in text.splitlines() if l.startswith('| Guidance integrity |')), None)
+    if anchor is None:
+        return []
+    profile.write_text(text.replace(anchor, '\n'.join(new) + '\n' + anchor, 1))
+    return [purpose(r) for r in new]
+
+
+def enterprise_notes():
+    """Reported, not enforced: commits without a ticket ID, a missing CODEOWNERS file and CI without --verify."""
+    notes = []
+    doc = root / 'docs' / 'ENTERPRISE.md'
+    row = next((l for l in doc.read_text().splitlines() if l.startswith('| Ticket ID pattern')), '') if doc.is_file() else ''
+    pattern = INLINE_CODE.findall(row)
+    if pattern:
+        try:
+            ticket = re.compile(pattern[0].strip('`'))
+        except re.error:
+            notes.append(f'Enterprise: the ticket ID pattern {pattern[0]} is not a valid regular expression')
+            ticket = None
+        log = subprocess.run(['git', '-C', str(root), 'log', '-20', '--format=%H%x00%B%x01'], capture_output=True, text=True)
+        commits = [c for c in log.stdout.split('\x01') if c.strip()] if log.returncode == 0 else []
+        missing = [c.strip().split('\x00')[0][:7] for c in commits if ticket and not ticket.search(c.split('\x00', 1)[-1])]
+        if ticket and commits:
+            notes.append(f'Enterprise: {len(missing)} of the last {len(commits)} commits lack a ticket ID' + (f" ({', '.join(missing[:5])})" if missing else ''))
+    else:
+        notes.append('Enterprise: no ticket ID pattern is set in docs/ENTERPRISE.md, so traceability is not reported')
+    if not any((root / p).is_file() for p in ('CODEOWNERS', '.github/CODEOWNERS', 'docs/CODEOWNERS')):
+        notes.append('Enterprise: no CODEOWNERS file; approvals rely on the hosting service settings alone')
+    workflows = list((root / '.github' / 'workflows').glob('*.y*ml')) if (root / '.github' / 'workflows').is_dir() else []
+    if not any('check_package.py --verify' in w.read_text(errors='replace') for w in workflows):
+        notes.append('Enterprise: no CI workflow runs check_package.py --verify, so there is no CI verification receipt')
+    return notes
+
+
+def install(manifest, target, force, tier=None, features=()):
+    """Copy the core and the modules for a tier and features. Rerunning on a project adds modules; it never
+    overwrites existing files unless --force is given."""
     target = Path(target).resolve()
     if not target.is_dir() or target == root:
         sys.exit(f'Install target must be an existing directory other than this package: {target}')
+    modules = resolve_modules(manifest, tier, list(features))
+    previous = {}
+    if (target / manifest_path.name).is_file():
+        previous = json.loads((target / manifest_path.name).read_text()).get('installed', {})
+        modules = sorted(set(modules) | set(previous.get('modules', [])))
+    wanted = [e['path'] for e in manifest['files'] if e.get('module', 'core') in modules]
     copied, skipped = [], []
-    for path in [e['path'] for e in manifest['files']] + [manifest_path.name]:
+    for path in wanted + [manifest_path.name]:
         dest = target / path
         if dest.exists() and not force:
             skipped.append(path)
@@ -133,17 +243,32 @@ def install(manifest, target, force):
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(root / path, dest)
         copied.append(path)
+    record = json.loads((target / manifest_path.name).read_text())
     if manifest_path.name in copied:
-        installed = json.loads((target / manifest_path.name).read_text())
-        installed['installed_from'] = source_identity()
-        (target / manifest_path.name).write_text(json.dumps(installed, indent=2) + '\n')
+        record['installed_from'] = source_identity()
+    record['installed'] = {
+        'tier': tier or previous.get('tier'),
+        'features': sorted(set(features) | set(previous.get('features', []))),
+        'modules': modules,
+    }
+    (target / manifest_path.name).write_text(json.dumps(record, indent=2) + '\n')
+    agents = generate_agents(target / 'AGENTS.md', manifest, set(modules))
+    if agents is not None:
+        (target / 'AGENTS.md').write_text(agents)
+    added = add_profile_rows(target / 'PROJECT_PROFILE.md', manifest, set(modules))
+    if added:
+        print('Added command-inventory rows: ' + ', '.join(added))
+    print(f"Installed modules: {', '.join(modules)}" + (f" (tier {record['installed']['tier']})" if record['installed']['tier'] else ''))
     print(f'Copied {len(copied)} files into {target}.')
     if skipped:
         print('Skipped existing files (merge by hand or rerun with --force):\n  ' + '\n  '.join(skipped))
     print('Next: ask your agent to "bootstrap the project guidance" (docs/procedures/bootstrap-project.md).')
 
 
-def check_links(files, errors):
+def check_links(files, errors, uninstalled=frozenset()):
+    """Fail on links that resolve nowhere. Links to packaged files of modules this project did not install are
+    expected (the shared documents mention every module) and are counted instead. Returns that count."""
+    skipped = 0
     for path in files:
         if path.suffix != '.md':
             continue
@@ -151,8 +276,11 @@ def check_links(files, errors):
             if '://' in link or link.startswith(('#', 'mailto:')):
                 continue
             target = (path.parent / link.split('#')[0]).resolve()
-            if not target.is_relative_to(root) or not target.exists():
+            if target.is_relative_to(root) and not target.exists() and rel(target) in uninstalled:
+                skipped += 1
+            elif not target.is_relative_to(root) or not target.exists():
                 errors.append(f'{rel(path)}: unresolved or escaping link {link}')
+    return skipped
 
 
 def check_shims(files, errors, exempt):
@@ -163,6 +291,26 @@ def check_shims(files, errors, exempt):
                 errors.append(f'{rel(path)}: needs a sibling CLAUDE.md containing @AGENTS.md for Claude Code')
 
 
+def check_modules(manifest, errors):
+    """Template mode: every file has a known module, tiers and features name known modules, and each skill
+    adapter belongs to the same module as its procedure."""
+    known = set(manifest.get('modules', {}))
+    modules_of = {e['path']: e.get('module') for e in manifest['files']}
+    for path, module in modules_of.items():
+        if module not in known:
+            errors.append(f'{path}: manifest module {module!r} is not defined under "modules"')
+    for group in ('tiers', 'features'):
+        for name, mods in manifest.get(group, {}).items():
+            for m in mods:
+                if m not in known:
+                    errors.append(f'{group} {name!r} names unknown module {m!r}')
+    for path, module in modules_of.items():
+        if path.endswith('/SKILL.md'):
+            procedure = f"{manifest['procedures']}/{path.split('/')[-2]}.md"
+            if modules_of.get(procedure) != module:
+                errors.append(f'{path}: adapter module {module!r} differs from its procedure {procedure} ({modules_of.get(procedure)!r})')
+
+
 def check_adapters(manifest, errors):
     expected = expected_adapters(manifest, errors)
     for path in existing_adapters(manifest) - expected.keys():
@@ -171,6 +319,270 @@ def check_adapters(manifest, errors):
         target = root / path
         if not target.is_file() or target.read_text() != content:
             errors.append(f'Stale or missing adapter {path}; run --sync-adapters')
+
+
+def check_budget(errors):
+    """Document budget and pointer-only tool instruction files; see docs/DOCUMENTATION.md#document-budget."""
+    hint = 'move history to docs/RELEASE_NOTES.md or delete it (docs/DOCUMENTATION.md#document-budget)'
+    for path, limit in LINE_LIMITS.items():
+        target = root / path
+        if target.is_file():
+            lines = len(target.read_text().splitlines())
+            if lines > limit:
+                errors.append(f'{path}: {lines} lines exceeds the {limit}-line budget; {hint}')
+    for path in UNDATED_HEADINGS:
+        target = root / path
+        if target.is_file():
+            dated = [h for h in HEADING.findall(prose(target.read_text())) if DATED.search(h)]
+            if dated:
+                errors.append(f'{path}: {len(dated)} dated heading(s), such as "{dated[0].strip()}"; '
+                              f'this file holds stable facts only; {hint}')
+    for path in POINTER_FILES:
+        target = root / path
+        if target.is_file():
+            text = target.read_text()
+            content = [line for line in text.splitlines() if line.strip()]
+            if 'AGENTS.md' not in text or len(content) > POINTER_MAX_LINES:
+                errors.append(f'{path}: tool instruction files may only point to AGENTS.md (at most {POINTER_MAX_LINES} '
+                              'lines); move its rules to their routed home (docs/AGENT_TOOLS.md)')
+
+
+# Dependency manifests and lock files by name, for pointing a dependency-audit gap at what to read by hand.
+DEPENDENCY_FILES = re.compile(r'requirements[\w.-]*\.txt|pyproject\.toml|setup\.(py|cfg)|Pipfile(\.lock)?|poetry\.lock|uv\.lock'
+                              r'|package(-lock)?\.json|yarn\.lock|pnpm-lock\.yaml|go\.(mod|sum)|Cargo\.(toml|lock)'
+                              r'|Gemfile(\.lock)?|composer\.(json|lock)|pom\.xml|build\.gradle(\.kts)?|.*\.csproj')
+DEPENDENCY_SKIP = {'node_modules', 'vendor', 'target', 'venv', 'dist', 'build', '__pycache__'}
+
+
+def dependency_files(limit=10):
+    """Project dependency manifests (at most three directories deep, skipping hidden, vendored and build directories)."""
+    found = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        rel = Path(dirpath).relative_to(root)
+        dirnames[:] = sorted(d for d in dirnames if not d.startswith('.') and d not in DEPENDENCY_SKIP and len(rel.parts) < 3)
+        found += sorted(str(rel / f) for f in filenames if DEPENDENCY_FILES.fullmatch(f))
+    return found[:limit], len(found) > limit
+
+
+GAP_HINT = ('add a command in backticks, or propose "Proposed: Not applicable: <reason>" and ask the owner; '
+            'only the owner\'s decision removes "Proposed:"')
+
+
+PROSE_SUFFIXES = {'.md', '.txt', '.rst'}
+TOKEN = re.compile(r'\w+|\s+|[^\w\s]')
+
+
+def diff_pairs(git, path):
+    """(old, new) line pairs of a tracked file's uncommitted diff, or None if any hunk adds or removes lines unevenly."""
+    pairs, old, new = [], [], []
+    def flush():
+        if len(old) != len(new):
+            return False
+        pairs.extend(zip(old, new)); old.clear(); new.clear()
+        return True
+    for line in git('diff', 'HEAD', '--unified=0', '--no-color', '--', path).splitlines():
+        if line.startswith(('---', '+++')):
+            continue
+        if line.startswith('@@') and not flush():
+            return None
+        elif line.startswith('-'):
+            old.append(line[1:])
+        elif line.startswith('+'):
+            new.append(line[1:])
+    return pairs if flush() else None
+
+
+def substitutions(pairs, mapping):
+    """Extend mapping with the identifier substitutions that turn each old line into its new one; False if not a pure rename."""
+    for a, b in pairs:
+        ta, tb = TOKEN.findall(a), TOKEN.findall(b)
+        if len(ta) != len(tb):
+            return False
+        for x, y in zip(ta, tb):
+            if x == y:
+                continue
+            if not (re.fullmatch(r'\w+', x) and re.fullmatch(r'\w+', y)) or x.isdigit() or mapping.setdefault(x, y) != y:
+                return False
+    return True
+
+
+def rename_scope(git, packaged):
+    """For a change whose code is a pure identifier rename, the guidance documents it edits beyond that rename.
+
+    Returns (mapping, extra docs), or (None, []) when the change is not a rename (new, deleted or untracked code,
+    or any code line that is not a consistent substitution). Prose files other than packaged guidance are references."""
+    entries = [(l[:2], l[3:].split(' -> ')[-1]) for l in git('status', '--porcelain', '--untracked-files=all').splitlines()]
+    code = [p for s, p in entries if p not in packaged and Path(p).suffix not in PROSE_SUFFIXES]
+    if not code or any(set(s.strip()) != {'M'} for s, p in entries if p in code):
+        return None, []
+    mapping = {}
+    for path in code:
+        pairs = diff_pairs(git, path)
+        if not pairs or not substitutions(pairs, mapping):
+            return None, []
+    extra = []
+    for s, path in entries:
+        if path in packaged:
+            # A reference update applies only the code's substitutions; anything else is an edit beyond the rename.
+            pairs, used = (diff_pairs(git, path) if set(s.strip()) == {'M'} else None), dict(mapping)
+            if not pairs or not substitutions(pairs, used) or used != mapping:
+                extra.append(path)
+    return mapping, sorted(extra)
+
+
+def non_documentation_changes(git, packaged):
+    """Files this work changed that are neither prose nor packaged guidance, or None without git.
+
+    The work is everything not yet on the branch's upstream (or the default branch): unpushed commits, uncommitted
+    and untracked files. Documentation mode may skip product gates only when none of them is code."""
+    if not git('rev-parse', '--git-dir'):
+        return None
+    base = next((b for b in (git('merge-base', 'HEAD', ref) for ref in ('@{upstream}', 'origin/HEAD', 'main', 'master')) if b), 'HEAD')
+    changed = set(git('diff', '--name-only', base).splitlines()) | set(git('ls-files', '--others', '--exclude-standard').splitlines())
+    return sorted(p for p in changed if p and Path(p).suffix not in PROSE_SUFFIXES and p not in packaged)
+
+
+def inventory_gates(phase):
+    """Rows of the PROJECT_PROFILE command inventory whose Gate column selects them for this phase.
+
+    Returns (gates, problem). Each gate is (purpose, gate, cell, command or None, kind) where kind is
+    'run', 'gap' or 'excluded'. Only rows marked as gates are ever run; other rows (deployments,
+    operator commands) are never executed by --verify."""
+    profile = root / 'PROJECT_PROFILE.md'
+    if not profile.is_file():
+        return [], 'PROJECT_PROFILE.md not found'
+    lines = profile.read_text().splitlines()
+    try:
+        start = next(i for i, l in enumerate(lines) if l.strip().lower() == '## command inventory')
+    except StopIteration:
+        return [], 'no "## Command inventory" section in PROJECT_PROFILE.md'
+    header, gates = None, []
+    for line in lines[start + 1:]:
+        if line.startswith('## '):
+            break
+        if not line.lstrip().startswith('|'):
+            continue
+        cells = [c.strip() for c in line.strip().strip('|').split('|')]
+        if header is None:
+            header = [c.lower() for c in cells]
+            continue
+        if set(''.join(cells)) <= set('-: '):
+            continue
+        row = dict(zip(header, cells))
+        gate = row.get('gate', '').lower()
+        if not gate or gate in ('—', '-', 'no', 'none'):
+            continue
+        if phase == 'development' and not gate.startswith('development'):
+            continue
+        if phase == 'documentation' and 'documentation' not in gate:
+            continue
+        cell = row.get('command', '')
+        code = INLINE_CODE.findall(cell)
+        if re.match(r'(?i)\s*proposed\b', cell):
+            kind, command = 'gap', None  # an exclusion the owner has not confirmed yet is not one
+        elif re.match(r'(?i)\s*(not applicable|n/a)\b', cell):
+            kind, command = 'excluded', None
+        elif code and not PLACEHOLDER.search(cell):
+            kind, command = 'run', code[0].strip('`')
+        else:
+            kind, command = 'gap', None
+        gates.append((row.get('purpose', '?'), gate, cell, command, kind))
+    if header is None or 'gate' not in header:
+        return [], 'the command inventory has no Gate column (see the template in this package)'
+    if phase == 'documentation' and not gates:
+        return [], 'no command inventory row has Documentation in its Gate column'
+    return gates, None
+
+
+def verify(phase, timeout, receipt):
+    """Run the gate commands and print a computed verification status. Exit 0 complete, 1 failed, 2 incomplete."""
+    gates, problem = inventory_gates(phase)
+    def git(*a):
+        r = subprocess.run(['git', '-C', str(root), *a], capture_output=True, text=True)
+        return r.stdout.strip() if r.returncode == 0 else ''
+    commit = git('rev-parse', '--short', 'HEAD') or 'no commit'
+    dirty = bool(git('status', '--porcelain'))
+    results = []
+    for purpose, gate, cell, command, kind in gates:
+        entry = {'purpose': purpose, 'gate': gate, 'command': command, 'status': kind}
+        if kind == 'gap':
+            entry['detail'] = cell if cell and not PLACEHOLDER.search(cell) else 'not configured'
+        elif kind == 'excluded':
+            entry['detail'] = cell
+        else:
+            started = time.monotonic()
+            try:
+                r = subprocess.run(command, shell=True, cwd=root, capture_output=True, text=True, timeout=timeout)
+                entry['status'] = 'passed' if r.returncode == 0 else 'failed'
+                entry['exit_code'] = r.returncode
+                entry['output_tail'] = (r.stdout + r.stderr).strip().splitlines()[-5:]
+            except subprocess.TimeoutExpired:
+                entry['status'], entry['detail'] = 'failed', f'timed out after {timeout}s'
+            entry['seconds'] = round(time.monotonic() - started, 1)
+        results.append(entry)
+    # A change whose code is a pure rename may touch only the code, its tests and references (routing table):
+    # a reminder in the output was read and ignored, so an edit beyond the rename fails the check.
+    files = {e['path'] for e in json.loads(manifest_path.read_text()).get('files', [])}
+    packaged = {p for p in files if p.endswith('.md')} - {'README.md'}
+    mapping, beyond = (None, []) if phase == 'documentation' else rename_scope(git, packaged)
+    if phase == 'documentation':
+        # Skipping product gates is honest only for a change with no code in it; the agent picks the mode, so check it.
+        code = non_documentation_changes(git, files)
+        if code is None:
+            problem = problem or 'documentation mode needs git to check that only documentation changed'
+        elif code:
+            shown = ', '.join(code[:5]) + (f' and {len(code) - 5} more' if len(code) > 5 else '')
+            results.append({'purpose': 'Change scope', 'gate': 'documentation', 'command': None, 'status': 'failed',
+                            'detail': f'documentation mode is only for changes to documentation, and this work also changes {shown}. '
+                                      'Run python3 check_package.py --verify instead'})
+    if beyond:
+        names = ', '.join(f'{a} -> {b}' for a, b in sorted(mapping.items()))
+        results.append({'purpose': 'Change scope', 'gate': 'development', 'command': None, 'status': 'failed',
+                        'detail': f"the code change is a rename ({names}) but also edits {', '.join(beyond)}; a rename touches "
+                                  'only the code, its tests and references. Undo the edits you made there; never discard changes you did not make'})
+    count = lambda s: sum(1 for e in results if e['status'] == s)
+    failed, gaps = count('failed'), count('gap')
+    state = 'failed' if failed else 'incomplete' if gaps or problem or not results else 'complete'
+    def group(status):
+        # Failed and gap groups name their gates, so the line explains itself and needs no commentary.
+        n = count(status)
+        label = f"{n} {status}{'s' if status == 'gap' and n != 1 else ''}"
+        names = [e['purpose'] for e in results if e['status'] == status]
+        return f"{label}: {', '.join(names)}" if status in ('failed', 'gap') else label
+    summary = '; '.join(group(s) for s in ('failed', 'passed', 'gap', 'excluded') if count(s)) or 'no gates ran'
+    print(f'Verification: {state} ({phase} gates: {summary})')
+    print(f"Candidate: {commit}{' with uncommitted changes' if dirty else ''}")
+    if problem:
+        print(f'  problem   {problem}')
+    for e in results:
+        detail = e.get('command') or e.get('detail', '')
+        timing = f" ({e['seconds']}s)" if 'seconds' in e else ''
+        print(f"  {e['status']:<9} {e['purpose']}: {detail}{timing}")
+        if e['status'] == 'failed':
+            for line in e.get('output_tail', []):
+                print(f'            | {line}')
+    if gaps:
+        print(f'Gaps: {GAP_HINT}.')
+    # With no audit tool, name the files to read: cheaper models reported the gap but never opened requirements.txt.
+    if any(e['status'] == 'gap' and re.search(r'(?i)dependenc', e['purpose']) for e in results):
+        deps, more = dependency_files()
+        if deps:
+            print(f"Dependency files: {', '.join(deps)}{', and more' if more else ''}. With no audit tool, read them and report "
+                  'pinned or outdated versions you know to have published vulnerabilities; change none without review.')
+    # Guidance documents edited in this work, shown where the agent will read them: a rename or a small fix
+    # should not touch registers or specs the routing table does not name for it.
+    changed = sorted(p for p in (line[3:].split(' -> ')[-1] for line in git('status', '--porcelain').splitlines()) if p in packaged)
+    if changed and not beyond:
+        print(f"Guidance documents changed: {', '.join(changed)}. Keep only those the routing table names for this change.")
+    print('Report: quote the Verification line above exactly, as your verification status. Do not add your own verdict, '
+          'and do not explain the gaps it names unless the owner must act on one now.')
+    # Some agent tools tell the model to state open requirements rather than ask; recording a decision is not asking it.
+    if any(p.endswith('OPEN_WORK.md') for p in changed):
+        print('If you recorded a decision the owner must make, ask it in your reply as a direct question to them.')
+    if receipt:
+        Path(receipt).write_text(json.dumps({'state': state, 'phase': phase, 'commit': commit, 'uncommitted_changes': dirty,
+                                             'date': date.today().isoformat(), 'problem': problem, 'gates': results}, indent=2) + '\n')
+    sys.exit({'complete': 0, 'failed': 1}.get(state, 2))
 
 
 def placeholders(files, manifest):
@@ -199,31 +611,51 @@ def main():
     parser.add_argument('--require', choices=['code', 'release'], help='fail if placeholders remain at this stage')
     parser.add_argument('--install', metavar='DIR', help='copy packaged files into a project directory')
     parser.add_argument('--force', action='store_true', help='with --install, overwrite existing files')
+    parser.add_argument('--tier', choices=['prototype', 'internal', 'production', 'enterprise'],
+                        help='with --install, install the core plus the modules this tier requires')
+    parser.add_argument('--features', default='', help='with --install, comma-separated features to add: ui, data, stack-go, stack-rust')
     parser.add_argument('--sync-adapters', action='store_true', help='regenerate skill wrappers from procedures')
     parser.add_argument('--update-manifest', action='store_true', help='refresh manifest hashes (template mode)')
+    parser.add_argument('--verify', nargs='?', const='development', choices=['development', 'documentation', 'release'],
+                        help='run the gate commands from the command inventory and print the verification status; '
+                             '"documentation" runs only the Documentation rows and fails if the work changes anything but documentation')
+    parser.add_argument('--timeout', type=int, default=900, help='with --verify, seconds allowed per gate command')
+    parser.add_argument('--receipt', metavar='FILE', help='with --verify, also write the results as JSON')
     args = parser.parse_args()
 
     manifest = json.loads(manifest_path.read_text())
     template = args.template or (not args.project and (root / 'MAINTAINING.md').exists())
     errors = []
 
+    if args.verify:
+        verify(args.verify, args.timeout, args.receipt)
     if args.install:
-        install(manifest, args.install, args.force)
+        install(manifest, args.install, args.force, args.tier, [f for f in args.features.split(',') if f])
         return
     if args.sync_adapters:
-        sync_adapters(manifest, errors)
+        sync_adapters(manifest, errors, template)
     if args.update_manifest:
         if not template:
             sys.exit('--update-manifest is for the template repository; project copies keep upstream hashes.')
         update_manifest(manifest, errors)
 
     files = list(walk(include_repo_only=template, manifest=manifest))
-    check_links(files, errors)
+    installed = manifest.get('installed') if not template else None
+    installed_modules = set(installed['modules']) if installed else set(manifest.get('modules', {})) or {'core'}
+    uninstalled = frozenset(e['path'] for e in manifest['files'] if e.get('module', 'core') not in installed_modules)
+    # Scenario fixtures are project content whose links resolve inside the project built from them, not in this repository.
+    exempt = tuple(manifest.get('shim_exempt', []))
+    linked_elsewhere = check_links([f for f in files if not rel(f).startswith(exempt)], errors, uninstalled)
     check_shims(files, errors, tuple(manifest.get('shim_exempt', [])))
     check_adapters(manifest, errors)
+    agents = generate_agents(root / 'AGENTS.md', manifest, modules_in_checkout(manifest, template))
+    if agents is not None and agents != (root / 'AGENTS.md').read_text():
+        errors.append('AGENTS.md routing or procedure table does not match the installed modules; run check_package.py --sync-adapters')
+    check_budget(errors)
     notes = []
     listed = {e['path']: e for e in manifest['files']}
     if template:
+        check_modules(manifest, errors)
         for path, entry in listed.items():
             if not (root / path).is_file() or sha256(root / path) != entry.get('sha256'):
                 errors.append(f'Missing or changed packaged file {path}; review, then run --update-manifest')
@@ -232,13 +664,35 @@ def main():
         for path in walk(include_repo_only=False, manifest=manifest):
             if rel(path) not in listed and path != manifest_path:
                 errors.append(f'Unlisted file {rel(path)}; add it to the manifest or to repo_only')
+        tests = root / 'maintainer' / 'test_install.py'
+        if tests.is_file():
+            result = subprocess.run([sys.executable, '-B', str(tests)], capture_output=True, text=True)
+            if result.returncode:
+                errors.append('Install tests:\n  ' + (result.stdout + result.stderr).strip().replace('\n', '\n  '))
+        scorer_tests = root / 'maintainer' / 'harness' / 'test_score.py'
+        if scorer_tests.is_file():
+            result = subprocess.run([sys.executable, '-B', str(scorer_tests)], capture_output=True, text=True)
+            if result.returncode:
+                errors.append('Scorer tests:\n  ' + (result.stdout + result.stderr).strip().replace('\n', '\n  '))
         scenarios = root / 'maintainer' / 'run_scenario.py'
         if scenarios.is_file():
             result = subprocess.run([sys.executable, str(scenarios), '--check'], capture_output=True, text=True)
             if result.returncode:
                 errors.append('Scenario fixtures:\n  ' + (result.stdout + result.stderr).strip().replace('\n', '\n  '))
     else:
-        absent = [p for p in listed if not (root / p).is_file()]
+        absent = [p for p in listed if not (root / p).is_file() and p not in uninstalled]
+        if installed:
+            required = set(manifest['tiers'].get(installed.get('tier') or '', [])) | {
+                m for f in installed.get('features', []) for m in manifest['features'].get(f, [])}
+            for module in sorted(required):
+                files_of = [p for p, e in listed.items() if e.get('module') == module]
+                if files_of and not any((root / p).is_file() for p in files_of):
+                    errors.append(f"Tier {installed.get('tier')!r} requires the {module} module, but none of its files are present; "
+                                  f"reinstall it with check_package.py --install from the package")
+            if 'enterprise' in installed['modules']:
+                notes.extend(enterprise_notes())
+            notes.append(f"Installed: tier {installed.get('tier') or 'unspecified'}; modules {', '.join(installed['modules'])}"
+                         + (f'; {linked_elsewhere} links point to modules not installed' if linked_elsewhere else ''))
         modified = [p for p in listed if (root / p).is_file() and sha256(root / p) != listed[p].get('sha256')]
         if absent:
             notes.append(f'{len(absent)} packaged files absent; record exclusions in PROJECT_PROFILE.md: ' + ', '.join(absent))
@@ -265,7 +719,9 @@ def main():
         print('\n'.join(errors))
         print(f'FAIL ({label} mode): {len(errors)} problem(s).')
         sys.exit(1)
-    print(f'PASS ({label} mode): {len(listed)} packaged files; links, adapters and shims consistent.')
+    present = sum(1 for p in listed if (root / p).is_file())
+    count = f'{len(listed)} packaged files' if present == len(listed) else f'{present} of {len(listed)} packaged files installed'
+    print(f'PASS ({label} mode): {count}; links, adapters, shims and document budget consistent.')
     print('\n'.join(notes + [f'Placeholders: {code_total} before implementation, {release_total} before release. '
                              'No project acceptance is implied.']))
 
