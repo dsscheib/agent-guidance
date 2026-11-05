@@ -34,7 +34,7 @@ Missing required scope or evidence prevents a full completion claim.
 Compare the work with the baseline scope in DESIGN_DOC.md and the ROADMAP. When the work finishes a feature, or the last several work items were follow-ups or fix rounds on one feature while baseline features remain unstarted, add one line to the report saying which baseline features are done, in progress and not started. The owner decides what to do about it; the agent only makes the drift visible.
 
 ## 5. Deliver the report
-Give the report in chat or the pull request description, not in a new file. Keep it as short as the change: **two to five lines for a routine change**, longer only when the owner has decisions to make. The checklists above are for you; do not recite them in the report.
+Give the report in chat or the pull request description, not in a new file. Keep it as short as the change: **two to five lines for a routine change**, longer only when the owner has decisions to make. The checklists above are for you; do not recite them in the report. Write it in your own voice, as in the example below, not as a form to fill in.
 
 Include, in this order:
 1. What changed, in one or two sentences, naming the files or behavior.
@@ -45,9 +45,9 @@ Leave out what did not happen: documents that needed no change, files you left a
 
 A routine report looks like this:
 
-> Added a `--dry-run` option to `sync_photos.py` that lists the files it would copy; the README usage section shows it.
+> I added a `--dry-run` option to `sync_photos.py`. It lists the files it would copy without copying anything, and the README usage section shows how to use it.
 > Verification: incomplete (development gates: 3 passed; 1 gap: Lint; 1 excluded)
-> Committed on `task/sync-dry-run`.
+> It's committed on `task/sync-dry-run`.
 
 Add release acceptance only for a release, or when the owner asks whether the work is done: it is normally "not evaluated", and only an authorized owner decision grants it.
 

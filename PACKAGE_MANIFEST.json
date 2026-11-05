@@ -207,8 +207,8 @@
     {
       "path": "AGENTS.md",
       "kind": "entry",
-      "bytes": 9999,
-      "sha256": "6c20212937007fdc7da4710555d4c083871638f18fb2151db10323e18e0912ad",
+      "bytes": 10118,
+      "sha256": "3d3886a5918cdfeb42177ce3b9d000937b81e3aa165ffe0ef7aab16e2385bb46",
       "module": "core"
     },
     {
@@ -460,8 +460,8 @@
     {
       "path": "docs/procedures/final-audit.md",
       "kind": "procedure",
-      "bytes": 5234,
-      "sha256": "9e2a082ba3ff091ee447cad243884e4906ed951e61e54acec74f5bfe07fac765",
+      "bytes": 5359,
+      "sha256": "b523b206362c285bb24f15ef69c40b6529a849eb778605f544c2a40e1e0fdfb9",
       "module": "core"
     },
     {
