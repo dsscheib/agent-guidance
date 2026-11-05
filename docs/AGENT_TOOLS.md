@@ -72,7 +72,7 @@ Never put a rule only in an adapter, because the other agents would never see it
     }
     ```
 
-    The official docs show the rule syntax and the `ask`/`allow`/`deny` arrays; the enclosing `permissions` key comes from community examples. If the CLI reports a malformed settings file at startup, use `/permissions` instead.
+    The official docs show the rule syntax and the `ask`/`allow`/`deny` arrays. The enclosing `permissions` key was confirmed on Antigravity CLI 1.4.12: with these rules merged into a settings file that also allowed `command(git checkout)` and `command(git push origin main)`, the CLI asked before running `git rebase --help`. Merge the `ask` list into an existing file rather than replacing it, since the file also holds the CLI's own settings. If the CLI reports a malformed settings file at startup, use `/permissions` instead.
   - **Limits:**
     - A command containing `$(...)` turns off prefix matching, so only an exact rule matches it.
     - On Windows, subcommands need `command(regex:…)` rules.
@@ -96,6 +96,8 @@ Checked 2026-10-27:
 - Antigravity CLI settings file and `/config` (codelab): <https://codelabs.developers.google.com/antigravity-cli-hands-on>
 - Antigravity skills: <https://codelabs.developers.google.com/getting-started-with-antigravity-skills>
 - Claude Code memory, skills and settings: <https://docs.claude.com/en/docs/claude-code>
+
+Checked 2026-11-05 against Antigravity CLI 1.4.12: the `permissions` key and ask-before-allow precedence in `~/.gemini/antigravity-cli/settings.json`, by a live prompt (no published source).
 
 Checked 2026-10-29 against Copilot CLI 1.0.105:
 - Copilot CLI custom instructions: <https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions>
