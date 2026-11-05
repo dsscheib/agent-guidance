@@ -1,6 +1,6 @@
 # Guidance redesign: working notes
 
-Repository-only. Status as of 2026-11-03, written to resume this work in a later session. Scenario rows are in [RESULTS.md](RESULTS.md); scenario definitions are in [SCENARIOS.md](SCENARIOS.md).
+Repository-only. Version 3 is released. Current proposals are in the [Version 4 roadmap](#version-4-roadmap); the earlier branch notes and findings below describe version 3 development, not current checkout status. Scenario rows are in [RESULTS.md](RESULTS.md); scenario definitions are in [SCENARIOS.md](SCENARIOS.md).
 
 ## Goals (from the owner)
 1. **Make cheaper, less capable models useful for real work**, so people don't need a frontier model. Gemini 3.8 Flash is the model whose failures prompted this package.
@@ -196,14 +196,32 @@ Moved to [SCENARIOS.md](SCENARIOS.md#automated-runs) with the harness itself (DO
 4. **Machine-generated evidence** at higher tiers: CI results, test reports, approvals and tags, linked from docs rather than rewritten by agents.
 5. **Pluggable registers and roles**: work register may be OPEN_WORK.md or an external tracker; "owner" becomes roles (product owner, approver, release manager); an agent never approves its own work.
 
-## Next steps
-Done since the first draft: the review-deployment gap fix (bb236c0), the harness move with corrected S4 and S11 criteria (DOC-010), the computed verification status (DOC-011), the README routing row (DOC-012), scorer fixes (DOC-013), the Opus and Haiku no-guidance baseline, shorter routine reports (DOC-014), the README setup sentence (DOC-015), the invented-rule check in the scorer (DOC-016), the clean-profile Flash comparison (13/20 without guidance, 19/20 with) and Copilot trust on resumed sessions (DOC-017).
+## Version 4 roadmap
 
-1. **gpt-6.1-sol's remaining failures** (findings 32, 34, 37, 38, 39, 40 and 41): Copilot + Sol records open decisions instead of asking, because Copilot's prompt-mode instructions tell it to state rather than ask (findings 38 and 39). The stop hook fixes this in installed projects (DOC-027, finding 40); An optional user-level hook covers S11 (findings 40 and 41, DOC-029). S3's building problem was the scenario (DOC-025) and S6 is fixed mechanically (DOC-024).
-2. **Point agents at dependency files mechanically** (finding 33): when the dependency-audit gate is a gap, `--verify` names the dependency manifests it finds (for example `requirements.txt`), so cheaper models check pinned versions instead of only reporting the gap. *Done (DOC-022).*
-3. Draft the core-plus-modules restructure with the Enterprise tier, and per-tier friction scenarios (same task under each tier, with a budget for time, tokens and files touched). *Phases 1–3 done (DOC-018 to DOC-020).*
-4. **Pull request after the restructure** (owner, 2026-11-04): finish phases 4 and 5 and the merged Internal tier on this branch, then open one pull request into `main`.
-5. **Final full suite** (owner, 2026-11-04; recommended size and frozen guidance chosen: about 1,610 runs on nine configurations, three runs per base scenario under no, old and final guidance, two per tier variant under final guidance), once Antigravity's quota allows: every scenario on every configuration, under no guidance, the old guidance (`main` at `62d3756`, the 2.x guidance projects adopted) and the final guidance from this branch. *Done (DOC-044, finding 51); Copilot stopped at the owner's quota.*
+Status: Proposed. Recommendations by Codex, saved at the owner's request. Recording this roadmap does not
+approve implementation, a release scope, or changes to existing project policy. Version 3 is the baseline;
+see the [evaluation and statistical audit](EVALUATION.md#codex-statistical-audit) for evidence and limitations.
+
+Goal: make adoption easier, upgrades safer, and evaluation more credible while keeping guidance overhead low.
+Prefer tooling and removal of unnecessary ceremony over additional policy documents.
+
+| ID | Recommendation | Proposed scope and acceptance evidence |
+|---|---|---|
+| V4-1 | Make minimal installation the default | Require an explicit tier or offer an interactive selection, preview the files to install, and make installing everything an explicit option. Update the README's first command. Test that the default path cannot silently install every module, and retain an explicit compatibility path for full installs. Owner decision needed on the selection interface. |
+| V4-2 | Make upgrades reviewable and repeatable | Compare the installed baseline, local customizations, and new package; produce a proposed diff and identify conflicts. Start with planning and validation, leaving conflict resolution to review. Check preservation of open items, deployed revisions, custom policy, and script references; check generated adapters and report permission blockers. Extend S18 with customized and conflicting files and verify that planning changes no project content. |
+| V4-3 | Separate evaluation outcomes | Report task success, compliance with available policy, verification honesty, and environment blockers separately. Retain the underlying evidence so a correct rename without verification and a permission-blocked upgrade remain distinguishable from incorrect implementation. Apply the categories consistently across agents and guidance conditions. |
+| V4-4 | Give benchmark conditions equal business requirements | Supply ticket requirements, authority roles, and domain constraints in every condition, varying the guidance around them. Create a fresh holdout set, freeze its rubric before running, and blind graders to agent identity and prior verdicts. Publish sampling, exclusions, disagreements, and uncertainty; avoid treating repeated runs of one task as independent tasks. |
+| V4-5 | Test authorization in both directions | Add scenarios for proceeding after explicit permission to commit, push, merge, or deploy, alongside existing unauthorized-action cases. Test independent progress while a decision remains open and preserve stricter project role policies. Measure unnecessary reconfirmation separately from legitimate tool permission prompts and unauthorized actions. Use isolated fixtures and simulated external actions. |
+| V4-6 | Measure whether guidance earns its overhead | Track task completion, elapsed time, token usage where available, owner interruptions, and unnecessary document edits. Add longer sequences of ordinary maintenance work and compare against a baseline with the same task requirements. Use results to simplify instructions that add ceremony without improving outcomes; propose success thresholds before tuning. |
+| V4-7 | Refresh maintainer planning documents | Reconcile completed version 3 work and remaining proposals in this document and RESTRUCTURE_DESIGN.md. Make historical findings distinguishable from current plans, keep one home for each current recommendation, and leave shipped project templates empty. |
+
+Suggested sequence: minimal installation → upgrade planning and validation → evaluation redesign (V4-3 and
+V4-4) → authorization and longer-term friction testing (V4-5 and V4-6). Refresh planning documents alongside
+that work. Define acceptance criteria and preserve baseline evidence before tuning each change.
+
+Reserve a major version for changes to the installation or upgrade contract. Documentation cleanup and benchmark
+improvements may ship incrementally; inclusion here does not require waiting for version 4. Final interface choices,
+release scope, and acceptance thresholds remain owner decisions when implementation is proposed.
 
 ## Adoption cleanup for existing projects (when the redesign is done)
 Projects that adopted earlier guidance (several of the maintainer's private projects) will need to clear the bloat it produced when they adopt this version. Plan for it as part of the rollout, not as an afterthought:
