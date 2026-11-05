@@ -1,6 +1,6 @@
 {
   "package": "reusable-project-guidance",
-  "version": "3.0-dev",
+  "version": "3.0",
   "status": "unconfigured-templates",
   "procedures": "docs/procedures",
   "adapters": [
