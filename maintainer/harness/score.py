@@ -5,7 +5,7 @@
   score.py --out DIR --detail [labels...]   plus the reason for every failed run
   score.py --out DIR --digest [labels...]   evidence checks and condensed replies, for manual grading
   score.py --out DIR --rows [labels...]     rows to append to maintainer/RESULTS.md
-  score.py --out DIR --register [labels...] how replies read: guidance jargon, first person and contractions per 100 words
+  score.py --out DIR --register [labels...] how replies read: guidance jargon, "the owner", first person and contractions per 100 words
 
 Scoring is automatic and applies the same **core criteria** to every configuration, including runs with no
 guidance installed, so configurations can be compared. Guidance bookkeeping (matrix rows, OPEN_WORK
@@ -68,14 +68,18 @@ JARGON = re.compile(r"(?i)\b(?:gates?|work items?|tiers?|release acceptance|bloc
                     r"traceab\w*|compliance|in scope|exclusions?|command inventory)\b")
 FIRST_PERSON = re.compile(r"\b(?:I|I'm|I've|I'll|I'd|me|my)\b")
 CONTRACTION = re.compile(r"(?i)\b\w+['’](?:s|re|ve|ll|d|t|m)\b")
+# The user named in the third person ("the owner must decide") in a reply addressed to them.
+OWNER_THIRD = re.compile(r"(?i)\b(?:the|project) owner(?:['’]s)?\b")
 STATUS_LINE = re.compile(r'(?m)^.*Verification:\s*`?(?:complete|incomplete|failed) \(.*$')
 
 
 def register(text):
     """Counts for how a reply reads (words, jargon, first person, contractions), ignoring quoted status lines."""
-    prose = STATUS_LINE.sub('', text)
+    # Link targets and paths name files and folders (a results folder can be called "register"), not how the reply reads.
+    prose = re.sub(r'\]\([^)]*\)|\S*/\S*', ' ', STATUS_LINE.sub('', text))
     return {'words': len(prose.split()), 'jargon': len(JARGON.findall(prose)),
-            'first_person': len(FIRST_PERSON.findall(prose)), 'contractions': len(CONTRACTION.findall(prose))}
+            'first_person': len(FIRST_PERSON.findall(prose)), 'contractions': len(CONTRACTION.findall(prose)),
+            'owner': len(OWNER_THIRD.findall(prose))}
 
 
 def read(fx, p):
@@ -618,8 +622,8 @@ def main():
                       f"{guidance} | {ev['run']} | {'pass' if r['ok'] else 'fail'} | {note} |")
         return
     if a.register:
-        print('| Configuration | Replies | Median words | Guidance jargon /100 words | First person /100 words | Contractions /100 words |')
-        print('|---|---|---|---|---|---|')
+        print('| Configuration | Replies | Median words | Guidance jargon /100 words | "The owner" /100 words | First person /100 words | Contractions /100 words |')
+        print('|---|---|---|---|---|---|---|')
         for label in labels:
             counts = [register(st.get('final') or '') for ev in load(a.out, label, runs) for st in ev['steps']]
             counts = [c for c in counts if c['words'] >= 5]
@@ -627,7 +631,7 @@ def main():
             if not words:
                 continue
             per = lambda k: f"{100 * sum(c[k] for c in counts) / words:.1f}"
-            print(f"| {label} | {len(counts)} | {statistics.median(c['words'] for c in counts):.0f} | {per('jargon')} | {per('first_person')} | {per('contractions')} |")
+            print(f"| {label} | {len(counts)} | {statistics.median(c['words'] for c in counts):.0f} | {per('jargon')} | {per('owner')} | {per('first_person')} | {per('contractions')} |")
         return
     if a.friction:
         print('| Configuration | Scenario | Pass | Guidance documents edited (median) | Reply words (median) | Seconds (median) | Failures |')
