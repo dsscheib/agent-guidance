@@ -242,6 +242,11 @@ Suggested sequence:
    (V4-8 to V4-10). All are tooling with deterministic tests and do not wait on the benchmark. **V4-1 done
    2026-11-05:** a fresh `--install` without `--tier` copies nothing and lists the tiers (owner decision), `--dry-run`
    previews, `--all` is the 2.x set (owner decision), and a rerun without `--tier` keeps the project's modules.
+   **V4-2 done 2026-11-05:** `--plan-upgrade` sorts each packaged file into replace, add, clean merge, conflict,
+   review or remove from the installed baseline, the project and the new package, writes nothing in the project, and
+   can save the proposed changes as a patch; `--check-upgrade` then checks open items, deployed revisions, local
+   changes, script references and conflict markers against the pre-upgrade commit. S18 gains a conflicting and a
+   cleanly merging local rule and fails a planning step that changes a tracked file. Not yet rerun on agents.
 4. Separate outcomes (V4-3), then run the holdout set and the overhead measures (V4-4, V4-6).
 
 Refresh planning documents (V4-7) alongside. Define acceptance criteria and preserve baseline evidence before

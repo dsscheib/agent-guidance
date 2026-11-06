@@ -5,7 +5,7 @@
   test_install.py --table  print what each tier installs, for review
 """
 from pathlib import Path
-import json, os, subprocess, sys, tempfile
+import hashlib, json, os, subprocess, sys, tempfile
 
 root = Path(__file__).resolve().parent.parent
 manifest = json.loads((root / 'PACKAGE_MANIFEST.json').read_text())
@@ -329,6 +329,97 @@ def case_upgrade(tmp):
     expect(passed, 'upgraded project check failed:\n    ' + out[:600])
 
 
+def plan_section(out, label):
+    """Paths listed under one heading of the --plan-upgrade output."""
+    lines, inside = [], False
+    for line in out.splitlines():
+        if not line.startswith('  '):
+            inside = line.startswith(label)
+        elif inside:
+            lines.append(line.split(' (')[0].strip())
+    return lines
+
+
+def case_plan_upgrade(tmp):
+    """--plan-upgrade sorts each file into replace, add, merge and conflict, writes nothing in the project, and its patch
+    applies; --check-upgrade then catches a lost local rule, a closed open item and a deleted script still in use."""
+    git = ['git', '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', '-c', 'user.name=t', '-c', 'user.email=t@example.com']
+    run = lambda cmd, cwd: subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
+    pkg, project = tmp / 'plan-pkg', tmp / 'plan-project'
+    paths = [e['path'] for e in manifest['files']] + ['PACKAGE_MANIFEST.json']
+    for path in paths:
+        (pkg / path).parent.mkdir(parents=True, exist_ok=True)
+        (pkg / path).write_bytes((root / path).read_bytes())
+    # The older release: three policy lines differ and RELEASE_NOTES does not exist yet.
+    old = {'docs/TESTING_SPEC.md': ('2. **Missing tooling is a gap.**', '2. **Missing tooling is a gap (old wording).**'),
+           'docs/CHANGE_WORKFLOW.md': ('## Completion\n', '## Completion (old)\n'),
+           'docs/RUNBOOKS.md': ('\n## ', '\n## Old heading\n\n## ')}
+    for path, (new, before) in old.items():
+        text = (pkg / path).read_text()
+        expect(new in text, f'plan test: {path} lacks {new!r}')
+        (pkg / path).write_text(text.replace(new, before, 1))
+    (pkg / 'docs/RELEASE_NOTES.md').unlink()
+    record = json.loads((pkg / 'PACKAGE_MANIFEST.json').read_text())
+    record['files'] = [e for e in record['files'] if e['path'] != 'docs/RELEASE_NOTES.md']
+    for e in record['files']:
+        if e['path'] in old:
+            e['sha256'] = hashlib.sha256((pkg / e['path']).read_bytes()).hexdigest()
+    (pkg / 'PACKAGE_MANIFEST.json').write_text(json.dumps(record, indent=2) + '\n')
+    for cmd in (git + ['init', '-q', '-b', 'main'], git + ['add', '-A'], git + ['commit', '-q', '-m', 'old']):
+        run(cmd, pkg)
+    project.mkdir()
+    r = run([sys.executable, '-B', str(pkg / 'check_package.py'), '--install', str(project), '--all'], pkg)
+    expect(r.returncode == 0, 'plan test: old install failed: ' + r.stdout[-300:])
+    spec, flow = project / 'docs/TESTING_SPEC.md', project / 'docs/CHANGE_WORKFLOW.md'
+    spec.write_text(spec.read_text().replace('(old wording).**', '(old wording).** Record the blocker ID in OPEN_WORK.'))
+    flow.write_text(flow.read_text().replace('## Verification\n', '## Verification\nRun the smoke script on the review host first.\n'))
+    (project / 'docs/OPEN_WORK.md').write_text((project / 'docs/OPEN_WORK.md').read_text() + '\n| OW-7 | Open | Keep me | x | x |\n')
+    (project / 'scripts').mkdir(exist_ok=True)
+    (project / 'scripts/once.sh').write_text('true\n')
+    (project / 'Makefile').write_text('once:\n\tsh scripts/once.sh\n')
+    for cmd in (git + ['init', '-q', '-b', 'main'], git + ['add', '-A'], git + ['commit', '-q', '-m', 'project']):
+        run(cmd, project)
+    for path in paths:
+        (pkg / path).write_bytes((root / path).read_bytes())
+    for cmd in (git + ['add', '-A'], git + ['commit', '-q', '-m', 'new']):
+        run(cmd, pkg)
+
+    planner = [sys.executable, '-B', str(pkg / 'check_package.py')]
+    inside = run(planner + ['--plan-upgrade', str(project), '--patch', str(project / 'plan.patch')], pkg)
+    expect(inside.returncode and not (project / 'plan.patch').exists(), 'plan test: a patch inside the project was not refused')
+    patch = tmp / 'plan.patch'
+    r = run(planner + ['--plan-upgrade', str(project), '--patch', str(patch)], pkg)
+    out = r.stdout + r.stderr
+    expect(r.returncode == 0, 'plan test: --plan-upgrade failed: ' + out[-400:])
+    expect(not run(['git', 'status', '--porcelain'], project).stdout, 'plan test: planning changed the project')
+    expect('docs/OPEN_WORK.md' not in out, 'plan test: a register upstream did not change is listed')
+    for label, path in (('Replace', 'docs/RUNBOOKS.md'), ('Add', 'docs/RELEASE_NOTES.md'), ('Merge', 'docs/CHANGE_WORKFLOW.md'),
+                        ('Conflict', 'docs/TESTING_SPEC.md')):
+        expect(path in plan_section(out, label), f'plan test: {path} not under {label}:\n    ' + out[:900])
+    applied = run(['git', 'apply', str(patch)], project)
+    expect(applied.returncode == 0, 'plan test: the patch does not apply: ' + applied.stderr[:300])
+    text = flow.read_text()
+    expect('Run the smoke script' in text and '## Completion\n' in text, 'plan test: the merge lost a side of CHANGE_WORKFLOW.md')
+    expect(json.loads((project / 'PACKAGE_MANIFEST.json').read_text()).get('installed_from', {}).get('commit')
+           == run(['git', 'rev-parse', 'HEAD'], pkg).stdout.strip(), 'plan test: the patch does not record the new commit')
+
+    checker = planner + ['--check-upgrade', str(project)]
+    # The conflict merged by hand, keeping the local rule in new words.
+    spec.write_text((root / 'docs/TESTING_SPEC.md').read_text().replace('**Missing tooling is a gap.**',
+                                                                       '**Missing tooling is a gap.** Record the blocker ID in OPEN_WORK.'))
+    r = run(checker, pkg)
+    expect(r.returncode == 0, 'plan test: --check-upgrade failed on a clean upgrade: ' + (r.stdout + r.stderr)[-400:])
+    flow.write_text(flow.read_text().replace('Run the smoke script on the review host first.\n', ''))
+    work = project / 'docs/OPEN_WORK.md'
+    work.write_text(work.read_text().replace('| OW-7 | Open |', '| OW-7 | Closed |'))
+    (project / 'scripts/once.sh').unlink()
+    r = run(checker, pkg)
+    out = r.stdout + r.stderr
+    for found, what in (('CHANGE_WORKFLOW.md' in out, 'the dropped local rule'), ('OW-7' in out, 'the closed open item'),
+                        ('Makefile' in out, 'the deleted script still in use')):
+        expect(r.returncode and found, f'plan test: --check-upgrade missed {what}:\n    ' + out[-500:])
+
+
 def raw_install(target, *args):
     return subprocess.run([sys.executable, '-B', str(root / 'check_package.py'), '--install', str(target), *args],
                           capture_output=True, text=True)
@@ -413,12 +504,12 @@ def main():
         return
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
-        for case in (case_tiers, case_policy, case_generated_tables, case_enterprise, case_proposed_exclusion, case_dependency_files, case_rename_scope, case_documentation_mode, case_copilot_stop, case_upgrade, case_default, case_missing_module, case_broken_link):
+        for case in (case_tiers, case_policy, case_generated_tables, case_enterprise, case_proposed_exclusion, case_dependency_files, case_rename_scope, case_documentation_mode, case_copilot_stop, case_upgrade, case_plan_upgrade, case_default, case_missing_module, case_broken_link):
             case(tmp)
     if problems:
         print('\n'.join(problems))
         sys.exit(1)
-    print('Install tests OK: tiers, design policy, generated tables, enterprise rows, proposed exclusions, dependency files, rename scope, documentation mode, Copilot stop hook, features, upgrade, tier required (dry run, --all, rerun), missing module and broken link.')
+    print('Install tests OK: tiers, design policy, generated tables, enterprise rows, proposed exclusions, dependency files, rename scope, documentation mode, Copilot stop hook, features, upgrade, upgrade plan and check, tier required (dry run, --all, rerun), missing module and broken link.')
 
 
 if __name__ == '__main__':
