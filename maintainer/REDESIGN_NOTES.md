@@ -251,7 +251,11 @@ Suggested sequence:
    cleanly merging local rule and fails a planning step that changes a tracked file. Antigravity check (Gemini 3.8
    Flash and Gemini 4 Argon, 3 runs each): 6/6 pass, every run used both commands, changed nothing while planning,
    asked about the conflict and kept both local rules. Antigravity already passed the old S18 6/6, so this shows the
-   harder scenario holds, not a gain; the 2026-11-04 S18 failures were on Codex and Claude Code, not yet rerun.
+   harder scenario holds, not a gain. Codex and Claude Code (2026-11-06): before DOC-067, 1/9 (Haiku 1/3, Luna
+   0/3, Sol 0/3), with three runs applying changes while planning and the planner lacking the installed release in
+   the harness; after DOC-067, Haiku 2/3 and Luna 0/3, with no run changing a file while planning. Every Sol run and
+   two Luna runs hit the read-only `.agents` adapter in the Codex sandbox, an environment block for V4-3. One Luna
+   run dropped a local rule and passed `--check-upgrade` from the project's copy, which now fails instead (DOC-069).
 4. Separate outcomes (V4-3), then run the holdout set and the overhead measures (V4-4, V4-6).
 
 Refresh planning documents (V4-7) alongside. Define acceptance criteria and preserve baseline evidence before

@@ -437,7 +437,9 @@ def plan_upgrade(manifest, target, patch=None):
         Path(patch).write_text(''.join(d for d in diffs if d))
         print(f'Proposed patch (replace, add, merge and remove, plus the new manifest): {Path(patch).resolve()}')
     print('This is a plan only. Show it to the user with your questions about each conflict and review item, then stop. '
-          'Apply nothing, including the replace and add changes, until the user approves; after applying, run --check-upgrade.')
+          'Apply nothing, including the replace and add changes, until the user approves. After applying, run this '
+          f"checkout's checker, not the project's copy: python3 {root / 'check_package.py'} --check-upgrade {target} "
+          f"--since {(subprocess.run(['git', '-C', str(target), 'rev-parse', '--short', 'HEAD'], capture_output=True, text=True).stdout.strip() or '<commit before the upgrade>')}")
 
 
 OPEN_ITEM = re.compile(r'^\|\s*([A-Z][A-Z0-9]*-\d+)\s*\|(.*)$', re.M)
@@ -488,10 +490,17 @@ def check_upgrade(target, since='HEAD'):
     packaged = [e['path'] for e in record.get('files', []) if e['path'] in before_files
                 and (e.get('kind') not in FILLED_KINDS or e['path'] == 'AGENTS.md')]
     flat = lambda text: ' '.join(text.split())
+    hashes = {e['path']: e.get('sha256') for e in record.get('files', [])}
+    unchecked = []
     for path in packaged:
         base = effective(path, package_git('show', f'{commit}:{path}') if commit else None, record, modules)
         mine_before = shown(path)
-        if base is None or mine_before == base:
+        if base is None:
+            # Without the installed text, a file the project changed cannot be checked; say so rather than pass it.
+            if hashlib.sha256(mine_before.encode()).hexdigest() != hashes.get(path):
+                unchecked.append(path)
+            continue
+        if mine_before == base:
             continue
         now = flat((target / path).read_text()) if (target / path).is_file() else ''
         base_lines = base.splitlines()
@@ -507,6 +516,10 @@ def check_upgrade(target, since='HEAD'):
                 dropped.append(line)
         if dropped:
             problems.append(f'{path}: {len(dropped)} local change(s) not found verbatim, first: {dropped[0].strip()[:80]}')
+    if unchecked:
+        problems.append(f"Could not check local changes in {', '.join(unchecked)}: the installed commit "
+                        f"{(commit or 'unrecorded')[:12]} is not in this checkout. Run the check from the guidance checkout: "
+                        f"python3 <guidance checkout>/check_package.py --check-upgrade {target} --since {since}")
     for path in now_files:
         if path.endswith('.md') and re.search(r'(?m)^(<{7} |>{7} )', (target / path).read_text(errors='replace')):
             problems.append(f'{path}: unresolved merge conflict markers')
