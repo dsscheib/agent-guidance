@@ -213,6 +213,10 @@
         "row": "| [release-readiness](docs/procedures/release-readiness.md) | Preparing or evaluating a release candidate |"
       },
       {
+        "module": "release",
+        "row": "| [release-review](docs/procedures/release-review.md) | A final, in-depth audit of a release candidate, before release readiness |"
+      },
+      {
         "module": "core",
         "row": "| [upgrade-guidance](docs/procedures/upgrade-guidance.md) | Adopting this guidance in an existing project, or updating an earlier adoption |"
       }
@@ -236,8 +240,8 @@
     {
       "path": "AGENTS.md",
       "kind": "entry",
-      "bytes": 10202,
-      "sha256": "f9e9a31a5cbd92b486e20e414c410acd2729d6da25ad033d1fe9f8bf4f70f46a",
+      "bytes": 10333,
+      "sha256": "738b41e8a9b77ecb204807fe6c41f6fc468690d6b8e2841e22a54ba464d6e883",
       "module": "core"
     },
     {
@@ -496,8 +500,15 @@
     {
       "path": "docs/procedures/release-readiness.md",
       "kind": "procedure",
-      "bytes": 2594,
-      "sha256": "381555861b6e2057f275eb651cd7618a6a6d16dc15037e49e68857300256ca43",
+      "bytes": 2861,
+      "sha256": "d8874cfd0502521a05e174cb2dd81660ff431866fa50fe4c817259484953ac0c",
+      "module": "release"
+    },
+    {
+      "path": "docs/procedures/release-review.md",
+      "kind": "procedure",
+      "bytes": 4028,
+      "sha256": "59670f0ca557cf32dbab101f62691e4004611a7a9bb80d313f4f64284a6749fa",
       "module": "release"
     },
     {
@@ -564,6 +575,13 @@
       "module": "release"
     },
     {
+      "path": ".agents/skills/release-review/SKILL.md",
+      "kind": "adapter",
+      "bytes": 814,
+      "sha256": "7526951725a2cc5cf7a1204ec9ae5471cadc41ccfefb7a6e213e38a91ae09974",
+      "module": "release"
+    },
+    {
       "path": ".claude/skills/bootstrap-project/SKILL.md",
       "kind": "adapter",
       "bytes": 680,
@@ -582,6 +600,13 @@
       "kind": "adapter",
       "bytes": 693,
       "sha256": "4174905b49a146cf1666c372c4275857aa4e883105d4175ef6752d1aa914f01e",
+      "module": "release"
+    },
+    {
+      "path": ".claude/skills/release-review/SKILL.md",
+      "kind": "adapter",
+      "bytes": 814,
+      "sha256": "7526951725a2cc5cf7a1204ec9ae5471cadc41ccfefb7a6e213e38a91ae09974",
       "module": "release"
     },
     {
