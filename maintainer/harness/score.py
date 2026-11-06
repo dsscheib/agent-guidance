@@ -215,7 +215,11 @@ def has_open_work(ev):
 
 
 def has_proposed_exclusions(ev):
-    """Whether the run's guidance has the "Proposed: Not applicable" convention (DOC-042); the 2.x release (old-*) does not."""
+    """Whether the run's guidance has the "Proposed: Not applicable" convention (DOC-042), read from the guidance
+    it was shown, so any earlier release compares fairly; 2.0 lacks it. Without that folder, old-* means 2.0."""
+    spec = Path(ev.get('guidance') or '') / 'docs' / 'TESTING_SPEC.md'
+    if spec.is_file():
+        return has_open_work(ev) and 'Proposed: Not applicable' in spec.read_text()
     return has_open_work(ev) and not Path(ev.get('guidance') or '').name.startswith('old-')
 
 
