@@ -37,6 +37,9 @@ def run(cmd, cwd):
     return subprocess.run(cmd, cwd=cwd, env=ENV, capture_output=True, text=True)
 
 
+PUBLIC_REPO = 'https://github.com/dsscheib/agent-guidance.git'
+
+
 def apply(target, spec):
     for path, content in spec.get('files', {}).items():
         (target / path).parent.mkdir(parents=True, exist_ok=True)
@@ -86,6 +89,9 @@ def build(scenario, target):
             # A harness snapshot has no history; the harness names the repository that has it.
             history = os.environ.get('SCENARIO_HISTORY_REPO') or str(root)
             for cmd, cwd in ((['git', 'clone', '-q', '--shared', history, str(old)], root),
+                             # The installer records the clone's origin as the source; a local path would lead agents
+                             # into this repository, which holds the scenarios' expected answers.
+                             (['git', 'remote', 'set-url', 'origin', PUBLIC_REPO], old),
                              (['git', '-c', 'advice.detachedHead=false', 'checkout', '-q', ref], old)):
                 result = run(cmd, cwd)
                 if result.returncode:
@@ -128,6 +134,11 @@ def build(scenario, target):
     apply(target, scenario.get('dirty', {}))
 
     problems = []
+    record = target / 'PACKAGE_MANIFEST.json'
+    if install and record.is_file():
+        source = json.loads(record.read_text()).get('installed_from', {}).get('repository', '')
+        if source.startswith('/') or str(root) in record.read_text():
+            problems.append(f'installed manifest names a local path as its source: {source}')
     configured = scenario.get('configured', True)
     if not install:
         stray = [p for p in ('check_package.py', 'PACKAGE_MANIFEST.json', 'PROJECT_PROFILE.md') if (target / p).exists()]
