@@ -271,6 +271,11 @@ Suggested sequence:
    failures, and records how each run reported verification; the core verdict is unchanged. Across the stored
    results, 8 runs are environment blocks (seven Codex S18 runs on the read-only adapter, one Antigravity S12 run with
    a read-only `.git`), and most failures without guidance are policy failures.
+   **V4-13 done 2026-11-06:** `score.py --skills` reports whether each run's expected procedure arrived as a skill, as
+   a document or not at all. On the 3.0 final suite with the final guidance (516 runs): skill 200, document 253, not
+   used 63, with pass rates of 94%, 92% and 90%. GPT-6.1 Sol in Codex loaded the skill in 84 of 86 runs; Gemini 3.8
+   Flash read the document in 67 and Claude Haiku skipped the procedure in 30. The pass-rate gap is small and not
+   controlled, so it does not show that skills help; it gives V4-12, V4-14 and V4-15 a baseline.
 
 Refresh planning documents (V4-7) alongside. Define acceptance criteria and preserve baseline evidence before
 tuning each change. Full runs spend monthly provider quotas (Copilot's ran out on 2026-11-04), so the owner
