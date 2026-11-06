@@ -1,6 +1,6 @@
 #!/bin/sh
 # The 2026-11-04 final suite (maintainer/EVALUATION.md), repository-only. Usage: final_suite.sh OUT_DIR
-# Each provider runs its configurations one after another, in the order no guidance, old guidance (62d3756), final
+# Each provider runs its configurations one after another, in the order no guidance, old guidance (62d3756, tagged 2.0), final
 # guidance, so a quota stop leaves complete comparisons behind it; providers run in parallel because their quotas are
 # separate. run.py skips finished runs, so rerunning this script resumes where it stopped. It tests the guidance in
 # this checkout, which must be clean because run.py snapshots it (EVALUATION.md says how it differs from the 2026-11-04 run).

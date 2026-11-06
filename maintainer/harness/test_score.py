@@ -113,6 +113,15 @@ class GuidanceOnlyChecks(unittest.TestCase):
         self.assertFalse(score.has_proposed_exclusions({'installed': False}))
         self.assertTrue(score.has_proposed_exclusions({'guidance': '/x/snapshots/85a4035-agent'}))
 
+    def test_proposed_exclusions_read_from_the_release_shown(self):
+        # An old-* view of 3.0.1 has the convention; one of 2.0 does not.
+        with tempfile.TemporaryDirectory() as tmp:
+            for tag, expected in (('3.0.1', True), ('2.0', False)):
+                view = Path(tmp) / f'old-{tag}-agent'
+                (view / 'docs').mkdir(parents=True)
+                (view / 'docs' / 'TESTING_SPEC.md').write_text(score.run.git(score.run.REPO, 'show', f'{tag}:docs/TESTING_SPEC.md'))
+                self.assertEqual(score.has_proposed_exclusions({'guidance': str(view)}), expected, tag)
+
 
 class Register(unittest.TestCase):
     """--register: how replies read. Quoted status lines are required by the guidance, so they never count as jargon."""
@@ -290,11 +299,11 @@ class AgentView(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             view = score.run.agent_view(score.run.snapshot(Path(tmp)))
             refs = json.loads(score.run.baselines(view))
-            self.assertIn('62d3756', refs)
+            self.assertIn('2.0', refs)
             self.assertEqual(score.run.git(view, 'rev-list', '--count', 'HEAD'), str(len(refs) + 1))
             self.assertNotIn('maintainer/', score.run.git(view, 'log', '--all', '--name-only', '--format='))
-            self.assertEqual(score.run.git(view, 'show', f"{refs['62d3756']}:check_package.py"),
-                             score.run.git(score.run.REPO, 'show', '62d3756:check_package.py'))
+            self.assertEqual(score.run.git(view, 'show', f"{refs['2.0']}:check_package.py"),
+                             score.run.git(score.run.REPO, 'show', '2.0:check_package.py'))
 
 
 

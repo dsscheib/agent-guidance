@@ -841,7 +841,7 @@
         "review-env",
         "legacy-bloat"
       ],
-      "install_ref": "62d3756",
+      "install_ref": "2.0",
       "configured": null,
       "tests": "pass",
       "prompt": "Upgrade the agent guidance in this project to the version at {guidance}.",

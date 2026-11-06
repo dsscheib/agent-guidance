@@ -123,7 +123,7 @@ def agent_view(snap):
         clear_tree(tmp)
         archive = subprocess.run(['git', '-C', str(REPO), 'archive', ref], capture_output=True, check=True).stdout
         subprocess.run(['tar', '-x', '-C', str(tmp), '--exclude=maintainer'], input=archive, check=True)
-        when = git(REPO, 'show', '-s', '--format=%cI', ref)
+        when = git(REPO, 'show', '-s', '--format=%cI', f'{ref}^{{commit}}')
         env = {**os.environ, 'GIT_AUTHOR_DATE': when, 'GIT_COMMITTER_DATE': when}
         for args in (['add', '-A'], ['commit', '-q', '-m', f'Release {ref} for agents, without maintainer/']):
             r = subprocess.run(['git', '-C', str(tmp), *GIT_ID, *args], capture_output=True, text=True, env=env)
@@ -402,7 +402,7 @@ def main():
     src = ap.add_mutually_exclusive_group()
     src.add_argument('--guidance', type=Path, help='existing committed guidance snapshot to test')
     src.add_argument('--no-install', action='store_true', help='no-guidance baseline')
-    src.add_argument('--old-guidance', metavar='REF', help='install this earlier release (for example 62d3756) into the current fixtures')
+    src.add_argument('--old-guidance', metavar='REF', help='install this earlier release (a tag such as 2.0 or 3.0.1) into the current fixtures')
     ap.add_argument('--copilot-user-hooks', action='store_true',
                     help="give Copilot the guidance stop hook as a user-level hook (~/.copilot/hooks), inside the sandbox only")
     opts = ap.parse_args()
