@@ -13,6 +13,7 @@ Record the commit, the source and artifact identities, the build configuration, 
 Start from the tier column in [PROJECT_PROFILE.md](../../PROJECT_PROFILE.md) and the adopted gates in [VERIFICATION_MATRIX.md](../VERIFICATION_MATRIX.md). Every required gate appears exactly once. Exclusions need a recorded owner decision, and missing tooling is a gap, not an exclusion.
 
 ## 3. Collect evidence
+- Run the [release review](release-review.md) on the candidate first, unless the owner skips it for this release. Each confirmed defect it reports is a blocker with an OPEN_WORK ID; each plausible concern and missing piece of evidence is either resolved or recorded.
 - Run `python3 check_package.py --verify release --receipt <file>` to run every Development and Release gate in the command inventory and save the results as evidence. Run any other automated gate the tier requires with its recorded command. Keep the raw output, exit codes, dates and environment.
 - Keep manual checks, target-host qualification and authorization separate from local results. A running or partial check is "in progress", not passed.
 - For the Production service tier, run the qualification protocol and the aggregate verifier from the production operations profile.

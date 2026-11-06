@@ -75,5 +75,6 @@ Procedures are in `docs/procedures/`, and are also skills for agents that suppor
 | [bootstrap-project](docs/procedures/bootstrap-project.md) | Starting a project or filling an incomplete PROJECT_PROFILE |
 | [final-audit](docs/procedures/final-audit.md) | Finishing any change, before reporting completion |
 | [release-readiness](docs/procedures/release-readiness.md) | Preparing or evaluating a release candidate |
+| [release-review](docs/procedures/release-review.md) | A final, in-depth audit of a release candidate, before release readiness |
 | [upgrade-guidance](docs/procedures/upgrade-guidance.md) | Adopting this guidance in an existing project, or updating an earlier adoption |
 <!-- end generated: procedures -->
