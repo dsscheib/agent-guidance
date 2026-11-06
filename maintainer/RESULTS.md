@@ -2540,3 +2540,9 @@ Repository-only log of agent scenario runs from [SCENARIOS.md](SCENARIOS.md). Ap
 | 2026-11-05 | S15 | agy | 1.4.12 gemini-4-argon-medium | 7becd76-agent | 2 | pass | Auto-scored; V4-11 Argon rerun (DOC-062) |
 | 2026-11-05 | S17 | agy | 1.4.12 gemini-4-argon-medium | 7becd76-agent | 1 | pass | Auto-scored; V4-11 Argon rerun (DOC-062) |
 | 2026-11-05 | S17 | agy | 1.4.12 gemini-4-argon-medium | 7becd76-agent | 2 | pass | Auto-scored; V4-11 Argon rerun (DOC-062) |
+| 2026-11-06 | S18 | agy | 1.4.12 gemini-4-argon-medium | 73f21e0-agent | 1 | pass | Auto-scored; V4-2 upgrade-plan check (DOC-066); used --plan-upgrade and --check-upgrade, nothing changed while planning, both local rules kept |
+| 2026-11-06 | S18 | agy | 1.4.12 gemini-4-argon-medium | 73f21e0-agent | 2 | pass | Auto-scored; V4-2 upgrade-plan check (DOC-066); used --plan-upgrade and --check-upgrade, nothing changed while planning, both local rules kept |
+| 2026-11-05 | S18 | agy | 1.4.12 gemini-4-argon-medium | 226d9f0-agent | 3 | pass | Auto-scored; V4-2 upgrade-plan check (DOC-066); built before DOC-065; used --plan-upgrade and --check-upgrade, nothing changed while planning, both local rules kept |
+| 2026-11-06 | S18 | agy | 1.4.12 gemini-3.8-flash-medium | 73f21e0-agent | 1 | pass | Auto-scored; V4-2 upgrade-plan check (DOC-066); used --plan-upgrade and --check-upgrade, nothing changed while planning, both local rules kept |
+| 2026-11-06 | S18 | agy | 1.4.12 gemini-3.8-flash-medium | 73f21e0-agent | 2 | pass | Auto-scored; V4-2 upgrade-plan check (DOC-066); used --plan-upgrade and --check-upgrade, nothing changed while planning, both local rules kept |
+| 2026-11-05 | S18 | agy | 1.4.12 gemini-3.8-flash-medium | 226d9f0-agent | 3 | pass | Auto-scored; V4-2 upgrade-plan check (DOC-066); built before DOC-065; used --plan-upgrade and --check-upgrade, nothing changed while planning, both local rules kept |
