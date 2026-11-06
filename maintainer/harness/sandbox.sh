@@ -6,6 +6,9 @@
 #   - SB_LOGDIR, where the agent CLI may write transcripts,
 #   - each agent CLI's own config and session folders, so it can authenticate and resume sessions.
 # SB_GUIDANCE (the guidance snapshot that S11 adopts from) is bound read-only, and so is SB_COPILOT_HOOKS if set.
+# SB_HIDE lists folders replaced by an empty tmpfs (space-separated): this repository with the scenarios' expected
+# answers, the private holdout set and stored results. The fixture, SB_LOGDIR and SB_GUIDANCE are mounted back
+# inside them afterwards, so a run sees only its own files.
 # /tmp is a private tmpfs, so agents cannot see other runs. ~/.ssh is hidden and SSH_AUTH_SOCK unset, so no run can
 # reach a real server over SSH, even from a copy of a project whose scripts deploy that way.
 # The environment is cleared except for KEEP_ENV: agents run `env`, and a token in the caller's environment would land
@@ -30,15 +33,20 @@ for v in $KEEP_ENV; do
   eval "val=\${$v-}"
   [ -n "$val" ] && envs="$envs --setenv $v $val"  # Assumes values without spaces, as these are.
 done
+hides=""
+for p in ${SB_HIDE:-}; do
+  [ -d "$p" ] && hides="$hides --tmpfs $p"
+done
 run_dir="/run/user/$(id -u)"
 # A read-only mount still lets processes connect to the sockets in it, so without SB_KEYRING the folder is hidden.
 if [ -d "$run_dir" ]; then
   if [ "${SB_KEYRING:-}" = 1 ]; then binds="$binds --bind $run_dir $run_dir"; else binds="$binds --tmpfs $run_dir"; fi
 fi
-# shellcheck disable=SC2086  # $binds is a list of option words built above.
+# shellcheck disable=SC2086  # $binds and $hides are lists of option words built above.
 exec bwrap --die-with-parent \
   --ro-bind / / --dev /dev --proc /proc \
   --tmpfs /tmp \
+  $hides \
   --bind "$fix" "$fix" \
   --bind "$SB_LOGDIR" "$SB_LOGDIR" \
   --ro-bind "$SB_GUIDANCE" "$SB_GUIDANCE" \

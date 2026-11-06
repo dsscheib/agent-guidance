@@ -145,8 +145,9 @@ def agent_view(snap):
     return dest
 
 
-def scenarios(guidance, shown=None):
-    data = json.loads((guidance / 'maintainer' / 'scenarios.json').read_text())['scenarios']
+def scenarios(guidance, shown=None, catalog=None):
+    """The scenarios to run: the snapshot's catalog, or another one (the private holdout set) given as catalog."""
+    data = json.loads((catalog or guidance / 'maintainer' / 'scenarios.json').read_text())['scenarios']
     for s in data:
         sub = lambda x: x.replace('{guidance}', str(shown or guidance))
         s['prompts'] = [sub(s['prompt'])] + [sub(f) for f in s.get('followups', [])]
@@ -347,12 +348,28 @@ def run_one(opts, agent, s, n):
     builder = (REPO if opts.no_install else opts.guidance) / 'maintainer' / 'run_scenario.py'
     # Snapshots have no history, so scenarios that install an earlier release (install_ref) take it from this repository.
     old = {'SCENARIO_OLD_GUIDANCE': opts.old_guidance} if opts.old_guidance else {}
-    b = subprocess.run([sys.executable, str(builder), sid, str(fx)] + (['--no-install'] if opts.no_install else []),
+    catalog = ['--scenarios', str(opts.catalog)] if opts.catalog else []
+    b = subprocess.run([sys.executable, str(builder), *catalog, sid, str(fx)] + (['--no-install'] if opts.no_install else []),
                        capture_output=True, text=True, env={**os.environ, 'SCENARIO_HISTORY_REPO': str(REPO), 'SCENARIO_BASELINES': baselines(opts.shown), **old})
     if b.returncode:
         log(f'BUILD FAIL {label} {sid} r{n}: {(b.stdout + b.stderr).strip()[-300:]}')
         return
-    env = {**os.environ, 'SB_LOGDIR': str(logdir), 'SB_GUIDANCE': str(opts.shown)}
+    env = {**os.environ, 'SB_LOGDIR': str(logdir), 'SB_GUIDANCE': str(opts.shown), 'SB_HIDE': ' '.join(map(str, opts.hide))}
+    if opts.dry_run:
+        # No agent: from inside the sandbox, each hidden folder may show only the folders leading to this run's own
+        # mounts (fixture, logs, guidance view), and the fixture must be writable.
+        checks = []
+        for h in opts.hide:
+            allowed = {p.relative_to(h).parts[0] for p in (fx, logdir, opts.shown) if p.is_relative_to(h) and p != h}
+            keep = ' '.join(f'-e {a}' for a in sorted(allowed)) or '-e /'
+            checks.append(f'extra=$(ls -A {h} 2>/dev/null | grep -v -x {keep}); [ -z "$extra" ] || echo "VISIBLE in {h}: $extra"')
+        script = '; '.join(checks + ['touch .sandbox-probe && rm .sandbox-probe || echo "fixture not writable"'])
+        r = subprocess.run([str(SANDBOX), str(fx), 'sh', '-c', script], capture_output=True, text=True, env=env)
+        problems = [l for l in (r.stdout + r.stderr).splitlines() if l.strip()]
+        log(f"DRY RUN {label} {sid} r{n}: " + ('built; hidden folders empty apart from this run, fixture writable' if not problems
+                                                else 'PROBLEM ' + '; '.join(problems)))
+        shutil.rmtree(logdir, ignore_errors=True)
+        return
     if cli_name(agent) in ('copilot', 'agy'):
         env['SB_KEYRING'] = '1'  # both sign in from the keyring; Copilot's commands can read it too (finding 53)
     if cli_name(agent) == 'copilot':
@@ -388,7 +405,7 @@ def run_one(opts, agent, s, n):
             break
     ev = {'agent': label, 'agent_cli': agent, 'cli_version': cli_version(agent), 'date': time.strftime('%Y-%m-%d'), 'guidance': str(opts.shown), 'guidance_commit': git(opts.shown, 'rev-parse', 'HEAD'), 'guidance_snapshot': str(opts.guidance),
           'installed': not opts.no_install, 'scenario': sid, 'run': n, 'session': session, 'start': start, 'steps': steps,
-          'fixture': str(fx), 'evidence': evidence(fx)}
+          'fixture': str(fx), 'catalog': str(opts.catalog) if opts.catalog else None, 'evidence': evidence(fx)}
     (logdir / 'evidence.json').write_text(json.dumps(ev, indent=1))
 
 
@@ -404,6 +421,11 @@ def main():
     src.add_argument('--guidance', type=Path, help='existing committed guidance snapshot to test')
     src.add_argument('--no-install', action='store_true', help='no-guidance baseline')
     src.add_argument('--old-guidance', metavar='REF', help='install this earlier release (a tag such as 2.0 or 3.0.1) into the current fixtures')
+    ap.add_argument('--catalog', type=Path, help='scenario catalog to run instead of the snapshot\'s, such as the private holdout '
+                    'set; its fixtures folder sits beside it, and the folder is hidden from agents')
+    ap.add_argument('--hide', type=Path, action='append', default=[],
+                    help='another folder to hide from agents (repeatable); this repository, ~/holdout, ~/scenario-runs and --out always are')
+    ap.add_argument('--dry-run', action='store_true', help='build each fixture and check the sandbox hides what it should; run no agent')
     ap.add_argument('--copilot-user-hooks', action='store_true',
                     help="give Copilot the guidance stop hook as a user-level hook (~/.copilot/hooks), inside the sandbox only")
     opts = ap.parse_args()
@@ -416,6 +438,12 @@ def main():
     if not shutil.which('bwrap'):
         ap.error('bubblewrap (bwrap) is required')
     opts.out.mkdir(parents=True, exist_ok=True)
+    # Agents must not read the scenarios' expected answers, the holdout set, or other runs' fixtures and results.
+    home = Path.home()
+    catalog_dir = [opts.catalog.resolve().parent] if opts.catalog else []
+    opts.catalog = opts.catalog.resolve() if opts.catalog else None
+    opts.hide = sorted({p.resolve() for p in [REPO, home / 'holdout', home / 'scenario-runs', opts.out, *catalog_dir, *opts.hide]
+                        if p.resolve() != home})
     opts.guidance = opts.guidance.resolve() if opts.guidance else snapshot(opts.out)
     if git(opts.guidance, 'status', '--porcelain'):
         ap.error(f'guidance snapshot is not clean: {opts.guidance}')
@@ -431,8 +459,9 @@ def main():
     opts.shown = agent_view(old_release(opts.out, opts.old_guidance) if opts.old_guidance else opts.guidance)
     GUIDANCE_FOR_COPILOT = opts.shown
     log(f'guidance: {opts.guidance} ({"not installed" if opts.no_install else git(opts.guidance, "rev-parse", "--short", "HEAD")})')
-    all_s = scenarios(opts.guidance, opts.shown)
-    ids = opts.scenarios.split(',') if opts.scenarios else sorted(all_s, key=lambda x: (x != 'S12', int(re.match(r'S(\d+)', x).group(1)), x))
+    all_s = scenarios(opts.guidance, opts.shown, opts.catalog)
+    number = lambda x: int(m.group(1)) if (m := re.match(r'[A-Z]+(\d+)', x)) else 0
+    ids = opts.scenarios.split(',') if opts.scenarios else sorted(all_s, key=lambda x: (x != 'S12', number(x), x))
     if opts.no_install:
         ids = [i for i in ids if i not in NO_INSTALL_SKIP]
     if opts.old_guidance:

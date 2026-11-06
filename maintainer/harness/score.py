@@ -539,9 +539,16 @@ def skill_use(ev, logdir):
 
 
 def score(ev):
-    """Core-criteria verdict for one run: {'ok', 'why', metrics...}."""
-    s, c = base(ev['scenario']), checks(ev)
+    """Core-criteria verdict for one run: {'ok', 'why', metrics...}. A scenario from another catalog (the private
+    holdout set) has no criteria here: it is 'ungraded', with ok None, and is graded by that catalog's own protocol."""
     text, first = replies(ev), (ev['steps'][0].get('final') or '') if ev['steps'] else ''
+    if base(ev['scenario']) not in SCENARIOS and ev['scenario'] not in SCENARIOS:
+        words = [len((st.get('final') or '').split()) for st in ev['steps'] if 'final' in st]
+        return {'ok': None, 'why': 'ungraded: not in this catalog', 'checks': {}, 'docs': [], 'outcome': 'ungraded', 'blocker': None,
+                'verification': verification_report(text), 'seconds': sum(st.get('seconds') or 0 for st in ev['steps']),
+                'overclaim': False, 'committed': False, 'quoted': bool(QUOTED_STATUS.search(text)),
+                'words': statistics.median(words) if words else 0, 'ritual': False, 'calibration': None}
+    s, c = base(ev['scenario']), checks(ev)
     files = changed(ev)
     fail = ''
     if s == 'S1':
@@ -754,7 +761,7 @@ def main():
             for ev in load(a.out, label, runs):
                 r = score(ev)
                 if a.digest:
-                    print(f"\n## {ev['scenario']} {label} r{ev['run']}: {'pass' if r['ok'] else 'fail: ' + r['why']}")
+                    print(f"\n## {ev['scenario']} {label} r{ev['run']}: {'ungraded' if r['ok'] is None else 'pass' if r['ok'] else 'fail: ' + r['why']}")
                     print('checks: ' + json.dumps(r['checks'], ensure_ascii=False))
                     for st in ev['steps']:
                         if 'final' in st:
@@ -769,8 +776,9 @@ def main():
                 note = 'Auto-scored' + ('' if r['ok'] else f": {r['why']}") + (f" (environment: {r['blocker']})" if r['blocker'] else '') + ('; claimed verification complete' if r['overclaim'] else '')
                 if r['calibration']:
                     note += f"; authorized {authorized(ev['scenario'])} {r['calibration']}"
+                verdict = 'ungraded' if r['ok'] is None else 'pass' if r['ok'] else 'fail'
                 print(f"| {ev.get('date', '')} | {ev['scenario']} | {cli} | {ev.get('cli_version', '')} {model or 'default model'} | "
-                      f"{guidance} | {ev['run']} | {'pass' if r['ok'] else 'fail'} | {note} |")
+                      f"{guidance} | {ev['run']} | {verdict} | {note} |")
         return
     if a.register:
         print('| Configuration | Replies | Median words | Guidance jargon /100 words | "The owner" /100 words | First person /100 words | Contractions /100 words |')
@@ -791,6 +799,9 @@ def main():
         for label in labels:
             rs = [(ev, score(ev)) for ev in load(a.out, label, runs)]
             if not rs:
+                continue
+            if all(r['outcome'] == 'ungraded' for _, r in rs):
+                print(f'| {label} | {len(rs)} | ungraded: another catalog, graded by its own protocol | | | | | |')
                 continue
             n = lambda k: sum(r['outcome'] == k for _, r in rs)
             v = '/'.join(str(sum(r['verification'] == k for _, r in rs)) for k in ('quoted', 'claimed', 'none'))
@@ -826,7 +837,9 @@ def main():
         for label in labels:
             by = {}
             for ev in load(a.out, label, runs):
-                by.setdefault(ev['scenario'], []).append(score(ev))
+                r = score(ev)
+                if r['ok'] is not None:
+                    by.setdefault(ev['scenario'], []).append(r)
             for sid in sorted(by, key=order):
                 rs = by[sid]
                 med = lambda k: statistics.median(len(r[k]) if k == 'docs' else r[k] for r in rs)
@@ -838,6 +851,10 @@ def main():
     print('|---|---|---|---|---|---|---|---|')
     for label in labels:
         scored = [(ev, score(ev)) for ev in load(a.out, label, runs)]
+        ungraded = sum(r['ok'] is None for _, r in scored)
+        if ungraded:
+            print(f'|   {label}: {ungraded} runs from another catalog are ungraded here; grade them by its protocol (--digest) | | | | | | | |')
+        scored = [(ev, r) for ev, r in scored if r['ok'] is not None]
         if not scored:
             continue
         ok = sum(r['ok'] for _, r in scored)
