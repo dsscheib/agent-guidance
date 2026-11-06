@@ -37,7 +37,7 @@ Give a recommendation for each question. Continue independent setup while waitin
 - Replace each "Proposed" marker with "Adopted `<date>` by `<owner>`" once confirmed.
 - Never fabricate an owner or an approval. If a decision is still open, leave the placeholder and add a decision-needed entry to [OPEN_WORK.md](../OPEN_WORK.md).
 - When the owner authorizes a stack profile, record it as adopted. Set the default gate applicability from the tier in the command inventory, and in [VERIFICATION_MATRIX.md](../VERIFICATION_MATRIX.md) where the project keeps one, and record any deviations with the owner's decision.
-- Record excluded guides and the rationale in PROJECT_PROFILE.md. Delete those guides from the project only if the owner agrees.
+- Record excluded guides and the rationale in PROJECT_PROFILE.md's Excluded guidance row, naming each file, or a folder ending in `/`, in backticks (for example `docs/UI_PATTERNS.md`), so `check_package.py` recognizes it. Delete those guides from the project only if the owner agrees.
 - Align the tool guardrails in [AGENT_TOOLS.md](../AGENT_TOOLS.md) with the adopted git policy.
 - If README.md is still the guidance package's README, propose replacing it with the project's own README that keeps a pointer to AGENTS.md.
 

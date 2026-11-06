@@ -260,6 +260,9 @@ Suggested sequence:
    `--sync-adapters` and `--plan-upgrade` handle only their adapters and guardrails, and installs without the field
    keep every tool. The tools live in the installed manifest rather than a profile field, so filled-in profiles and
    placeholder counts are unchanged.
+   **V4-9 done 2026-11-06:** absent packaged files named in backticks in the profile's Excluded guidance row (a path
+   ending in `/` covers a folder) count as not installed: no absent note and no broken-link failure. Unrecorded
+   absences are still listed, and a required module stays required. Feeder's existing row already names all 7.
 4. Separate outcomes (V4-3), then run the holdout set and the overhead measures (V4-4, V4-6).
 
 Refresh planning documents (V4-7) alongside. Define acceptance criteria and preserve baseline evidence before
