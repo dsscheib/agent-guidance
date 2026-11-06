@@ -10,7 +10,7 @@ Kind: Procedure. Goal: the project gets the upstream changes that help it, mappe
 
 | Situation | Path |
 |---|---|
-| Empty or new repository with no agent instructions | Not this procedure. Run `python3 check_package.py --install DIR`, then [bootstrap-project](bootstrap-project.md) |
+| Empty or new repository with no agent instructions | Not this procedure. Run `python3 check_package.py --install DIR --tier T` (without `--tier` it lists the tiers), then [bootstrap-project](bootstrap-project.md) |
 | Existing project that never adopted this package | **First adoption:** this procedure, treating the whole package as the upstream change set |
 | Project that adopted an earlier version | **Upgrade:** this procedure, from the adopted commit |
 

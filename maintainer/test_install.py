@@ -329,15 +329,47 @@ def case_upgrade(tmp):
     expect(passed, 'upgraded project check failed:\n    ' + out[:600])
 
 
+def raw_install(target, *args):
+    return subprocess.run([sys.executable, '-B', str(root / 'check_package.py'), '--install', str(target), *args],
+                          capture_output=True, text=True)
+
+
 def case_default(tmp):
-    """No tier installs every module except enterprise, which is what 2.x installed."""
+    """A fresh install without a tier copies nothing and explains the choice; --all is the 2.x set (every module
+    except enterprise); --dry-run writes nothing; a rerun without a tier keeps the project's modules."""
     target = tmp / 'default'
     target.mkdir()
-    install(target)
+    r = raw_install(target)
+    expect(r.returncode != 0 and 'Choose a tier; nothing was installed.' in r.stdout + r.stderr and '--all' in r.stdout + r.stderr,
+           'an install without a tier did not stop and explain: ' + (r.stdout + r.stderr)[-300:])
+    expect(not any(target.iterdir()), 'an install without a tier copied files: ' + ', '.join(p.name for p in target.iterdir()))
+    r = raw_install(target, '--all', '--tier', 'internal')
+    expect(r.returncode != 0 and not any(target.iterdir()), '--all with --tier was accepted')
+
+    preview = tmp / 'preview'
+    preview.mkdir()
+    r = raw_install(preview, '--tier', 'internal', '--features', 'ui', '--dry-run')
+    out = r.stdout + r.stderr
+    expect(r.returncode == 0 and 'Would copy' in out and 'AGENTS.md' in out and 'docs/UX_DESIGN_SPEC.md' in out
+           and 'docs/ENTERPRISE.md' not in out, '--dry-run did not list the files it would copy: ' + out[-300:])
+    expect(not any(preview.iterdir()), '--dry-run wrote files')
+
+    everything = tmp / 'everything'
+    everything.mkdir()
+    install(everything, '--all')
     wanted = set(module_of.values()) - {'enterprise'}
-    expect(modules_present(target) == wanted, f'default install modules {sorted(modules_present(target))}, expected {sorted(wanted)}')
-    passed, out = check(target)
-    expect(passed, 'default install check failed:\n    ' + out[:600])
+    expect(modules_present(everything) == wanted, f'--all modules {sorted(modules_present(everything))}, expected {sorted(wanted)}')
+    passed, out = check(everything)
+    expect(passed, '--all install check failed:\n    ' + out[:600])
+
+    small = tmp / 'rerun'
+    small.mkdir()
+    install(small, '--tier', 'prototype')
+    before = modules_present(small)
+    install(small)
+    expect(modules_present(small) == before == {'core'}, f'a rerun without a tier changed the modules: {sorted(modules_present(small))}')
+    install(small, '--features', 'ui')
+    expect(modules_present(small) == {'core', 'ui'}, f'a rerun adding ui gave {sorted(modules_present(small))}')
 
 
 def case_missing_module(tmp):
@@ -386,7 +418,7 @@ def main():
     if problems:
         print('\n'.join(problems))
         sys.exit(1)
-    print('Install tests OK: tiers, design policy, generated tables, enterprise rows, proposed exclusions, dependency files, rename scope, documentation mode, Copilot stop hook, features, upgrade, default, missing module and broken link.')
+    print('Install tests OK: tiers, design policy, generated tables, enterprise rows, proposed exclusions, dependency files, rename scope, documentation mode, Copilot stop hook, features, upgrade, tier required (dry run, --all, rerun), missing module and broken link.')
 
 
 if __name__ == '__main__':

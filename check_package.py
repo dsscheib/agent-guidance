@@ -162,15 +162,31 @@ def modules_in_checkout(manifest, template):
     return set(record['modules']) if record else set(manifest.get('modules', {})) or {'core'}
 
 
-def resolve_modules(manifest, tier, features):
-    """Modules for a tier plus features. No tier and no features means every module except enterprise, which is
-    what 2.x installed; Enterprise controls are only added by choosing that tier."""
-    if not tier and not features:
-        return sorted(m for m in manifest['modules'] if m != 'enterprise')
+# Who each tier is for, in a few words; the tier table in PROJECT_PROFILE.md is the definition.
+TIER_AUDIENCE = {'prototype': 'small tools and experiments', 'internal': 'trusted users, data that matters',
+                 'production': 'external users or uptime commitments', 'enterprise': 'roles, traceability, supply chain'}
+
+
+def tier_choice(manifest, target):
+    """The message when a fresh install names no tier: nothing is copied, and the tiers and the rerun command are shown."""
+    lines, previous = ['Choose a tier; nothing was installed.'], set()
+    for tier, mods in manifest['tiers'].items():
+        added = [m for m in mods if m not in previous] if previous else mods
+        lines.append(f"  {tier:<11} {'+ ' if previous else ''}{', '.join(added)}: {TIER_AUDIENCE.get(tier, '')}")
+        previous = set(mods)
+    lines += [f"Features: {', '.join(manifest['features'])}",
+              f'Example: --install {target} --tier internal --features ui',
+              'Preview first with --dry-run. The 2.x set (every module except Enterprise): --all']
+    return '\n'.join(lines)
+
+
+def resolve_modules(manifest, tier, features, everything=False):
+    """Modules for a tier plus features, or with everything=True the 2.x set: every module except enterprise.
+    Enterprise controls are only added by choosing that tier."""
     unknown = [f for f in features if f not in manifest['features']]
     if unknown:
         sys.exit(f"Unknown feature(s): {', '.join(unknown)}; choose from {', '.join(manifest['features'])}")
-    modules = set(manifest['tiers'][tier or 'prototype'])
+    modules = set(m for m in manifest['modules'] if m != 'enterprise') if everything else set(manifest['tiers'][tier]) if tier else set()
     for feature in features:
         modules.update(manifest['features'][feature])
     return sorted(modules)
@@ -222,18 +238,29 @@ def enterprise_notes():
     return notes
 
 
-def install(manifest, target, force, tier=None, features=()):
-    """Copy the core and the modules for a tier and features. Rerunning on a project adds modules; it never
-    overwrites existing files unless --force is given."""
+def install(manifest, target, force, tier=None, features=(), everything=False, dry_run=False):
+    """Copy the core and the modules for a tier and features. A fresh install must name a tier, or --all for the 2.x
+    set. Rerunning on a project keeps its recorded modules and adds only what is named; it never overwrites existing
+    files unless --force is given. dry_run lists what would be copied and writes nothing."""
     target = Path(target).resolve()
     if not target.is_dir() or target == root:
         sys.exit(f'Install target must be an existing directory other than this package: {target}')
-    modules = resolve_modules(manifest, tier, list(features))
     previous = {}
     if (target / manifest_path.name).is_file():
         previous = json.loads((target / manifest_path.name).read_text()).get('installed', {})
-        modules = sorted(set(modules) | set(previous.get('modules', [])))
+    if not (tier or everything or previous.get('modules')):
+        sys.exit(tier_choice(manifest, target))
+    modules = sorted(set(resolve_modules(manifest, tier, list(features), everything)) | set(previous.get('modules', [])))
     wanted = [e['path'] for e in manifest['files'] if e.get('module', 'core') in modules]
+    if dry_run:
+        new = [p for p in wanted + [manifest_path.name] if force or not (target / p).exists()]
+        print(f"Would install modules: {', '.join(modules)}" + (f' (tier {tier or previous.get("tier")})' if tier or previous.get('tier') else ''))
+        print(f'Would copy {len(new)} files into {target}' + (':\n  ' + '\n  '.join(new) if new else '.'))
+        kept = len(wanted) + 1 - len(new)
+        if kept:
+            print(f'Would skip {kept} existing files.')
+        print('Nothing was written (--dry-run).')
+        return
     copied, skipped = [], []
     for path in wanted + [manifest_path.name]:
         dest = target / path
@@ -617,6 +644,8 @@ def main():
     parser.add_argument('--tier', choices=['prototype', 'internal', 'production', 'enterprise'],
                         help='with --install, install the core plus the modules this tier requires')
     parser.add_argument('--features', default='', help='with --install, comma-separated features to add: ui, data, stack-go, stack-rust')
+    parser.add_argument('--all', action='store_true', help='with --install, the 2.x set instead of a tier: every module except Enterprise')
+    parser.add_argument('--dry-run', action='store_true', help='with --install, list the modules and files it would copy and write nothing')
     parser.add_argument('--sync-adapters', action='store_true', help='regenerate skill wrappers from procedures')
     parser.add_argument('--update-manifest', action='store_true', help='refresh manifest hashes (template mode)')
     parser.add_argument('--verify', nargs='?', const='development', choices=['development', 'documentation', 'release'],
@@ -633,7 +662,9 @@ def main():
     if args.verify:
         verify(args.verify, args.timeout, args.receipt)
     if args.install:
-        install(manifest, args.install, args.force, args.tier, [f for f in args.features.split(',') if f])
+        if args.all and args.tier:
+            parser.error('--all replaces --tier; give one or the other')
+        install(manifest, args.install, args.force, args.tier, [f for f in args.features.split(',') if f], args.all, args.dry_run)
         return
     if args.sync_adapters:
         sync_adapters(manifest, errors, template)

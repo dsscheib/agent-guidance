@@ -221,8 +221,8 @@
     {
       "path": "README.md",
       "kind": "entry",
-      "bytes": 7352,
-      "sha256": "ca30b752cea710253e5559f12ea5baf86c12c97df78ea609e55dfa4d680ce289",
+      "bytes": 7847,
+      "sha256": "7701bf5f834c9032c097bbe728f5197afe1f6ac79af65d5d49e93defafa2e50a",
       "module": "core"
     },
     {
@@ -474,8 +474,8 @@
     {
       "path": "docs/procedures/upgrade-guidance.md",
       "kind": "procedure",
-      "bytes": 9535,
-      "sha256": "278932ecce7844e64d516fcb3d895128b088e1762579a108ed9478265d22caab",
+      "bytes": 9582,
+      "sha256": "6c7780f1c7c89ea841599f914d420c0a9590a2b2ff05e23746c0d0c0c95d4a3e",
       "module": "core"
     },
     {
@@ -502,8 +502,8 @@
     {
       "path": "check_package.py",
       "kind": "tooling",
-      "bytes": 40902,
-      "sha256": "81c16b2f89fe62c4113e9c92cdb39bd063c5562bf387aa9755979db531ed7ec0",
+      "bytes": 43211,
+      "sha256": "5b9c1412b7b5de16082c4a29112027dcfb3cef8abcd8a2006364d519dd60fbbd",
       "module": "core"
     },
     {

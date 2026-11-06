@@ -94,7 +94,8 @@ def build(scenario, target):
             if result.returncode:
                 raise SystemExit(result.stdout + result.stderr)
     elif install:
-        tier = ['--tier', scenario['tier']] if scenario.get('tier') else []
+        # A scenario without a tier keeps the 2.x set its fixtures were written against.
+        tier = ['--tier', scenario['tier']] if scenario.get('tier') else ['--all']
         tier += ['--features', ','.join(scenario['features'])] if scenario.get('features') else []
         result = run([sys.executable, str(root / 'check_package.py'), '--install', str(target), *tier], root)
         if result.returncode:

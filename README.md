@@ -5,17 +5,18 @@ This package gives coding agents instructions, policies, templates and procedure
 ## Start here
 **Existing project, or one that adopted an earlier version?** Do not use `--install`. Ask your agent to "upgrade the project guidance from `<path to this checkout>`". It follows the [upgrade procedure](docs/procedures/upgrade-guidance.md): it maps each upstream change onto the project's own documents, asks you the policy questions, and records the source commit. The steps below are for new repositories.
 
-1. **Install into the new repository.** Run:
+1. **Install into the new repository.** Pick the project's tier, and any features, then run:
 
    ```sh
-   python3 check_package.py --install /path/to/project
+   python3 check_package.py --install /path/to/project --tier internal --features ui --dry-run   # preview
+   python3 check_package.py --install /path/to/project --tier internal --features ui
    ```
 
-   To install only what a project needs, add its tier and features, for example `--tier internal --features ui`. Tiers are `prototype`, `internal`, `production` and `enterprise`; features are `ui`, `data`, `stack-go` and `stack-rust`. Running `--install` again with a higher tier or another feature adds the missing modules without touching existing files. Without `--tier`, every module except Enterprise is installed, as in version 2. The Enterprise tier adds `docs/ENTERPRISE.md` (roles, traceability, CI evidence, supply chain), a pull-request template and three release gates in the command inventory.
+   Tiers are `prototype`, `internal`, `production` and `enterprise` (step 3 explains them); features are `ui`, `data`, `stack-go` and `stack-rust`. Without `--tier`, nothing is installed: the command lists the tiers and what each adds. `--dry-run` lists the modules and files it would copy and writes nothing. `--all` instead of `--tier` installs every module except Enterprise, as version 2 did. Running `--install` again with a higher tier or another feature adds the missing modules without touching existing files; a rerun without `--tier` keeps the project's tier. The Enterprise tier adds `docs/ENTERPRISE.md` (roles, traceability, CI evidence, supply chain), a pull-request template and three release gates in the command inventory.
 
    This copies only the packaged files listed in `PACKAGE_MANIFEST.json`, and records this checkout's commit as `installed_from` in the copied manifest so later upgrades know where to start. It skips any file that already exists, and lists those files so you can merge them by hand. `--force` overwrites them; review the result before committing. Maintainer-only files are never copied.
 2. **Bootstrap with your agent.** Ask it to "bootstrap the project guidance". The agent follows the [bootstrap procedure](docs/procedures/bootstrap-project.md): it inspects the repository, proposes the profile values in [PROJECT_PROFILE.md](PROJECT_PROFILE.md), asks you only the decisions it cannot infer, and records what you adopt.
-3. **Choose a tier.** The tier table in PROJECT_PROFILE.md sets which gates a release needs: Prototype, Internal, Production service or Enterprise product. Each change and each review deployment runs a smaller, fixed set of development gates. A small tool does not inherit production ceremony, and a production service does not lose it.
+3. **Confirm the tier.** The tier table in PROJECT_PROFILE.md sets which gates a release needs: Prototype, Internal, Production service or Enterprise product. Each change and each review deployment runs a smaller, fixed set of development gates. A small tool does not inherit production ceremony, and a production service does not lose it.
 4. **Adopt only the profiles you need.** Server-rendered web ([Go](profiles/SERVER_RENDERED_WEB_GO.md) or [Rust](profiles/SERVER_RENDERED_WEB_RUST.md)) and [production operations](profiles/PRODUCTION_OPERATIONS.md) are optional and bind only once adopted. Exclude guides that do not apply, such as the UI guides for a non-UI project, and record the rationale.
 5. **Fill in the rest as work proceeds.** `python3 check_package.py --require code` must pass before product code is written. `--require release` must pass before the first release. Registers start empty; never copy results or approvals from another project.
 
@@ -55,7 +56,7 @@ The instructions are language- and host-neutral. No application routes, entities
 | `python3 check_package.py` | Checks internal links, generated adapters, nested instruction shims and the [document budget](docs/DOCUMENTATION.md#document-budget) (profile and status sizes, no dated profile sections, pointer-only tool instruction files). In template mode it also checks manifest hashes, unlisted files, empty registers and the maintainer scenario fixtures. In project mode it reports remaining placeholders by stage |
 | `--require code` / `--require release` | Fails if placeholders remain at that stage |
 | `--verify [release]` | Runs the command-inventory rows marked as gates and prints a computed `Verification:` status for agents to quote, names the project's dependency files when the dependency audit is a gap, and fails a rename-only change that also edits guidance documents beyond the rename; `--receipt FILE` saves it as JSON |
-| `--install DIR [--tier T] [--features F] [--force]` | Copies the core plus the modules for a tier and features into a project; rerun to add modules |
+| `--install DIR --tier T [--features F] [--dry-run] [--force]` | Copies the core plus the modules for a tier and features into a project; rerun to add modules. Without `--tier` it copies nothing and lists the tiers; `--all` instead of `--tier` gives the version 2 set (every module except Enterprise); `--dry-run` previews |
 | `--sync-adapters` | Regenerates the skill wrappers from `docs/procedures/`, and the AGENTS.md routing and procedure tables for the installed modules |
 | `--update-manifest` | Refreshes manifest hashes after a reviewed edit (template mode) |
 

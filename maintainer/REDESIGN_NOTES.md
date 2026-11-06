@@ -239,7 +239,9 @@ Suggested sequence:
    guardrail asks before `git push` and print mode declines; that is reported as is (owner decision). Other
    configurations not yet run.
 3. Minimal installation (V4-1) and upgrade planning (V4-2), with the checker fixes from the first real adoption
-   (V4-8 to V4-10). All are tooling with deterministic tests and do not wait on the benchmark.
+   (V4-8 to V4-10). All are tooling with deterministic tests and do not wait on the benchmark. **V4-1 done
+   2026-11-05:** a fresh `--install` without `--tier` copies nothing and lists the tiers (owner decision), `--dry-run`
+   previews, `--all` is the 2.x set (owner decision), and a rerun without `--tier` keeps the project's modules.
 4. Separate outcomes (V4-3), then run the holdout set and the overhead measures (V4-4, V4-6).
 
 Refresh planning documents (V4-7) alongside. Define acceptance criteria and preserve baseline evidence before
