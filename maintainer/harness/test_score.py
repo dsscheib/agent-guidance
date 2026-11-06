@@ -121,6 +121,14 @@ class Register(unittest.TestCase):
         r = score.register('Verification: incomplete (development gates: 1 passed; 1 gap: Lint)\nI added the flag.')
         self.assertEqual((r['jargon'], r['first_person'], r['words']), (0, 1, 4))
 
+    def test_paths_and_link_targets_are_not_words(self):
+        r = score.register('I added it to [cli.py](file:///runs/2026-register/fx/cli.py) and ~/runs/gate-tier/notes.')
+        self.assertEqual((r['jargon'], r['first_person']), (0, 1))
+
+    def test_owner_in_the_third_person(self):
+        self.assertEqual(score.register("The owner must decide. That is the owner's call, not your project's.")['owner'], 2)
+        self.assertEqual(score.register('You decide; it is your call.')['owner'], 0)
+
     def test_process_talk_and_plain_talk(self):
         stiff = score.register('Work item complete. Gates recorded in the command inventory; release acceptance is out of scope.')
         plain = score.register("I've added the flag, and it's in the README. You can try it now.")
