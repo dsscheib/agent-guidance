@@ -91,6 +91,19 @@ def old_release(out, ref):
     return dest
 
 
+def clear_tree(repo):
+    """Remove everything in a work tree except .git."""
+    for p in repo.iterdir():
+        if p.name != '.git':
+            shutil.rmtree(p) if p.is_dir() and not p.is_symlink() else p.unlink()
+
+
+def baselines(view):
+    """Earlier releases' commits in an agent view, keyed by the release commit they were made from."""
+    path = view / '.git' / 'scenario-baselines.json'
+    return path.read_text().strip() if path.is_file() else '{}'
+
+
 def agent_view(snap):
     """The guidance an agent is shown: the snapshot without maintainer/, so it cannot read the scenarios, the scorer
     or past results (a Copilot + Flash run read score.py and copied a fixture's open items into a real plan)."""
@@ -99,13 +112,32 @@ def agent_view(snap):
         return dest
     import tempfile
     tmp = Path(tempfile.mkdtemp(prefix='.building-', dir=snap.parent))
+    git(tmp, 'init', '-q', '-b', 'main', '--template=', check=True)
+    # Earlier releases that scenarios install (install_ref) become ancestor commits, as in a real clone, so the
+    # upgrade planner can read the installed baseline. Their maintainer/ is left out too; the fixture builder records
+    # each release under its new commit (SCENARIO_BASELINES).
+    catalog = snap / 'maintainer' / 'scenarios.json'
+    refs = sorted({s['install_ref'] for s in json.loads(catalog.read_text())['scenarios'] if s.get('install_ref')}) if catalog.is_file() else []
+    baselines = {}
+    for ref in refs:
+        clear_tree(tmp)
+        archive = subprocess.run(['git', '-C', str(REPO), 'archive', ref], capture_output=True, check=True).stdout
+        subprocess.run(['tar', '-x', '-C', str(tmp), '--exclude=maintainer'], input=archive, check=True)
+        when = git(REPO, 'show', '-s', '--format=%cI', ref)
+        env = {**os.environ, 'GIT_AUTHOR_DATE': when, 'GIT_COMMITTER_DATE': when}
+        for args in (['add', '-A'], ['commit', '-q', '-m', f'Release {ref} for agents, without maintainer/']):
+            r = subprocess.run(['git', '-C', str(tmp), *GIT_ID, *args], capture_output=True, text=True, env=env)
+            if r.returncode:
+                raise SystemExit(f"git {' '.join(args)} failed: {r.stderr.strip()}")
+        baselines[ref] = git(tmp, 'rev-parse', 'HEAD')
+    clear_tree(tmp)
     for f in git(snap, 'ls-files', '-z').split('\0'):
         if f and not f.startswith('maintainer/'):
             (tmp / f).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(snap / f, tmp / f)
-    git(tmp, 'init', '-q', '-b', 'main', '--template=', check=True)
     git(tmp, *GIT_ID, 'add', '-A', check=True)
     git(tmp, *GIT_ID, 'commit', '-q', '-m', f'Guidance for agents, from snapshot {snap.name}', check=True)
+    (tmp / '.git' / 'scenario-baselines.json').write_text(json.dumps(baselines) + '\n')
     try:
         tmp.rename(dest)
     except OSError:  # another run.py made it first
@@ -315,7 +347,7 @@ def run_one(opts, agent, s, n):
     # Snapshots have no history, so scenarios that install an earlier release (install_ref) take it from this repository.
     old = {'SCENARIO_OLD_GUIDANCE': opts.old_guidance} if opts.old_guidance else {}
     b = subprocess.run([sys.executable, str(builder), sid, str(fx)] + (['--no-install'] if opts.no_install else []),
-                       capture_output=True, text=True, env={**os.environ, 'SCENARIO_HISTORY_REPO': str(REPO), **old})
+                       capture_output=True, text=True, env={**os.environ, 'SCENARIO_HISTORY_REPO': str(REPO), 'SCENARIO_BASELINES': baselines(opts.shown), **old})
     if b.returncode:
         log(f'BUILD FAIL {label} {sid} r{n}: {(b.stdout + b.stderr).strip()[-300:]}')
         return
