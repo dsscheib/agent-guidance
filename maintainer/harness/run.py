@@ -300,7 +300,8 @@ def evidence(fx):
     check = None
     if (fx / 'check_package.py').is_file():
         r = subprocess.run([sys.executable, 'check_package.py'], cwd=fx, capture_output=True, text=True)
-        check = [l for l in (r.stdout + r.stderr).strip().splitlines() if l.startswith(('PASS', 'FAIL')) or ':' in l][:12]
+        # Keep the problem lines too (an adapter problem has no colon), so a failure can be told from an environment block.
+        check = (r.stdout + r.stderr).strip().splitlines()[:12]
     revision = fx / 'review' / 'REVISION'
     return {
         'branch': git(fx, 'branch', '--show-current'),

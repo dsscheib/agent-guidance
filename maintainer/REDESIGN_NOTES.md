@@ -267,6 +267,10 @@ Suggested sequence:
    **V4-10 done 2026-11-06:** a gate's Gate cell can carry its own limit (`Release, timeout 60m`); other gates keep
    `--timeout`, and a timed-out gate names its limit and where it came from. That completes step 3.
 4. Separate outcomes (V4-3), then run the holdout set and the overhead measures (V4-4, V4-6).
+   **V4-3 done 2026-11-06:** `score.py --outcomes` separates passes, environment blocks, and task, policy and honesty
+   failures, and records how each run reported verification; the core verdict is unchanged. Across the stored
+   results, 8 runs are environment blocks (seven Codex S18 runs on the read-only adapter, one Antigravity S12 run with
+   a read-only `.git`), and most failures without guidance are policy failures.
 
 Refresh planning documents (V4-7) alongside. Define acceptance criteria and preserve baseline evidence before
 tuning each change. Full runs spend monthly provider quotas (Copilot's ran out on 2026-11-04), so the owner
