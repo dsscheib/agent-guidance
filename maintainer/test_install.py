@@ -462,6 +462,37 @@ def case_tools(tmp):
     expect(r.returncode and 'Unknown tool' in r.stdout + r.stderr, 'an unknown tool was accepted')
 
 
+def case_recorded_exclusions(tmp):
+    """Absent files named in backticks in the profile's Excluded guidance row are not reported, links to them are
+    accepted, unrecorded absences are still listed, and a required module stays required (V4-9)."""
+    target = tmp / 'exclusions'
+    target.mkdir()
+    if install(target, '--tier', 'production').returncode:
+        return
+    profile = target / 'PROJECT_PROFILE.md'
+    for path in ('docs/ROADMAP.md', 'docs/REQUIREMENTS_REVIEW.md', 'docs/VERIFICATION_REVIEW.md',
+                 '.github/hooks/guidance.json', '.github/hooks/guidance_guardrail.py', '.github/hooks/guidance_stop.py'):
+        (target / path).unlink()
+    passed, out = check(target)
+    expect(not passed and 'docs/ROADMAP.md' in out, 'a linked file removed without a recorded exclusion should fail the link check')
+    text = profile.read_text()
+    expect('{{EXCLUDED_GUIDES_OR_NONE}}' in text, 'exclusions test: the profile lacks the Excluded guidance placeholder')
+    profile.write_text(text.replace('{{EXCLUDED_GUIDES_OR_NONE}}', 'Owner decision: no roadmap (`docs/ROADMAP.md`), '
+                                    'no requirements review (`docs/REQUIREMENTS_REVIEW.md`) and no Copilot (`.github/hooks/`)'))
+    passed, out = check(target)
+    expect(passed, 'recorded exclusions still fail the check:\n    ' + out[:600])
+    expect('5 packaged files absent as recorded' in out, 'recorded exclusions not counted:\n    ' + out[:600])
+    unrecorded = [l for l in out.splitlines() if 'not recorded as excluded' in l]
+    expect(len(unrecorded) == 1 and unrecorded[0].endswith('docs/VERIFICATION_REVIEW.md'),
+           f'only the unrecorded absence should be listed: {unrecorded}')
+    design = [p for p, m in module_of.items() if m == 'design' and (target / p).is_file()]
+    for path in design:
+        (target / path).unlink()
+    profile.write_text(profile.read_text().replace('(`docs/ROADMAP.md`)', '(' + ', '.join(f'`{p}`' for p in design + ['docs/ROADMAP.md']) + ')'))
+    passed, out = check(target)
+    expect(not passed and 'requires the design module' in out, 'a required module recorded as excluded should still fail:\n    ' + out[:600])
+
+
 def raw_install(target, *args):
     return subprocess.run([sys.executable, '-B', str(root / 'check_package.py'), '--install', str(target), *args],
                           capture_output=True, text=True)
@@ -546,12 +577,12 @@ def main():
         return
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
-        for case in (case_tiers, case_policy, case_generated_tables, case_enterprise, case_proposed_exclusion, case_dependency_files, case_rename_scope, case_documentation_mode, case_copilot_stop, case_upgrade, case_plan_upgrade, case_tools, case_default, case_missing_module, case_broken_link):
+        for case in (case_tiers, case_policy, case_generated_tables, case_enterprise, case_proposed_exclusion, case_dependency_files, case_rename_scope, case_documentation_mode, case_copilot_stop, case_upgrade, case_plan_upgrade, case_tools, case_recorded_exclusions, case_default, case_missing_module, case_broken_link):
             case(tmp)
     if problems:
         print('\n'.join(problems))
         sys.exit(1)
-    print('Install tests OK: tiers, design policy, generated tables, enterprise rows, proposed exclusions, dependency files, rename scope, documentation mode, Copilot stop hook, features, upgrade, upgrade plan and check, tools, tier required (dry run, --all, rerun), missing module and broken link.')
+    print('Install tests OK: tiers, design policy, generated tables, enterprise rows, proposed exclusions, dependency files, rename scope, documentation mode, Copilot stop hook, features, upgrade, upgrade plan and check, tools, recorded exclusions, tier required (dry run, --all, rerun), missing module and broken link.')
 
 
 if __name__ == '__main__':

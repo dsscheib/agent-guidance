@@ -250,8 +250,8 @@
     {
       "path": "README.md",
       "kind": "entry",
-      "bytes": 9006,
-      "sha256": "9eb1404f787c119cf77a1f9a92ee11dbc93f23149de09118eae46365c514de8a",
+      "bytes": 9106,
+      "sha256": "80f3001094656ae0dff984d938ca184569ac5311b5d8dede3de76b8084d33579",
       "module": "core"
     },
     {
@@ -482,8 +482,8 @@
     {
       "path": "docs/procedures/bootstrap-project.md",
       "kind": "procedure",
-      "bytes": 4306,
-      "sha256": "579a62e20cb615afec3cd4dd6d47680b9f9468f87df89452152b85c867674b38",
+      "bytes": 4462,
+      "sha256": "3657d1262f4c0d9eb1406fbe6fa3204c00136fb35d3bab6b8360ddf641644837",
       "module": "core"
     },
     {
@@ -531,8 +531,8 @@
     {
       "path": "check_package.py",
       "kind": "tooling",
-      "bytes": 61549,
-      "sha256": "070339cab18378313838af5ad6a05a7f18231e6b6d91000e9edca3b09af60dbf",
+      "bytes": 62865,
+      "sha256": "676e63c4c91ae14ed322cc8068bf62e590b521ec4320cc292c098a7de0f5b012",
       "module": "core"
     },
     {

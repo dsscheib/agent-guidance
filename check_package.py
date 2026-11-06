@@ -570,6 +570,21 @@ def check_upgrade(target, since='HEAD'):
         sys.exit(1)
 
 
+EXCLUDED_ROW = re.compile(r'^\|\s*Excluded guidance\b.*$', re.M)
+
+
+def recorded_exclusions(profile):
+    """Paths named in backticks in PROJECT_PROFILE.md's Excluded guidance row; a path ending in / covers a folder.
+    The row's prose is the owner's rationale; only the backticked paths are read."""
+    row = EXCLUDED_ROW.search(profile.read_text()) if profile.is_file() else None
+    paths = [t.strip('`').strip().removeprefix('./') for t in INLINE_CODE.findall(row.group(0))] if row else []
+    return tuple(p for p in paths if '/' in p or '.' in p)
+
+
+def excluded(path, exclusions):
+    return any(path == e or (e.endswith('/') and path.startswith(e)) for e in exclusions)
+
+
 def check_links(files, errors, uninstalled=frozenset()):
     """Fail on links that resolve nowhere. Links to packaged files of modules this project did not install are
     expected (the shared documents mention every module) and are counted instead. Returns that count."""
@@ -971,6 +986,10 @@ def main():
     tools = checkout_tools(manifest, template)
     uninstalled = frozenset(e['path'] for e in manifest['files'] if e.get('module', 'core') not in installed_modules
                             or (tools is not None and not for_tools(manifest, e['path'], tools)))
+    # Absent files the owner recorded as excluded count as not installed, for links as well as for the absent note.
+    exclusions = () if template else recorded_exclusions(root / 'PROJECT_PROFILE.md')
+    recorded = frozenset(e['path'] for e in manifest['files'] if excluded(e['path'], exclusions) and not (root / e['path']).is_file())
+    uninstalled |= recorded
     # Scenario fixtures are project content whose links resolve inside the project built from them, not in this repository.
     exempt = tuple(manifest.get('shim_exempt', []))
     linked_elsewhere = check_links([f for f in files if not rel(f).startswith(exempt)], errors, uninstalled)
@@ -1029,8 +1048,11 @@ def main():
                 json.loads(provenance.read_text())
             except ValueError as error:
                 errors.append(f'{GUIDANCE_RECORDS[1]}: not valid JSON ({error})')
+        if recorded:
+            notes.append(f'{len(recorded)} packaged files absent as recorded in the Excluded guidance row of PROJECT_PROFILE.md.')
         if absent:
-            notes.append(f'{len(absent)} packaged files absent; record exclusions in PROJECT_PROFILE.md: ' + ', '.join(absent))
+            notes.append(f'{len(absent)} packaged files absent and not recorded as excluded; name each, or its folder ending in /, '
+                         'in backticks in the Excluded guidance row of PROJECT_PROFILE.md: ' + ', '.join(absent))
         source = manifest.get('installed_from', {})
         notes.append(f"Installed from {source.get('commit', 'an unrecorded commit')}"
                      f"{' (dirty checkout)' if source.get('dirty') else ''}; upgrades start from that commit "
