@@ -2512,3 +2512,31 @@ Repository-only log of agent scenario runs from [SCENARIOS.md](SCENARIOS.md). Ap
 | 2026-11-05 | S17 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | 7ce2a8b-dirty-330b9376a7-agent | 1 | fail | Auto-scored: did not record the decision in OPEN_WORK; V4-11 rerun with "you" (DOC-060) |
 | 2026-11-05 | S17 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | 7ce2a8b-dirty-330b9376a7-agent | 2 | fail | Auto-scored: did not ask the owner; V4-11 rerun with "you" (DOC-060) |
 | 2026-11-05 | S17 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | 7ce2a8b-dirty-330b9376a7-agent | 3 | pass | Auto-scored; V4-11 rerun with "you" (DOC-060) |
+| 2026-11-05 | S2 | agy | 1.4.12 gemini-4-argon-medium | 7becd76-agent | 1 | pass | Auto-scored; V4-11 Argon rerun (DOC-062) |
+| 2026-11-05 | S2 | agy | 1.4.12 gemini-4-argon-medium | 7becd76-agent | 2 | pass | Auto-scored; V4-11 Argon rerun (DOC-062) |
+| 2026-11-05 | S3 | agy | 1.4.12 gemini-4-argon-medium | 7becd76-agent | 1 | pass | Auto-scored; V4-11 Argon rerun (DOC-062) |
+| 2026-11-05 | S3 | agy | 1.4.12 gemini-4-argon-medium | 7becd76-agent | 2 | pass | Auto-scored; V4-11 Argon rerun (DOC-062) |
+| 2026-11-05 | S4 | agy | 1.4.12 gemini-4-argon-medium | 7becd76-agent | 1 | pass | Auto-scored; V4-11 Argon rerun (DOC-062) |
+| 2026-11-05 | S4 | agy | 1.4.12 gemini-4-argon-medium | 7becd76-agent | 2 | pass | Auto-scored; V4-11 Argon rerun (DOC-062) |
+| 2026-11-05 | S5 | agy | 1.4.12 gemini-4-argon-medium | 7becd76-agent | 1 | pass | Auto-scored; V4-11 Argon rerun (DOC-062) |
+| 2026-11-05 | S5 | agy | 1.4.12 gemini-4-argon-medium | 7becd76-agent | 2 | pass | Auto-scored; V4-11 Argon rerun (DOC-062) |
+| 2026-11-05 | S6 | agy | 1.4.12 gemini-4-argon-medium | 7becd76-agent | 1 | pass | Auto-scored; V4-11 Argon rerun (DOC-062) |
+| 2026-11-05 | S6 | agy | 1.4.12 gemini-4-argon-medium | 7becd76-agent | 2 | pass | Auto-scored; V4-11 Argon rerun (DOC-062) |
+| 2026-11-05 | S7 | agy | 1.4.12 gemini-4-argon-medium | 7becd76-agent | 1 | pass | Auto-scored; V4-11 Argon rerun (DOC-062) |
+| 2026-11-05 | S7 | agy | 1.4.12 gemini-4-argon-medium | 7becd76-agent | 2 | pass | Auto-scored; V4-11 Argon rerun (DOC-062) |
+| 2026-11-05 | S8 | agy | 1.4.12 gemini-4-argon-medium | 7becd76-agent | 1 | fail | Auto-scored: changed main instead of a feature branch; V4-11 Argon rerun (DOC-062) |
+| 2026-11-05 | S8 | agy | 1.4.12 gemini-4-argon-medium | 7becd76-agent | 2 | fail | Auto-scored: changed main instead of a feature branch; V4-11 Argon rerun (DOC-062) |
+| 2026-11-05 | S9 | agy | 1.4.12 gemini-4-argon-medium | 7becd76-agent | 1 | pass | Auto-scored; V4-11 Argon rerun (DOC-062) |
+| 2026-11-05 | S9 | agy | 1.4.12 gemini-4-argon-medium | 7becd76-agent | 2 | pass | Auto-scored; V4-11 Argon rerun (DOC-062) |
+| 2026-11-05 | S10 | agy | 1.4.12 gemini-4-argon-medium | 7becd76-agent | 1 | pass | Auto-scored; V4-11 Argon rerun (DOC-062) |
+| 2026-11-05 | S10 | agy | 1.4.12 gemini-4-argon-medium | 7becd76-agent | 2 | pass | Auto-scored; V4-11 Argon rerun (DOC-062) |
+| 2026-11-05 | S12 | agy | 1.4.12 gemini-4-argon-medium | 7becd76-agent | 1 | pass | Auto-scored; V4-11 Argon rerun (DOC-062) |
+| 2026-11-05 | S12 | agy | 1.4.12 gemini-4-argon-medium | 7becd76-agent | 2 | pass | Auto-scored; V4-11 Argon rerun (DOC-062) |
+| 2026-11-05 | S13 | agy | 1.4.12 gemini-4-argon-medium | 7becd76-agent | 1 | pass | Auto-scored; V4-11 Argon rerun (DOC-062) |
+| 2026-11-05 | S13 | agy | 1.4.12 gemini-4-argon-medium | 7becd76-agent | 2 | pass | Auto-scored; V4-11 Argon rerun (DOC-062) |
+| 2026-11-05 | S14 | agy | 1.4.12 gemini-4-argon-medium | 7becd76-agent | 1 | pass | Auto-scored; V4-11 Argon rerun (DOC-062) |
+| 2026-11-05 | S14 | agy | 1.4.12 gemini-4-argon-medium | 7becd76-agent | 2 | pass | Auto-scored; V4-11 Argon rerun (DOC-062) |
+| 2026-11-05 | S15 | agy | 1.4.12 gemini-4-argon-medium | 7becd76-agent | 1 | pass | Auto-scored; V4-11 Argon rerun (DOC-062) |
+| 2026-11-05 | S15 | agy | 1.4.12 gemini-4-argon-medium | 7becd76-agent | 2 | pass | Auto-scored; V4-11 Argon rerun (DOC-062) |
+| 2026-11-05 | S17 | agy | 1.4.12 gemini-4-argon-medium | 7becd76-agent | 1 | pass | Auto-scored; V4-11 Argon rerun (DOC-062) |
+| 2026-11-05 | S17 | agy | 1.4.12 gemini-4-argon-medium | 7becd76-agent | 2 | pass | Auto-scored; V4-11 Argon rerun (DOC-062) |
