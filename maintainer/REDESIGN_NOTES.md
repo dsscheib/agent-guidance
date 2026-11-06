@@ -264,6 +264,8 @@ Suggested sequence:
    **V4-9 done 2026-11-06:** absent packaged files named in backticks in the profile's Excluded guidance row (a path
    ending in `/` covers a folder) count as not installed: no absent note and no broken-link failure. Unrecorded
    absences are still listed, and a required module stays required. Feeder's existing row already names all 7.
+   **V4-10 done 2026-11-06:** a gate's Gate cell can carry its own limit (`Release, timeout 60m`); other gates keep
+   `--timeout`, and a timed-out gate names its limit and where it came from. That completes step 3.
 4. Separate outcomes (V4-3), then run the holdout set and the overhead measures (V4-4, V4-6).
 
 Refresh planning documents (V4-7) alongside. Define acceptance criteria and preserve baseline evidence before

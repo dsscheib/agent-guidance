@@ -250,8 +250,8 @@
     {
       "path": "README.md",
       "kind": "entry",
-      "bytes": 9106,
-      "sha256": "80f3001094656ae0dff984d938ca184569ac5311b5d8dede3de76b8084d33579",
+      "bytes": 9241,
+      "sha256": "e56a339dadc678b4501377498855a658bfd0fec99a9f81408f63277b5289c3e8",
       "module": "core"
     },
     {
@@ -363,8 +363,8 @@
       "path": "PROJECT_PROFILE.md",
       "kind": "template",
       "stage": "code",
-      "bytes": 7804,
-      "sha256": "302fd303492d76dd4ab1820fa0cb0b3629784e428782891d3917d9e81c797cb4",
+      "bytes": 7948,
+      "sha256": "05ff45afd2c0c922788d60328f4ed579509738efd95bfcf772d46e781a3b3e86",
       "module": "core"
     },
     {
@@ -531,8 +531,8 @@
     {
       "path": "check_package.py",
       "kind": "tooling",
-      "bytes": 62865,
-      "sha256": "676e63c4c91ae14ed322cc8068bf62e590b521ec4320cc292c098a7de0f5b012",
+      "bytes": 63694,
+      "sha256": "5c930952aef9d6eee0acbcb2acfaa4e26f6af03b123e26f4ff3bb44533bf245f",
       "module": "core"
     },
     {

@@ -493,6 +493,32 @@ def case_recorded_exclusions(tmp):
     expect(not passed and 'requires the design module' in out, 'a required module recorded as excluded should still fail:\n    ' + out[:600])
 
 
+def case_gate_timeouts(tmp):
+    """A gate's own limit in its Gate cell replaces --timeout for that gate only, and a timeout names its limit (V4-10)."""
+    target = tmp / 'gate-timeouts'
+    target.mkdir()
+    if install(target, '--tier', 'prototype').returncode:
+        return
+    profile = target / 'PROJECT_PROFILE.md'
+    text = profile.read_text()
+    sleep = lambda n: f'`python3 -c "import time; time.sleep({n})"`'
+    rows = {'| Format |': (sleep(2), 'Development, timeout 10s'), '| Build / generate |': (sleep(3), 'Development, timeout 1s'),
+            '| Unit / integration tests |': (sleep(2), 'Development')}
+    for start, (command, gate) in rows.items():
+        row = next(l for l in text.splitlines() if l.startswith(start))
+        cells = row.split('|')
+        cells[2], cells[3] = f' {command} ', f' {gate} '
+        text = text.replace(row, '|'.join(cells))
+    profile.write_text(text)
+    out = verify_output(target, '--timeout', '1')
+    line = lambda name: next((l for l in out.splitlines() if name in l and l.startswith('  ')), '')
+    expect(line('Format:').strip().startswith('passed'), 'a slow gate with its own longer limit should pass:\n    ' + out[-700:])
+    expect(line('Build / generate:').strip().startswith('failed') and "timed out after 1s (this gate's own limit)" in out,
+           'a gate past its own limit should fail as timed out with that limit:\n    ' + out[-700:])
+    expect(line('Unit / integration tests:').strip().startswith('failed') and 'timed out after 1s (the --timeout default' in out,
+           'a gate without its own limit should keep the --timeout value:\n    ' + out[-700:])
+
+
 def raw_install(target, *args):
     return subprocess.run([sys.executable, '-B', str(root / 'check_package.py'), '--install', str(target), *args],
                           capture_output=True, text=True)
@@ -577,12 +603,12 @@ def main():
         return
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
-        for case in (case_tiers, case_policy, case_generated_tables, case_enterprise, case_proposed_exclusion, case_dependency_files, case_rename_scope, case_documentation_mode, case_copilot_stop, case_upgrade, case_plan_upgrade, case_tools, case_recorded_exclusions, case_default, case_missing_module, case_broken_link):
+        for case in (case_tiers, case_policy, case_generated_tables, case_enterprise, case_proposed_exclusion, case_dependency_files, case_rename_scope, case_documentation_mode, case_copilot_stop, case_upgrade, case_plan_upgrade, case_tools, case_recorded_exclusions, case_gate_timeouts, case_default, case_missing_module, case_broken_link):
             case(tmp)
     if problems:
         print('\n'.join(problems))
         sys.exit(1)
-    print('Install tests OK: tiers, design policy, generated tables, enterprise rows, proposed exclusions, dependency files, rename scope, documentation mode, Copilot stop hook, features, upgrade, upgrade plan and check, tools, recorded exclusions, tier required (dry run, --all, rerun), missing module and broken link.')
+    print('Install tests OK: tiers, design policy, generated tables, enterprise rows, proposed exclusions, dependency files, rename scope, documentation mode, Copilot stop hook, features, upgrade, upgrade plan and check, tools, recorded exclusions, gate timeouts, tier required (dry run, --all, rerun), missing module and broken link.')
 
 
 if __name__ == '__main__':
