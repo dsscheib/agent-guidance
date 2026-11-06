@@ -767,6 +767,18 @@ def non_documentation_changes(git, packaged):
                   and p not in GUIDANCE_RECORDS)
 
 
+GATE_TIMEOUT = re.compile(r'(?i)\btimeout\s*[:=]?\s*(\d+)\s*(s|sec|seconds?|m|min|minutes?|h|hours?)?\b')
+
+
+def gate_timeout(gate):
+    """A gate's own time limit in seconds, from an annotation in its Gate cell such as "Release, timeout 60m", or None."""
+    m = GATE_TIMEOUT.search(gate)
+    if not m:
+        return None
+    unit = (m.group(2) or 's').lower()[0]
+    return int(m.group(1)) * {'s': 1, 'm': 60, 'h': 3600}[unit]
+
+
 def inventory_gates(phase):
     """Rows of the PROJECT_PROFILE command inventory whose Gate column selects them for this phase.
 
@@ -835,14 +847,19 @@ def verify(phase, timeout, receipt):
         elif kind == 'excluded':
             entry['detail'] = cell
         else:
+            own = gate_timeout(gate)
+            limit = own or timeout
+            entry['timeout'] = limit
             started = time.monotonic()
             try:
-                r = subprocess.run(command, shell=True, cwd=root, capture_output=True, text=True, timeout=timeout)
+                r = subprocess.run(command, shell=True, cwd=root, capture_output=True, text=True, timeout=limit)
                 entry['status'] = 'passed' if r.returncode == 0 else 'failed'
                 entry['exit_code'] = r.returncode
                 entry['output_tail'] = (r.stdout + r.stderr).strip().splitlines()[-5:]
             except subprocess.TimeoutExpired:
-                entry['status'], entry['detail'] = 'failed', f'timed out after {timeout}s'
+                source = "this gate's own limit" if own else 'the --timeout default; set a longer limit in its Gate cell, such as "timeout 60m"'
+                entry['status'], entry['detail'] = 'failed', f'timed out after {limit}s ({source})'
+                entry['output_tail'] = [f'timed out after {limit}s ({source})']
             entry['seconds'] = round(time.monotonic() - started, 1)
         results.append(entry)
     # A change whose code is a pure rename may touch only the code, its tests and references (routing table):
@@ -951,7 +968,7 @@ def main():
     parser.add_argument('--verify', nargs='?', const='development', choices=['development', 'documentation', 'release'],
                         help='run the gate commands from the command inventory and print the verification status; '
                              '"documentation" runs only the Documentation rows and fails if the work changes anything but documentation')
-    parser.add_argument('--timeout', type=int, default=900, help='with --verify, seconds allowed per gate command')
+    parser.add_argument('--timeout', type=int, default=900, help='with --verify, seconds allowed per gate command unless its Gate cell sets its own, such as "timeout 60m"')
     parser.add_argument('--receipt', metavar='FILE', help='with --verify, also write the results as JSON')
     args = parser.parse_args()
 
