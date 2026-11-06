@@ -3,7 +3,7 @@
 
   python3 maintainer/harness/test_score.py
 """
-import json, sys
+import json, os, shutil, subprocess, sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -417,6 +417,40 @@ class SkillUse(unittest.TestCase):
     def test_expected_procedure(self):
         self.assertEqual(self.use('codex', '', 'S15')['expected'], 'release-readiness')
         self.assertEqual(self.use('codex', '', 'S7-internal')['expected'], 'final-audit')
+
+
+
+class Holdout(unittest.TestCase):
+    """The private holdout set runs from its own catalog, is scored as ungraded here, and is hidden from agents."""
+
+    def test_other_catalog_is_ungraded(self):
+        ev = {'scenario': 'H1', 'fixture': '/nonexistent', 'steps': [{'step': 1, 'final': 'Verification: incomplete (development gates: 1 passed)', 'seconds': 3}]}
+        r = score.score(ev)
+        self.assertEqual((r['ok'], r['outcome'], r['verification']), (None, 'ungraded', 'quoted'))
+
+    def test_catalog_replaces_the_snapshot_catalog(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            catalog = Path(tmp) / 'scenarios.json'
+            catalog.write_text(json.dumps({'scenarios': [{'id': 'H1', 'fixtures': [], 'prompt': 'Use {guidance}.'}]}))
+            got = score.run.scenarios(score.run.REPO, Path('/g'), catalog)
+            self.assertEqual(list(got), ['H1'])
+            self.assertEqual(got['H1']['prompts'], ['Use /g.'])
+
+    @unittest.skipUnless(shutil.which('bwrap'), 'bubblewrap is not installed')
+    def test_sandbox_hides_folders_but_mounts_the_run_back(self):
+        with tempfile.TemporaryDirectory(dir=Path.home()) as tmp:
+            # Under the home folder, outside /tmp, which the sandbox always replaces.
+            secret, out = Path(tmp) / 'secret', Path(tmp) / 'out'
+            fx, logs, view = out / 'fx', out / 'logs', out / 'view'
+            for d in (secret, fx, logs, view):
+                d.mkdir(parents=True)
+            (secret / 'answers.json').write_text('{}')
+            (out / 'other-run.txt').write_text('x')
+            (view / 'AGENTS.md').write_text('guidance\n')
+            env = {**os.environ, 'SB_LOGDIR': str(logs), 'SB_GUIDANCE': str(view), 'SB_HIDE': f'{secret} {out}'}
+            script = f'ls -A {secret}; ls -A {out}; cat {view}/AGENTS.md; touch {fx}/w && echo writable'
+            r = subprocess.run([str(score.run.SANDBOX), str(fx), 'sh', '-c', script], capture_output=True, text=True, env=env)
+            self.assertEqual(r.stdout.split(), ['fx', 'logs', 'view', 'guidance', 'writable'], r.stderr)
 
 
 if __name__ == '__main__':
