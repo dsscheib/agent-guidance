@@ -474,8 +474,8 @@
     {
       "path": "docs/procedures/upgrade-guidance.md",
       "kind": "procedure",
-      "bytes": 10559,
-      "sha256": "c95acecc05ac95fec458f368cfe99c88a963599c72a5ffb1d1558087b60a85ef",
+      "bytes": 10655,
+      "sha256": "b3dd6aa76b851dd800f3507179273b02b0f3a5e94a20a2485e86a7be5d290993",
       "module": "core"
     },
     {
@@ -502,8 +502,8 @@
     {
       "path": "check_package.py",
       "kind": "tooling",
-      "bytes": 57801,
-      "sha256": "2118cd95e8c7cb355c7d3943a779eb9c5e547502b518464919943f4a6e0e079a",
+      "bytes": 58818,
+      "sha256": "361179ae02a5afa4e07253aa9f2e82b4bbe935309fb6297252203aba1a83024e",
       "module": "core"
     },
     {

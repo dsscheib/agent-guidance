@@ -394,6 +394,7 @@ def case_plan_upgrade(tmp):
     expect(not run(['git', 'status', '--porcelain'], project).stdout, 'plan test: planning changed the project')
     expect('docs/OPEN_WORK.md' not in out, 'plan test: a register upstream did not change is listed')
     expect('Apply nothing' in out and 'git apply' not in out, 'plan test: the plan does not say to stop before applying')
+    expect(f"{pkg / 'check_package.py'} --check-upgrade" in out, "plan test: the plan does not name this checkout's checker for the check")
     for label, path in (('Replace', 'docs/RUNBOOKS.md'), ('Add', 'docs/RELEASE_NOTES.md'), ('Merge', 'docs/CHANGE_WORKFLOW.md'),
                         ('Conflict', 'docs/TESTING_SPEC.md')):
         expect(path in plan_section(out, label), f'plan test: {path} not under {label}:\n    ' + out[:900])
@@ -410,6 +411,9 @@ def case_plan_upgrade(tmp):
                                                                        '**Missing tooling is a gap.** Record the blocker ID in OPEN_WORK.'))
     r = run(checker, pkg)
     expect(r.returncode == 0, 'plan test: --check-upgrade failed on a clean upgrade: ' + (r.stdout + r.stderr)[-400:])
+    own = run([sys.executable, '-B', str(project / 'check_package.py'), '--check-upgrade', '.'], project)
+    expect(own.returncode and 'Could not check local changes' in own.stdout,
+           "plan test: the project's own copy passed --check-upgrade without the installed release:\n    " + (own.stdout + own.stderr)[-400:])
     flow.write_text(flow.read_text().replace('Run the smoke script on the review host first.\n', ''))
     work = project / 'docs/OPEN_WORK.md'
     work.write_text(work.read_text().replace('| OW-7 | Open |', '| OW-7 | Closed |'))
