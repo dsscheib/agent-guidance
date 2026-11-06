@@ -91,6 +91,10 @@ class ReplyChecks(unittest.TestCase):
         self.assertTrue(score.flags_pin('requirements.txt pins `requests==2.19.0`'))
         self.assertTrue(score.flags_pin('requests 2.19.0 has known vulnerabilities'))
 
+    def test_plain_request_for_input_is_asking(self):
+        self.assertTrue(score.ASKS.search('I need the refund window from you: how long after delivery a refund is allowed.'))
+        self.assertFalse(score.ASKS.search('I need no more input. This came from your README.'))
+
     def test_ticket_only_for_variants(self):
         self.assertTrue(score.needs_ticket('S2-enterprise'))
         self.assertFalse(score.needs_ticket('S13'))

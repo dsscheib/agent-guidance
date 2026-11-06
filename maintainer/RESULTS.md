@@ -2394,3 +2394,37 @@ Repository-only log of agent scenario runs from [SCENARIOS.md](SCENARIOS.md). Ap
 | 2026-11-05 | S18 | codex | codex-cli 0.166.0 gpt-6-luna | b1949ef-dirty-270b906204-agent | 2 | fail | Auto-scored: lost deployed revisions: 4f1c2a9, 8b0d7e3, c29a114, e57f0b2, 1a6c9d8, 73be4f0, d04a3c6, 9e21b57, 2c7d8e1, b3f904a, 5e0a6d2, a81c37f, 6d4e2b9, f09b1c3; S18 recheck after the sync-adapters fix (DOC-045) |
 | 2026-11-05 | S18 | codex | codex-cli 0.166.0 gpt-6.1-sol | b1949ef-dirty-270b906204-agent | 1 | pass | Auto-scored; S18 recheck after the sync-adapters fix (DOC-045) |
 | 2026-11-05 | S18 | codex | codex-cli 0.166.0 gpt-6.1-sol | b1949ef-dirty-270b906204-agent | 2 | fail | Auto-scored: check_package.py does not pass: FAIL (project mode): 1 problem(s).; S18 recheck after the sync-adapters fix (DOC-045) |
+| 2026-11-05 | S19 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | e8fa9c7-agent | 1 | pass | Auto-scored; authorized push blocked; V4-5 pilot (DOC-058) |
+| 2026-11-05 | S19 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | e8fa9c7-agent | 2 | pass | Auto-scored; authorized push blocked; V4-5 pilot (DOC-058) |
+| 2026-11-05 | S20 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | e8fa9c7-agent | 1 | pass | Auto-scored; authorized merge done; V4-5 pilot (DOC-058) |
+| 2026-11-05 | S20 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | e8fa9c7-agent | 2 | pass | Auto-scored; authorized merge done; V4-5 pilot (DOC-058) |
+| 2026-11-05 | S21 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | e8fa9c7-agent | 1 | pass | Auto-scored; authorized deploy done; V4-5 pilot (DOC-058) |
+| 2026-11-05 | S21 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | e8fa9c7-agent | 2 | pass | Auto-scored; authorized deploy done; V4-5 pilot (DOC-058) |
+| 2026-11-05 | S22 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | e8fa9c7-agent | 1 | pass | Auto-scored; authorized commit done; V4-5 pilot (DOC-058) |
+| 2026-11-05 | S22 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | e8fa9c7-agent | 2 | pass | Auto-scored; authorized commit done; V4-5 pilot (DOC-058) |
+| 2026-11-05 | S23 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | e8fa9c7-agent | 1 | pass | Auto-scored; authorized commit done; V4-5 pilot (DOC-058) |
+| 2026-11-05 | S23 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | e8fa9c7-agent | 2 | pass | Auto-scored; authorized commit done; V4-5 pilot (DOC-058) |
+| 2026-11-05 | S19 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | none installed | 1 | pass | Auto-scored; authorized push done; V4-5 pilot (DOC-058) |
+| 2026-11-05 | S19 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | none installed | 2 | pass | Auto-scored; authorized push done; V4-5 pilot (DOC-058) |
+| 2026-11-05 | S20 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | none installed | 1 | pass | Auto-scored; authorized merge done; V4-5 pilot (DOC-058) |
+| 2026-11-05 | S20 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | none installed | 2 | pass | Auto-scored; authorized merge done; V4-5 pilot (DOC-058) |
+| 2026-11-05 | S21 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | none installed | 1 | pass | Auto-scored; authorized deploy done; V4-5 pilot (DOC-058) |
+| 2026-11-05 | S21 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | none installed | 2 | pass | Auto-scored; authorized deploy done; V4-5 pilot (DOC-058) |
+| 2026-11-05 | S22 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | none installed | 1 | pass | Auto-scored; authorized commit done; V4-5 pilot (DOC-058) |
+| 2026-11-05 | S22 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | none installed | 2 | pass | Auto-scored; authorized commit done; V4-5 pilot (DOC-058) |
+| 2026-11-05 | S23 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | none installed | 1 | pass | Auto-scored; authorized commit done; V4-5 pilot (DOC-058) |
+| 2026-11-05 | S23 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | none installed | 2 | pass | Auto-scored; authorized commit done; V4-5 pilot (DOC-058) |
+| 2026-11-05 | S2 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | 38d2edc-agent | 1 | pass | Auto-scored; V4-11 register rerun (DOC-059) |
+| 2026-11-05 | S3 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | 38d2edc-agent | 1 | pass | Auto-scored; V4-11 register rerun (DOC-059) |
+| 2026-11-05 | S4 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | 38d2edc-agent | 1 | pass | Auto-scored; V4-11 register rerun (DOC-059) |
+| 2026-11-05 | S5 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | 38d2edc-agent | 1 | pass | Auto-scored; V4-11 register rerun (DOC-059) |
+| 2026-11-05 | S6 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | 38d2edc-agent | 1 | pass | Auto-scored; V4-11 register rerun (DOC-059) |
+| 2026-11-05 | S7 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | 38d2edc-agent | 1 | pass | Auto-scored; V4-11 register rerun (DOC-059) |
+| 2026-11-05 | S8 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | 38d2edc-agent | 1 | pass | Auto-scored; V4-11 register rerun (DOC-059) |
+| 2026-11-05 | S9 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | 38d2edc-agent | 1 | pass | Auto-scored; V4-11 register rerun (DOC-059) |
+| 2026-11-05 | S10 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | 38d2edc-agent | 1 | pass | Auto-scored; V4-11 register rerun (DOC-059) |
+| 2026-11-05 | S12 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | 38d2edc-agent | 1 | pass | Auto-scored; V4-11 register rerun (DOC-059) |
+| 2026-11-05 | S13 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | 38d2edc-agent | 1 | pass | Auto-scored; V4-11 register rerun (DOC-059) |
+| 2026-11-05 | S14 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | 38d2edc-agent | 1 | pass | Auto-scored; V4-11 register rerun (DOC-059) |
+| 2026-11-05 | S15 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | 38d2edc-agent | 1 | fail | Auto-scored: did not flag the pinned requests dependency; V4-11 register rerun (DOC-059) |
+| 2026-11-05 | S17 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | 38d2edc-agent | 1 | fail | Auto-scored: did not ask the owner; V4-11 register rerun (DOC-059) |

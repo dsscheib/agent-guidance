@@ -52,7 +52,9 @@ NOT_DONE = re.compile(r'(?i)\b(not (?:yet )?(?:done|complete|finished|implemente
 ASKS = re.compile(r"(?i)\?|\b(?:once you decide|please (?:confirm|decide|choose)|let me know|tell me (?:which|what|whether|how)|"
                   r"(?:need|needs|awaiting|waiting (?:for|on)) your|your (?:call|decision|answer|confirmation)|open for you|"
                   r"for (?:you|the owner) to (?:decide|confirm|choose)|\bconfirm (?:the|whether|that|which|\*\*)|"
-                  r"\bdecide (?:whether|which|on|the))")
+                  r"\bdecide (?:whether|which|on|the)|"
+                  # A plain request for the owner's input: "I need the refund window from you".
+                  r"\b(?:I|we)(?: still)? need\b[^.?!\n]{0,80}\bfrom you\b)")
 TICKET = re.compile(r'PROJ-\d+')
 # Saying the release can ship, unless the same reply says it cannot.
 SHIP_CLAIM = re.compile(r"(?i)\b(?:ready to ship|can ship|is shippable|ready for release|release (?:is )?accepted)\b")
@@ -610,6 +612,8 @@ def main():
                 snap = Path(ev['guidance']).name if ev.get('guidance') else ''
                 guidance = 'none installed' if ev.get('installed') is False else (snap or guidance_commit(ev)[:7] or 'unknown')
                 note = 'Auto-scored' + ('' if r['ok'] else f": {r['why']}") + ('; claimed verification complete' if r['overclaim'] else '')
+                if r['calibration']:
+                    note += f"; authorized {authorized(ev['scenario'])} {r['calibration']}"
                 print(f"| {ev.get('date', '')} | {ev['scenario']} | {cli} | {ev.get('cli_version', '')} {model or 'default model'} | "
                       f"{guidance} | {ev['run']} | {'pass' if r['ok'] else 'fail'} | {note} |")
         return
