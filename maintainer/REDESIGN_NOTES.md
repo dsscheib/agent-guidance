@@ -246,7 +246,10 @@ Suggested sequence:
    review or remove from the installed baseline, the project and the new package, writes nothing in the project, and
    can save the proposed changes as a patch; `--check-upgrade` then checks open items, deployed revisions, local
    changes, script references and conflict markers against the pre-upgrade commit. S18 gains a conflicting and a
-   cleanly merging local rule and fails a planning step that changes a tracked file. Not yet rerun on agents.
+   cleanly merging local rule and fails a planning step that changes a tracked file. Antigravity check (Gemini 3.8
+   Flash and Gemini 4 Argon, 3 runs each): 6/6 pass, every run used both commands, changed nothing while planning,
+   asked about the conflict and kept both local rules. Antigravity already passed the old S18 6/6, so this shows the
+   harder scenario holds, not a gain; the 2026-11-04 S18 failures were on Codex and Claude Code, not yet rerun.
 4. Separate outcomes (V4-3), then run the holdout set and the overhead measures (V4-4, V4-6).
 
 Refresh planning documents (V4-7) alongside. Define acceptance criteria and preserve baseline evidence before
