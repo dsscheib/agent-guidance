@@ -39,7 +39,7 @@ Give the report in chat or the pull request description, not in a new file. Keep
 Include, in this order:
 1. What changed, in one or two sentences, naming the files or behavior.
 2. The `Verification:` line from `python3 check_package.py --verify`, quoted exactly. Do not add your own verdict such as "verified" or "all checks pass", and do not explain gaps the line already names.
-3. Only what applies: a failed check, each decision the owner must make, written as a direct question to them, even if you also recorded it (with what you built meanwhile, or why nothing could be built without the answer), local UAT steps for a UI or workflow change, the scope line from step 4, and whether you committed. Deploy to a review environment only when the owner asks, with fixes batched ([review cadence](../CHANGE_WORKFLOW.md#deployment-and-review-cadence)).
+3. Only what applies: a failed check, each decision the owner must make, written as a direct question to them, even if you also recorded it (with what you built meanwhile, or why nothing could be built without the answer), local UAT steps for a UI or workflow change (here, not in README or another file), the scope line from step 4, and whether you committed. Deploy to a review environment only when the owner asks, with fixes batched ([review cadence](../CHANGE_WORKFLOW.md#deployment-and-review-cadence)).
 
 Leave out what did not happen: documents that needed no change, files you left alone, actions you did not take. Mention one only if the owner must act on it.
 

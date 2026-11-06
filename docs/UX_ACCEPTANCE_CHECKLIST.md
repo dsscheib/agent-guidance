@@ -16,7 +16,7 @@ Candidate: {{CANDIDATE}}. Scope: {{UI_SCOPE}}. Required matrix: {{BROWSERS_VIEWP
 - [ ] Required viewport, zoom/reflow, theme/contrast and reduced-motion checks have evidence.
 - [ ] Touch targets, real devices, screen-reader announcements, forced colors and relevant use environments have the required manual evidence.
 - [ ] Automated accessibility and browser results are recorded separately from manual coverage.
-- [ ] For UI or interactive workflow changes that benefit from owner review, UAT steps for a local run were delivered. Any review deployment was requested by the owner and batched ([review cadence](CHANGE_WORKFLOW.md#deployment-and-review-cadence)).
+- [ ] For UI or interactive workflow changes that benefit from owner review, UAT steps for a local run were given in the reply, not written into README or another document. Any review deployment was requested by the owner and batched ([review cadence](CHANGE_WORKFLOW.md#deployment-and-review-cadence)).
 - [ ] Routing-table documents updated (AGENTS.md rule 14); unverified criteria remain open in OPEN_WORK.md.
 
 A passing automated scan cannot close unperformed manual checks. Avoid an unrelated whole-template rewrite solely to reduce wrapper counts.

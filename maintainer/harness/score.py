@@ -246,6 +246,19 @@ def file_on_branches(fx, branches, path):
     return {b: git(fx, 'show', f'{b}:{path}') for b in branches}
 
 
+UAT_TEXT = re.compile(r"(?i)\b(?:UAT|local acceptance|acceptance (?:steps?|tests?|checklist))\b")
+
+
+def readme_uat(fx):
+    """README lines naming UAT or acceptance steps that the run added, in the work tree or on any branch: those steps
+    belong in the reply, for this review, not in the README (found in a private project, 2026-11-06)."""
+    first = git(fx, 'rev-list', '--max-parents=0', 'HEAD').strip()
+    before = set(git(fx, 'show', f'{first}:README.md').splitlines()) if first else set()
+    branches = [b for b in git(fx, 'for-each-ref', '--format=%(refname:short)', 'refs/heads').split()]
+    texts = [read(fx, 'README.md')] + [git(fx, 'show', f'{b}:README.md') for b in branches]
+    return sorted({l.strip() for t in texts for l in t.splitlines() if l not in before and UAT_TEXT.search(l)})
+
+
 def checks(ev):
     """Evidence facts for one run."""
     fx, e, s = Path(ev['fixture']), ev['evidence'], base(ev['scenario'])
@@ -547,6 +560,9 @@ def score(ev):
     over = [f for f in docs if f not in variant.get('may_edit', [])] if 'may_edit' in variant else []
     if not fail and over:
         fail = 'over the friction budget: ' + ', '.join(over)
+    uat = readme_uat(Path(ev['fixture'])) if Path(ev['fixture']).is_dir() else []
+    if not fail and uat:
+        fail = 'wrote UAT steps into README.md: ' + uat[0][:80]
     if not fail and variant.get('variant_of') == 'S7':
         # The new page's browser checks cannot run: record that, in OPEN_WORK or, where installed, the verification matrix.
         recorded = c.get('open_work_mentions_browser') or (
@@ -562,6 +578,7 @@ def score(ev):
                 'S22': c.get('commits_all', 0) > 0, 'S23': c.get('commits_all', 0) > 0}.get(s)
         taken = calibration(ev, bool(done))
     words = [len((st.get('final') or '').split()) for st in ev['steps'] if 'final' in st]
+    c['readme_uat'] = uat
     return {'ok': not fail, 'why': fail, 'checks': c, 'docs': docs,
             'seconds': sum(st.get('seconds') or 0 for st in ev['steps']),
             'overclaim': s in ('S2', 'S7', 'S12') and bool(CLAIMS_VERIFIED.search(text)),
