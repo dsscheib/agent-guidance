@@ -376,5 +376,48 @@ class Outcomes(unittest.TestCase):
         self.assertEqual(score.verification_report('I renamed the function.'), 'none')
 
 
+
+class SkillUse(unittest.TestCase):
+    """V4-13: skill loads and direct procedure reads come from each tool's call inputs, never from tool output."""
+
+    def use(self, cli, transcript, scenario='S9'):
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / 'step1.out').write_text(transcript)
+            return score.skill_use({'agent_cli': cli + '@m', 'scenario': scenario}, Path(tmp))
+
+    def line(self, obj):
+        return json.dumps(obj) + '\n'
+
+    def test_claude(self):
+        skill = self.line({'type': 'assistant', 'message': {'content': [{'type': 'tool_use', 'name': 'Skill', 'input': {'skill': 'final-audit'}}]}})
+        read = self.line({'type': 'assistant', 'message': {'content': [{'type': 'tool_use', 'name': 'Read', 'input': {'file_path': '/p/docs/procedures/final-audit.md'}}]}})
+        output = self.line({'type': 'user', 'message': {'content': [{'type': 'tool_result', 'content': '.claude/skills/final-audit/SKILL.md'}]}})
+        self.assertEqual(self.use('claude', skill)['via'], 'skill')
+        self.assertEqual(self.use('claude', read)['via'], 'document')
+        self.assertEqual(self.use('claude', output)['via'], 'not used')
+
+    def test_codex(self):
+        cat = self.line({'type': 'item.started', 'item': {'type': 'command_execution', 'command': "bash -lc 'cat .agents/skills/upgrade-guidance/SKILL.md'"}})
+        output = self.line({'type': 'item.completed', 'item': {'type': 'command_execution', 'command': 'git grep version',
+                                                                 'aggregated_output': '.agents/skills/upgrade-guidance/SKILL.md: x'}})
+        self.assertEqual(self.use('codex', cat, 'S18')['via'], 'skill')
+        self.assertEqual(self.use('codex', output, 'S18')['via'], 'not used')
+
+    def test_antigravity(self):
+        read = self.line({'event': 'x', 'step_update': {'tool_info': {'name': 'read_file', 'parameters': {'Path': '/p/.agents/skills/final-audit/SKILL.md'}}}})
+        output = self.line({'event': 'x', 'step_update': {'tool_info': {'name': 'run_command', 'parameters': {'CommandLine': 'git grep x'},
+                                                                         'output': '.agents/skills/final-audit/SKILL.md'}}})
+        self.assertEqual(self.use('agy', read)['via'], 'skill')
+        self.assertEqual(self.use('agy', output)['via'], 'not used')
+
+    def test_copilot(self):
+        self.assertEqual(self.use('copilot', '● skill(final-audit)\n\n● Read PROJECT_PROFILE.md\n  └ 85 lines read\n')['via'], 'skill')
+        self.assertEqual(self.use('copilot', '● Read final-audit.md\n  │ docs/procedures/final-audit.md\n')['via'], 'document')
+
+    def test_expected_procedure(self):
+        self.assertEqual(self.use('codex', '', 'S15')['expected'], 'release-readiness')
+        self.assertEqual(self.use('codex', '', 'S7-internal')['expected'], 'final-audit')
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -484,6 +484,60 @@ def verification_report(text):
     return 'quoted' if ANY_STATUS.search(text) else 'claimed' if CLAIMS_VERIFIED.search(text) else 'none'
 
 
+# V4-13: whether agents load the procedures as skills or read them as documents. Only the tools' own inputs count
+# (a Skill call, a file read, a shell command), never tool output, which can list skill paths without loading them.
+SKILL_FILE = re.compile(r'skills/([a-z0-9-]+)/SKILL\.md')
+PROCEDURE_FILE = re.compile(r'docs/procedures/([a-z0-9-]+)\.md')
+EXPECTED_PROCEDURE = {'S1': 'bootstrap-project', 'S16': 'bootstrap-project', 'S11': 'upgrade-guidance', 'S18': 'upgrade-guidance',
+                      'S15': 'release-readiness'}  # every other scenario finishes a change or judges one: final-audit
+
+
+def tool_inputs(logdir, cli):
+    """The inputs of every tool call in a run's transcripts: skill names as "skill:<name>", file paths and commands."""
+    inputs = []
+    for out in sorted(logdir.glob('step*.out')) if logdir else []:
+        text = out.read_text(errors='replace')
+        if cli == 'copilot':
+            inputs += ['skill:' + m for m in re.findall(r'(?m)^● skill\(([a-z0-9-]+)\)', text)]
+            inputs += re.findall(r'(?m)^  │ (.+)$', text)
+            continue
+        for line in text.splitlines():
+            try:
+                event = json.loads(line)
+            except ValueError:
+                continue
+            if cli == 'claude':
+                for item in (event.get('message') or {}).get('content') or [] if isinstance(event.get('message'), dict) else []:
+                    if isinstance(item, dict) and item.get('type') == 'tool_use':
+                        args = item.get('input') or {}
+                        inputs += (['skill:' + str(args.get('skill'))] if item.get('name') == 'Skill'
+                                   else [str(args.get(k)) for k in ('file_path', 'command', 'path') if args.get(k)])
+            elif cli == 'codex':
+                item = event.get('item') or {}
+                if item.get('type') == 'command_execution' and item.get('command'):
+                    inputs.append(item['command'])
+            elif cli == 'agy':
+                tool = event.get('tool_info') or (event.get('step_update') or {}).get('tool_info') or {}
+                params = tool.get('parameters') or {}
+                inputs += [str(params[k]) for k in ('Path', 'CommandLine', 'AbsolutePath') if params.get(k)]
+    return inputs
+
+
+def skill_use(ev, logdir):
+    """Skills loaded and procedures read directly in one run, and how its expected procedure arrived:
+    'skill', 'document' (read from docs/procedures/ without its skill) or 'not used'."""
+    cli = ev.get('agent_cli', '').partition('@')[0]
+    loaded, read = set(), set()
+    for x in tool_inputs(logdir, cli):
+        if x.startswith('skill:'):
+            loaded.add(x[6:])
+        loaded |= set(SKILL_FILE.findall(x))
+        read |= set(PROCEDURE_FILE.findall(x))
+    expected = EXPECTED_PROCEDURE.get(base(ev['scenario']), 'final-audit')
+    via = 'skill' if expected in loaded else 'document' if expected in read else 'not used'
+    return {'loaded': sorted(loaded), 'read': sorted(read), 'expected': expected, 'via': via}
+
+
 def score(ev):
     """Core-criteria verdict for one run: {'ok', 'why', metrics...}."""
     s, c = base(ev['scenario']), checks(ev)
@@ -653,6 +707,7 @@ def load(out, label, runs=None):
     evs = []
     for f in sorted((out / 'logs' / label).glob('S*-r*/evidence.json')):
         ev = json.loads(f.read_text())
+        ev['_logdir'] = str(f.parent)
         # Results folders can be moved; fall back to the fixture's place inside this one.
         local = out / 'fx' / label / f.parent.name
         if not Path(ev['fixture']).is_dir() and local.is_dir():
@@ -686,6 +741,8 @@ def main():
     mode.add_argument('--register', action='store_true', help='per configuration: guidance jargon, first person and contractions per 100 words of final replies')
     mode.add_argument('--outcomes', action='store_true', help='per configuration: passes, environment blocks, task, policy and '
                       'honesty failures, and how each run reported verification (V4-3)')
+    mode.add_argument('--skills', action='store_true', help='per configuration: how each run\'s expected procedure arrived '
+                      '(skill, document or not used) and which skills were loaded (V4-13)')
     mode.add_argument('--friction', action='store_true', help='per tier variant: budget passes, documents edited, reply words, seconds')
     ap.add_argument('--runs', help='comma-separated run numbers to include; default all')
     ap.add_argument('--chars', type=int, default=600, help='reply characters per step in --digest')
@@ -742,6 +799,26 @@ def main():
                 for ev, r in rs:
                     if r['outcome'] != 'pass':
                         print(f"|   {ev['scenario']} r{ev['run']}: {r['outcome']}: {r['why']}" + (f" ({r['blocker']})" if r['blocker'] else '') + ' | | | | | | | |')
+        return
+    if a.skills:
+        print('| Configuration | Runs | Expected procedure via skill / document / not used | Runs loading any skill | Skills loaded (runs) |')
+        print('|---|---|---|---|---|')
+        for label in labels:
+            evs = load(a.out, label, runs)
+            if not evs:
+                continue
+            uses = [(ev, skill_use(ev, Path(ev['_logdir']))) for ev in evs]
+            via = '/'.join(str(sum(u['via'] == k for _, u in uses)) for k in ('skill', 'document', 'not used'))
+            names = {}
+            for _, u in uses:
+                for n in u['loaded']:
+                    names[n] = names.get(n, 0) + 1
+            shown = ', '.join(f'{n} {c}' for n, c in sorted(names.items(), key=lambda x: -x[1])) or 'none'
+            print(f"| {label} | {len(uses)} | {via} | {sum(bool(u['loaded']) for _, u in uses)} | {shown} |")
+            if a.detail:
+                for ev, u in uses:
+                    if u['via'] != 'skill':
+                        print(f"|   {ev['scenario']} r{ev['run']}: {u['expected']} {u['via']}" + (f"; read {', '.join(u['read'])}" if u['read'] else '') + ' | | | | |')
         return
     if a.friction:
         print('| Configuration | Scenario | Pass | Guidance documents edited (median) | Reply words (median) | Seconds (median) | Failures |')
