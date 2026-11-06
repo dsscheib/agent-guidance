@@ -254,6 +254,12 @@ def parse_step(agent, out, logdir, step):
     return session, final, commands
 
 
+def tree(fx):
+    """The fixture's HEAD and its changed tracked files, recorded after each step (untracked notes do not count)."""
+    status = subprocess.run(['git', '-C', str(fx), 'status', '--porcelain', '--untracked-files=no'], capture_output=True, text=True)
+    return {'head': git(fx, 'rev-parse', 'HEAD'), 'changed': status.stdout.splitlines()}
+
+
 def evidence(fx):
     first = git(fx, 'rev-list', '--max-parents=0', 'HEAD')
     lines = lambda p: len((fx / p).read_text().splitlines()) if (fx / p).is_file() else None
@@ -321,7 +327,7 @@ def run_one(opts, agent, s, n):
         env['COPILOT_ALLOW_ALL'] = 'true'
         if opts.copilot_user_hooks:
             env['SB_COPILOT_HOOKS'] = str(opts.copilot_user_hooks)
-    session, steps = None, []
+    session, steps, start = None, [], tree(fx)
     for i, prompt in enumerate(s['prompts'], 1):
         log(f'start {label} {sid} r{n} step {i}/{len(s["prompts"])}')
         t0 = time.time()
@@ -342,13 +348,13 @@ def run_one(opts, agent, s, n):
         session = session or sess
         messages = step_messages(agent, out + '\n' + err, logdir, i)
         steps.append({'step': i, 'prompt': prompt, 'exit': code, 'seconds': round(time.time() - t0),
-                      'final': final, 'messages': messages if messages else [final], 'commands': commands})
+                      'final': final, 'messages': messages if messages else [final], 'commands': commands, 'tree': tree(fx)})
         log(f'done  {label} {sid} r{n} step {i} exit={code} {round(time.time() - t0)}s')
         if len(s['prompts']) > i and not session:
             steps.append({'step': i, 'error': 'no session id; follow-ups not sent'})
             break
     ev = {'agent': label, 'agent_cli': agent, 'cli_version': cli_version(agent), 'date': time.strftime('%Y-%m-%d'), 'guidance': str(opts.shown), 'guidance_commit': git(opts.shown, 'rev-parse', 'HEAD'), 'guidance_snapshot': str(opts.guidance),
-          'installed': not opts.no_install, 'scenario': sid, 'run': n, 'session': session, 'steps': steps,
+          'installed': not opts.no_install, 'scenario': sid, 'run': n, 'session': session, 'start': start, 'steps': steps,
           'fixture': str(fx), 'evidence': evidence(fx)}
     (logdir / 'evidence.json').write_text(json.dumps(ev, indent=1))
 

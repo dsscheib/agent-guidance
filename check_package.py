@@ -2,11 +2,11 @@
 """Install, integrity, link, adapter, placeholder and document-budget checks for the reusable guidance package.
 
 Template mode (MAINTAINING.md present) checks the package itself; project mode checks an installed copy.
-Only --install, --sync-adapters and --update-manifest write files. --verify runs the project's gate commands.
+Only --install, --sync-adapters and --update-manifest write files; --plan-upgrade and --check-upgrade only read the project. --verify runs the project's gate commands.
 """
 from datetime import date
 from pathlib import Path
-import argparse, hashlib, json, os, re, shutil, subprocess, sys, time
+import argparse, difflib, hashlib, json, os, re, shutil, subprocess, sys, tempfile, time
 
 root = Path(__file__).resolve().parent
 manifest_path = root / 'PACKAGE_MANIFEST.json'
@@ -290,6 +290,233 @@ def install(manifest, target, force, tier=None, features=(), everything=False, d
     if skipped:
         print('Skipped existing files (merge by hand or rerun with --force):\n  ' + '\n  '.join(skipped))
     print('Next: ask your agent to "bootstrap the project guidance" (docs/procedures/bootstrap-project.md).')
+
+
+# Upgrade planning (docs/procedures/upgrade-guidance.md). Kinds a project fills in are never merged automatically.
+FILLED_KINDS = ('template', 'register', 'profile', 'entry')
+PLAN_ORDER = ('replace', 'add', 'merge', 'conflict', 'review', 'remove', 'keep', 'absent')
+
+
+def package_git(*args):
+    result = subprocess.run(['git', '-C', str(root), *args], capture_output=True, text=True)
+    return result.stdout if result.returncode == 0 else None
+
+
+def project_record(target):
+    """The project's installed manifest, its recorded modules (the 2.x set when none are recorded) and source commit."""
+    path = target / manifest_path.name
+    if not path.is_file():
+        sys.exit(f'{target} has no {manifest_path.name}, so it is not a package-layout install. '
+                 'Follow docs/procedures/upgrade-guidance.md by hand.')
+    record = json.loads(path.read_text())
+    new = json.loads(manifest_path.read_text())
+    modules = set(record.get('installed', {}).get('modules') or (m for m in new['modules'] if m != 'enterprise'))
+    return record, modules, record.get('installed_from', {}).get('commit')
+
+
+def effective(path, text, manifest, modules):
+    """A packaged file as an install writes it: AGENTS.md has its generated tables rendered for the project's modules."""
+    if path != 'AGENTS.md' or text is None:
+        return text
+    return GENERATED.sub(lambda m: m.group(1) + render_block(manifest, m.group(2), modules) + m.group(4), text)
+
+
+def unified(path, old, new):
+    """A git-apply patch for one file; None for either side means the file is absent."""
+    def lines(text):
+        out = (text or '').splitlines(keepends=True)
+        if out and not out[-1].endswith('\n'):
+            out[-1] += '\n\\ No newline at end of file\n'
+        return out
+    head = [f'diff --git a/{path} b/{path}\n']
+    head += ['new file mode 100644\n'] if old is None else ['deleted file mode 100644\n'] if new is None else []
+    body = list(difflib.unified_diff(lines(old), lines(new), '/dev/null' if old is None else 'a/' + path,
+                                     '/dev/null' if new is None else 'b/' + path))
+    return ''.join(head + body) if body else ''
+
+
+def plan_upgrade(manifest, target, patch=None):
+    """Compare the installed baseline, the project's files and this package, and say what an upgrade would do to each
+    packaged file. Writes nothing in the project; with patch, writes the proposed changes there as a git-apply patch."""
+    target = Path(target).resolve()
+    if not target.is_dir() or target == root:
+        sys.exit(f'Upgrade target must be an existing directory other than this package: {target}')
+    if patch and Path(patch).resolve().is_relative_to(target):
+        sys.exit('Write the patch outside the project, so planning changes nothing in it.')
+    record, modules, base_commit = project_record(target)
+    old_manifest = record
+    baseline = {e['path']: e for e in record.get('files', [])}
+    wanted = {e['path']: e for e in manifest['files'] if e.get('module', 'core') in modules}
+    have_base = bool(base_commit and package_git('cat-file', '-e', f'{base_commit}^{{commit}}') is not None)
+    source = source_identity()
+    rows, diffs, blocked = [], [], []
+
+    def base_text(path):
+        text = package_git('show', f'{base_commit}:{path}') if have_base else None
+        return effective(path, text, old_manifest, modules)
+
+    for path in sorted(baseline.keys() | wanted.keys()):
+        entry = wanted.get(path) or baseline[path]
+        kind = entry.get('kind', '')
+        file = target / path
+        mine = file.read_text() if file.is_file() else None
+        new = effective(path, (root / path).read_text(), manifest, modules) if path in wanted else None
+        old = base_text(path) if path in baseline else None
+        if old is None and path in baseline and mine is not None and not have_base:
+            # No baseline text: hashes still say whether either side changed.
+            same_base = sha256(file) == baseline[path].get('sha256')
+            old = mine if same_base else None
+        upstream = new != old if path in baseline else True
+        modified = mine != old if path in baseline and old is not None else None
+        if mine == new:
+            if new is not None:
+                rows.append(('keep', path, kind, ''))
+            continue
+        elif not upstream:
+            continue
+        elif mine is None:
+            action, note = ('add', '') if path not in baseline else ('absent', 'removed here; upstream changed it')
+            if path in baseline and new is None:
+                continue
+        elif path not in baseline:
+            action, note = 'conflict', 'the project has its own file at this path'
+        elif new is None:
+            action, note = ('remove', 'removed upstream') if modified is False else ('review', 'removed upstream; modified here')
+        elif modified is False:
+            action, note = 'replace', ''
+        elif modified is None:
+            action, note = 'review', f'no baseline text for commit {base_commit or "unrecorded"}; merge by hand'
+        elif kind in FILLED_KINDS and path != 'AGENTS.md':
+            action, note = 'review', f'{kind} filled in here; carry structural changes by hand'
+        else:
+            with tempfile.TemporaryDirectory() as tmp:
+                names = []
+                for name, text in (('mine', mine), ('base', old), ('new', new)):
+                    (Path(tmp) / name).write_text(text)
+                    names.append(str(Path(tmp) / name))
+                merged = subprocess.run(['git', 'merge-file', '-p', '-L', 'project', '-L', 'installed', '-L', 'upstream', *names],
+                                        capture_output=True, text=True)
+            if merged.returncode == 0:
+                action, note = 'merge', 'project changes kept'
+                diffs.append(unified(path, mine, merged.stdout))
+            else:
+                hunks = merged.returncode if merged.returncode > 0 else '?'
+                action, note = 'conflict', f'{hunks} conflicting hunk(s) with local changes'
+        if action in ('replace', 'add', 'remove'):
+            diffs.append(unified(path, mine, new))
+        if action in ('replace', 'add', 'remove', 'merge'):
+            parent = next(p for p in [file, *file.parents] if p.exists())
+            if not os.access(parent if parent.is_dir() else parent.parent, os.W_OK):
+                blocked.append(path)
+        rows.append((action, path, kind, note))
+
+    proposed = dict(manifest, installed_from=source)
+    proposed['installed'] = dict(record.get('installed') or {'tier': None, 'features': []}, modules=sorted(modules))
+    diffs.append(unified(manifest_path.name, (target / manifest_path.name).read_text(), json.dumps(proposed, indent=2) + '\n'))
+
+    print(f"Upgrade plan for {target}: installed from {(base_commit or 'an unrecorded commit')[:12]}, "
+          f"package at {source['commit'][:12]}{' (dirty checkout)' if source['dirty'] else ''}. Nothing was written to the project.")
+    if not have_base:
+        print('  The installed commit is not in this checkout, so local changes cannot be merged automatically.')
+    labels = {'replace': 'Replace (unmodified here)', 'add': 'Add (new upstream)', 'merge': 'Merge (both changed; merges cleanly)',
+              'conflict': 'Conflict (merge by hand)', 'review': 'Review (by hand)', 'remove': 'Remove (removed upstream)',
+              'keep': 'Already current', 'absent': 'Absent here (record the exclusion or restore it)'}
+    for action in PLAN_ORDER:
+        group = [r for r in rows if r[0] == action]
+        if group:
+            print(f'{labels[action]}: {len(group)}')
+            for _, path, kind, note in group if action != 'keep' else ():
+                print(f'  {path}' + (f' ({note})' if note else ''))
+    if any(r[0] in ('conflict', 'review') for r in rows) and have_base:
+        print(f"Upstream change for a file: git -C {root} diff {base_commit[:12]} {source['commit'][:12]} -- PATH")
+    if any(r[1].startswith(('.agents/', '.claude/', '.codex/')) or r[2] == 'procedure' for r in rows if r[0] != 'keep'):
+        print('After merging procedures, regenerate the skill copies: python3 check_package.py --sync-adapters')
+    if blocked:
+        print('Not writable here (ask the user to apply these): ' + ', '.join(blocked))
+    if patch:
+        Path(patch).write_text(''.join(d for d in diffs if d))
+        print(f'Proposed patch for replace, add, merge and remove, plus the new manifest: {patch} '
+              f'(review it, then in the project: git apply {Path(patch).resolve()})')
+    print('Next: decide each conflict and review item with the user, apply, then run --check-upgrade.')
+
+
+OPEN_ITEM = re.compile(r'^\|\s*([A-Z][A-Z0-9]*-\d+)\s*\|(.*)$', re.M)
+REVISION = re.compile(r'\b(?=[0-9a-f]*\d)(?=[0-9a-f]*[a-f])[0-9a-f]{7,40}\b')
+
+
+def check_upgrade(target, since='HEAD'):
+    """After an upgrade is applied, compare the project with its pre-upgrade commit: open items, deployed revisions,
+    references to deleted scripts and local changes to packaged files must survive. Exits 1 on a problem."""
+    target = Path(target).resolve()
+
+    def git(*args):
+        result = subprocess.run(['git', '-C', str(target), *args], capture_output=True, text=True)
+        if result.returncode:
+            sys.exit(f"git {' '.join(args)} failed in {target}: {result.stderr.strip()}")
+        return result.stdout
+
+    before_files = [p for p in git('ls-tree', '-r', '--name-only', since).splitlines()]
+    shown = lambda p: subprocess.run(['git', '-C', str(target), 'show', f'{since}:{p}'], capture_output=True, text=True).stdout
+    now_files = [p for p in git('ls-files', '--cached', '--others', '--exclude-standard').splitlines() if (target / p).is_file()]
+    now_docs = '\n'.join((target / p).read_text(errors='replace') for p in now_files if p.endswith('.md'))
+    problems = []
+    open_before, revisions = set(), set()
+    for path in (p for p in before_files if p.endswith('.md')):
+        text = shown(path)
+        open_before |= {m.group(1) for m in OPEN_ITEM.finditer(text) if re.search(r'(?i)\|\s*open\b', '|' + m.group(2))}
+        revisions |= {r for line in text.splitlines() if re.search(r'(?i)deploy', line) for r in REVISION.findall(line)}
+    still_open = {m.group(1) for m in OPEN_ITEM.finditer(now_docs) if re.search(r'(?i)\|\s*open\b', '|' + m.group(2))}
+    lost = sorted(i for i in open_before if not re.search(rf'\b{re.escape(i)}\b', now_docs))
+    closed = sorted(i for i in open_before - still_open if i not in lost)
+    if lost:
+        problems.append('Open items no longer in any document: ' + ', '.join(lost))
+    if closed:
+        problems.append('Open items no longer marked open (an upgrade does not close them): ' + ', '.join(closed))
+    missing = sorted(r for r in revisions if r not in now_docs)
+    if missing:
+        problems.append('Deployed revisions no longer in any document: ' + ', '.join(missing))
+    deleted = sorted(set(before_files) - set(now_files))
+    code = [p for p in now_files if not p.endswith(('.md', '.json'))]
+    for gone in deleted:
+        name = Path(gone).name
+        users = [p for p in code if name in (target / p).read_text(errors='replace')]
+        if users:
+            problems.append(f'{gone} was deleted but {", ".join(users)} still names it')
+    record = json.loads(shown(manifest_path.name) or '{}')
+    commit = record.get('installed_from', {}).get('commit')
+    modules = set(record.get('installed', {}).get('modules') or (m for m in record.get('modules', {}) if m != 'enterprise'))
+    packaged = [e['path'] for e in record.get('files', []) if e['path'] in before_files
+                and (e.get('kind') not in FILLED_KINDS or e['path'] == 'AGENTS.md')]
+    flat = lambda text: ' '.join(text.split())
+    for path in packaged:
+        base = effective(path, package_git('show', f'{commit}:{path}') if commit else None, record, modules)
+        mine_before = shown(path)
+        if base is None or mine_before == base:
+            continue
+        now = flat((target / path).read_text()) if (target / path).is_file() else ''
+        base_lines = base.splitlines()
+        dropped = []
+        for line in set(mine_before.splitlines()) - set(base_lines):
+            # Each run of words the line adds to its closest installed line must survive verbatim, wherever it was merged.
+            close = difflib.get_close_matches(line, base_lines, n=1, cutoff=0.6)
+            words, old_words = line.split(), (close[0].split() if close else [])
+            runs = [' '.join(words[j1:j2]) for op, _, _, j1, j2 in difflib.SequenceMatcher(None, old_words, words).get_opcodes()
+                    if op in ('insert', 'replace')]
+            runs = [r.strip('-*|# ') for r in runs if len(r.strip('-*|# ')) > 3]
+            if any(flat(r) not in now for r in runs):
+                dropped.append(line)
+        if dropped:
+            problems.append(f'{path}: {len(dropped)} local change(s) not found verbatim, first: {dropped[0].strip()[:80]}')
+    for path in now_files:
+        if path.endswith('.md') and re.search(r'(?m)^(<{7} |>{7} )', (target / path).read_text(errors='replace')):
+            problems.append(f'{path}: unresolved merge conflict markers')
+    if problems:
+        print('\n'.join(problems))
+    print(f"Upgrade check against {since}: {len(open_before)} open items, {len(revisions)} deployed revisions, "
+          f"{len(deleted)} deleted files, {len(packaged)} packaged files checked; "
+          + (f'{len(problems)} problem(s).' if problems else 'nothing lost.'))
+    if problems:
+        sys.exit(1)
 
 
 def check_links(files, errors, uninstalled=frozenset()):
@@ -646,6 +873,10 @@ def main():
     parser.add_argument('--features', default='', help='with --install, comma-separated features to add: ui, data, stack-go, stack-rust')
     parser.add_argument('--all', action='store_true', help='with --install, the 2.x set instead of a tier: every module except Enterprise')
     parser.add_argument('--dry-run', action='store_true', help='with --install, list the modules and files it would copy and write nothing')
+    parser.add_argument('--plan-upgrade', metavar='DIR', help='say what upgrading an installed project to this package would do to each file; writes nothing there')
+    parser.add_argument('--patch', metavar='FILE', help='with --plan-upgrade, write the proposed changes as a git-apply patch (outside the project)')
+    parser.add_argument('--check-upgrade', metavar='DIR', help='after an upgrade, check that open items, deployed revisions, local changes and script references survived')
+    parser.add_argument('--since', default='HEAD', help='with --check-upgrade, the pre-upgrade commit (default HEAD)')
     parser.add_argument('--sync-adapters', action='store_true', help='regenerate skill wrappers from procedures')
     parser.add_argument('--update-manifest', action='store_true', help='refresh manifest hashes (template mode)')
     parser.add_argument('--verify', nargs='?', const='development', choices=['development', 'documentation', 'release'],
@@ -661,6 +892,12 @@ def main():
 
     if args.verify:
         verify(args.verify, args.timeout, args.receipt)
+    if args.plan_upgrade:
+        plan_upgrade(manifest, args.plan_upgrade, args.patch)
+        return
+    if args.check_upgrade:
+        check_upgrade(args.check_upgrade, args.since)
+        return
     if args.install:
         if args.all and args.tier:
             parser.error('--all replaces --tier; give one or the other')
