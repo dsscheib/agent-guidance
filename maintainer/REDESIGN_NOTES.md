@@ -256,6 +256,10 @@ Suggested sequence:
    the harness; after DOC-067, Haiku 2/3 and Luna 0/3, with no run changing a file while planning. Every Sol run and
    two Luna runs hit the read-only `.agents` adapter in the Codex sandbox, an environment block for V4-3. One Luna
    run dropped a local rule and passed `--check-upgrade` from the project's copy, which now fails instead (DOC-069).
+   **V4-8 done 2026-11-06:** `--install --tools` records the agent tools in `installed.tools`; install, the checker,
+   `--sync-adapters` and `--plan-upgrade` handle only their adapters and guardrails, and installs without the field
+   keep every tool. The tools live in the installed manifest rather than a profile field, so filled-in profiles and
+   placeholder counts are unchanged.
 4. Separate outcomes (V4-3), then run the holdout set and the overhead measures (V4-4, V4-6).
 
 Refresh planning documents (V4-7) alongside. Define acceptance criteria and preserve baseline evidence before

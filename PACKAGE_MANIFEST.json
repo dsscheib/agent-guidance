@@ -73,6 +73,35 @@
       "stack-rust"
     ]
   },
+  "tools": {
+    "claude": {
+      "name": "Claude Code",
+      "paths": [
+        "CLAUDE.md",
+        ".claude/"
+      ]
+    },
+    "codex": {
+      "name": "Codex",
+      "paths": [
+        ".codex/",
+        ".agents/"
+      ]
+    },
+    "antigravity": {
+      "name": "Antigravity",
+      "paths": [
+        ".agents/"
+      ]
+    },
+    "copilot": {
+      "name": "Copilot CLI",
+      "paths": [
+        ".github/hooks/",
+        ".agents/"
+      ]
+    }
+  },
   "agents_tables": {
     "routing": [
       {
@@ -221,8 +250,8 @@
     {
       "path": "README.md",
       "kind": "entry",
-      "bytes": 8711,
-      "sha256": "66bcc9801b23d2e38e8225316a3f9b3359f754511cbd7ea840e0b762330564e7",
+      "bytes": 9006,
+      "sha256": "9eb1404f787c119cf77a1f9a92ee11dbc93f23149de09118eae46365c514de8a",
       "module": "core"
     },
     {
@@ -263,8 +292,8 @@
     {
       "path": "docs/AGENT_TOOLS.md",
       "kind": "policy",
-      "bytes": 11557,
-      "sha256": "8f5e9f2bf3be85153ea78fdbedc7b891d5e64a7bc49af0f0481adb28d831e0c2",
+      "bytes": 12111,
+      "sha256": "8cce11f30cbabd5de090b788d59e238007347b0c3cf14cbce95cc8ac4def229a",
       "module": "core"
     },
     {
@@ -474,8 +503,8 @@
     {
       "path": "docs/procedures/upgrade-guidance.md",
       "kind": "procedure",
-      "bytes": 10655,
-      "sha256": "b3dd6aa76b851dd800f3507179273b02b0f3a5e94a20a2485e86a7be5d290993",
+      "bytes": 10853,
+      "sha256": "ac0b96c9f4fa75c06e09f4dc4660a53ce0425ca1a192b6c5db5a7b173ac2f10f",
       "module": "core"
     },
     {
@@ -502,8 +531,8 @@
     {
       "path": "check_package.py",
       "kind": "tooling",
-      "bytes": 58818,
-      "sha256": "361179ae02a5afa4e07253aa9f2e82b4bbe935309fb6297252203aba1a83024e",
+      "bytes": 61549,
+      "sha256": "070339cab18378313838af5ad6a05a7f18231e6b6d91000e9edca3b09af60dbf",
       "module": "core"
     },
     {

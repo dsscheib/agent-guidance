@@ -425,6 +425,43 @@ def case_plan_upgrade(tmp):
         expect(r.returncode and found, f'plan test: --check-upgrade missed {what}:\n    ' + out[-500:])
 
 
+def case_tools(tmp):
+    """--tools installs and checks only the adapters and guardrails of the tools a project uses (V4-8)."""
+    target = tmp / 'tools'
+    target.mkdir()
+    if install(target, '--tier', 'prototype', '--tools', 'claude').returncode:
+        return  # the failed install is already a problem
+    present = lambda prefix: [p for p in module_of if p.startswith(prefix) and (target / p).is_file()]
+    expect(not present('.agents/') and not present('.codex/') and not present('.github/hooks/'),
+           f"claude-only install copied other tools' files: {present('.agents/') + present('.codex/') + present('.github/hooks/')}")
+    expect(present('.claude/') and (target / 'CLAUDE.md').is_file(), 'claude-only install lacks the Claude Code files')
+    record = json.loads((target / 'PACKAGE_MANIFEST.json').read_text())['installed']
+    expect(record.get('tools') == ['claude'], f'tools not recorded: {record}')
+    passed, out = check(target)
+    expect(passed, 'claude-only project check failed:\n    ' + out[:600])
+    skill = target / '.claude/skills/final-audit/SKILL.md'
+    skill.unlink()
+    passed, out = check(target)
+    expect(not passed and 'final-audit' in out, 'removing an adopted tool adapter did not fail the check')
+    subprocess.run([sys.executable, '-B', 'check_package.py', '--sync-adapters'], cwd=target, capture_output=True, text=True)
+    expect(skill.is_file() and not (target / '.agents').exists(), 'sync did not restore only the adopted tool adapters')
+    plan = subprocess.run([sys.executable, '-B', str(root / 'check_package.py'), '--plan-upgrade', str(target)], capture_output=True, text=True)
+    expect('.agents/' not in plan.stdout and '.codex/' not in plan.stdout, "the plan proposes other tools' files:\n    " + plan.stdout[:600])
+    install(target, '--tools', 'codex')
+    record = json.loads((target / 'PACKAGE_MANIFEST.json').read_text())['installed']
+    expect(record.get('tools') == ['claude', 'codex'] and present('.agents/') and present('.codex/'),
+           f'adding a tool did not add its files: {record}')
+    passed, out = check(target)
+    expect(passed, 'project check failed after adding a tool:\n    ' + out[:600])
+    everything = tmp / 'tools-all'
+    everything.mkdir()
+    install(everything, '--tier', 'prototype')
+    record = json.loads((everything / 'PACKAGE_MANIFEST.json').read_text())['installed']
+    expect(record.get('tools') == sorted(manifest['tools']), f'an install without --tools should get every tool: {record}')
+    r = raw_install(tmp, '--tier', 'prototype', '--tools', 'vim')
+    expect(r.returncode and 'Unknown tool' in r.stdout + r.stderr, 'an unknown tool was accepted')
+
+
 def raw_install(target, *args):
     return subprocess.run([sys.executable, '-B', str(root / 'check_package.py'), '--install', str(target), *args],
                           capture_output=True, text=True)
@@ -509,12 +546,12 @@ def main():
         return
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
-        for case in (case_tiers, case_policy, case_generated_tables, case_enterprise, case_proposed_exclusion, case_dependency_files, case_rename_scope, case_documentation_mode, case_copilot_stop, case_upgrade, case_plan_upgrade, case_default, case_missing_module, case_broken_link):
+        for case in (case_tiers, case_policy, case_generated_tables, case_enterprise, case_proposed_exclusion, case_dependency_files, case_rename_scope, case_documentation_mode, case_copilot_stop, case_upgrade, case_plan_upgrade, case_tools, case_default, case_missing_module, case_broken_link):
             case(tmp)
     if problems:
         print('\n'.join(problems))
         sys.exit(1)
-    print('Install tests OK: tiers, design policy, generated tables, enterprise rows, proposed exclusions, dependency files, rename scope, documentation mode, Copilot stop hook, features, upgrade, upgrade plan and check, tier required (dry run, --all, rerun), missing module and broken link.')
+    print('Install tests OK: tiers, design policy, generated tables, enterprise rows, proposed exclusions, dependency files, rename scope, documentation mode, Copilot stop hook, features, upgrade, upgrade plan and check, tools, tier required (dry run, --all, rerun), missing module and broken link.')
 
 
 if __name__ == '__main__':
