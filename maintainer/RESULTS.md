@@ -2414,3 +2414,17 @@ Repository-only log of agent scenario runs from [SCENARIOS.md](SCENARIOS.md). Ap
 | 2026-11-05 | S22 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | none installed | 2 | pass | Auto-scored; authorized commit done; V4-5 pilot (DOC-058) |
 | 2026-11-05 | S23 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | none installed | 1 | pass | Auto-scored; authorized commit done; V4-5 pilot (DOC-058) |
 | 2026-11-05 | S23 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | none installed | 2 | pass | Auto-scored; authorized commit done; V4-5 pilot (DOC-058) |
+| 2026-11-05 | S2 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | 38d2edc-agent | 1 | pass | Auto-scored; V4-11 register rerun (DOC-059) |
+| 2026-11-05 | S3 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | 38d2edc-agent | 1 | pass | Auto-scored; V4-11 register rerun (DOC-059) |
+| 2026-11-05 | S4 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | 38d2edc-agent | 1 | pass | Auto-scored; V4-11 register rerun (DOC-059) |
+| 2026-11-05 | S5 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | 38d2edc-agent | 1 | pass | Auto-scored; V4-11 register rerun (DOC-059) |
+| 2026-11-05 | S6 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | 38d2edc-agent | 1 | pass | Auto-scored; V4-11 register rerun (DOC-059) |
+| 2026-11-05 | S7 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | 38d2edc-agent | 1 | pass | Auto-scored; V4-11 register rerun (DOC-059) |
+| 2026-11-05 | S8 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | 38d2edc-agent | 1 | pass | Auto-scored; V4-11 register rerun (DOC-059) |
+| 2026-11-05 | S9 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | 38d2edc-agent | 1 | pass | Auto-scored; V4-11 register rerun (DOC-059) |
+| 2026-11-05 | S10 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | 38d2edc-agent | 1 | pass | Auto-scored; V4-11 register rerun (DOC-059) |
+| 2026-11-05 | S12 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | 38d2edc-agent | 1 | pass | Auto-scored; V4-11 register rerun (DOC-059) |
+| 2026-11-05 | S13 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | 38d2edc-agent | 1 | pass | Auto-scored; V4-11 register rerun (DOC-059) |
+| 2026-11-05 | S14 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | 38d2edc-agent | 1 | pass | Auto-scored; V4-11 register rerun (DOC-059) |
+| 2026-11-05 | S15 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | 38d2edc-agent | 1 | fail | Auto-scored: did not flag the pinned requests dependency; V4-11 register rerun (DOC-059) |
+| 2026-11-05 | S17 | claude | 2.1.318 (Claude Code) claude-haiku-5-5 | 38d2edc-agent | 1 | fail | Auto-scored: did not ask the owner; V4-11 register rerun (DOC-059) |
