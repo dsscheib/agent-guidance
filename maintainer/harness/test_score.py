@@ -3,7 +3,7 @@
 
   python3 maintainer/harness/test_score.py
 """
-import sys
+import json, sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -279,6 +279,22 @@ class UpgradeReview(FixtureCase):
             (fx / path).write_text((repo / path).read_text())
         c = self.score(fx, 'S18')['checks']
         self.assertEqual((c['local_rules_kept'], c['upstream_carried']), ((False, False), (True, True)))
+
+
+
+class AgentView(unittest.TestCase):
+    """The guidance shown to agents keeps maintainer/ out of every commit, and carries each release a scenario installs
+    as an ancestor, so the upgrade planner can read the installed baseline (V4-2)."""
+
+    def test_release_ancestor_without_maintainer(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            view = score.run.agent_view(score.run.snapshot(Path(tmp)))
+            refs = json.loads(score.run.baselines(view))
+            self.assertIn('62d3756', refs)
+            self.assertEqual(score.run.git(view, 'rev-list', '--count', 'HEAD'), str(len(refs) + 1))
+            self.assertNotIn('maintainer/', score.run.git(view, 'log', '--all', '--name-only', '--format='))
+            self.assertEqual(score.run.git(view, 'show', f"{refs['62d3756']}:check_package.py"),
+                             score.run.git(score.run.REPO, 'show', '62d3756:check_package.py'))
 
 
 if __name__ == '__main__':

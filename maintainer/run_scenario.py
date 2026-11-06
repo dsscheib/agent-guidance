@@ -99,6 +99,13 @@ def build(scenario, target):
             result = run([sys.executable, str(old / 'check_package.py'), '--install', str(target)], old)
             if result.returncode:
                 raise SystemExit(result.stdout + result.stderr)
+        # The harness shows agents the release as a commit without maintainer/; record that commit, as an install
+        # from the agents' checkout would.
+        shown = json.loads(os.environ.get('SCENARIO_BASELINES') or '{}').get(ref)
+        if shown:
+            record = json.loads((target / 'PACKAGE_MANIFEST.json').read_text())
+            record.setdefault('installed_from', {})['commit'] = shown
+            (target / 'PACKAGE_MANIFEST.json').write_text(json.dumps(record, indent=2) + '\n')
     elif install:
         # A scenario without a tier keeps the 2.x set its fixtures were written against.
         tier = ['--tier', scenario['tier']] if scenario.get('tier') else ['--all']

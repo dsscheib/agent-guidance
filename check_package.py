@@ -435,9 +435,9 @@ def plan_upgrade(manifest, target, patch=None):
         print('Not writable here (ask the user to apply these): ' + ', '.join(blocked))
     if patch:
         Path(patch).write_text(''.join(d for d in diffs if d))
-        print(f'Proposed patch for replace, add, merge and remove, plus the new manifest: {patch} '
-              f'(review it, then in the project: git apply {Path(patch).resolve()})')
-    print('Next: decide each conflict and review item with the user, apply, then run --check-upgrade.')
+        print(f'Proposed patch (replace, add, merge and remove, plus the new manifest): {Path(patch).resolve()}')
+    print('This is a plan only. Show it to the user with your questions about each conflict and review item, then stop. '
+          'Apply nothing, including the replace and add changes, until the user approves; after applying, run --check-upgrade.')
 
 
 OPEN_ITEM = re.compile(r'^\|\s*([A-Z][A-Z0-9]*-\d+)\s*\|(.*)$', re.M)

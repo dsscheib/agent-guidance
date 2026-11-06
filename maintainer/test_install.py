@@ -393,6 +393,7 @@ def case_plan_upgrade(tmp):
     expect(r.returncode == 0, 'plan test: --plan-upgrade failed: ' + out[-400:])
     expect(not run(['git', 'status', '--porcelain'], project).stdout, 'plan test: planning changed the project')
     expect('docs/OPEN_WORK.md' not in out, 'plan test: a register upstream did not change is listed')
+    expect('Apply nothing' in out and 'git apply' not in out, 'plan test: the plan does not say to stop before applying')
     for label, path in (('Replace', 'docs/RUNBOOKS.md'), ('Add', 'docs/RELEASE_NOTES.md'), ('Merge', 'docs/CHANGE_WORKFLOW.md'),
                         ('Conflict', 'docs/TESTING_SPEC.md')):
         expect(path in plan_section(out, label), f'plan test: {path} not under {label}:\n    ' + out[:900])
