@@ -207,8 +207,8 @@
     {
       "path": "AGENTS.md",
       "kind": "entry",
-      "bytes": 10157,
-      "sha256": "7d371909166a855495bb2ef8da2f199a55b330503a68dc38d96e33c7c67159e4",
+      "bytes": 10202,
+      "sha256": "f9e9a31a5cbd92b486e20e414c410acd2729d6da25ad033d1fe9f8bf4f70f46a",
       "module": "core"
     },
     {
@@ -277,8 +277,8 @@
     {
       "path": "docs/CHANGE_WORKFLOW.md",
       "kind": "policy",
-      "bytes": 4200,
-      "sha256": "21795999f17362d54aa0da3a861a636fe5d491b8b1bb10b16c54949cd7545a07",
+      "bytes": 4385,
+      "sha256": "dd31e19cd74fc922781ec612b3241d3fe9e9a9fe421be846d1b707596abf6a75",
       "module": "core"
     },
     {
@@ -383,8 +383,8 @@
     {
       "path": "docs/UX_ACCEPTANCE_CHECKLIST.md",
       "kind": "template",
-      "bytes": 1971,
-      "sha256": "bccb5ab1c0bdf450a06d327643cdd18c5e560def9a6496617ae8fba1c243b0f2",
+      "bytes": 2025,
+      "sha256": "12cf8823d355fb276abf9fdcb364fd253345d01580ad914e11fc30b6ff99f90c",
       "module": "ui"
     },
     {
@@ -460,8 +460,8 @@
     {
       "path": "docs/procedures/final-audit.md",
       "kind": "procedure",
-      "bytes": 5359,
-      "sha256": "b523b206362c285bb24f15ef69c40b6529a849eb778605f544c2a40e1e0fdfb9",
+      "bytes": 5397,
+      "sha256": "0388f2d10c93de8a3521a82af0ad7f1dddc9dfaa0932393e25c2024064fd289a",
       "module": "core"
     },
     {

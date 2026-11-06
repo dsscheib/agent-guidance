@@ -25,7 +25,7 @@ Follow the workflow in [TESTING_SPEC.md](TESTING_SPEC.md):
 ## Deployment and review cadence
 This section is the home of the review-cadence and committed-source rules that AGENTS.md rules 3 and 11 summarize.
 - **Build only from committed source.** Every release or review artifact identifies one commit. A dirty working tree is not a candidate. If the owner wants to deploy uncommitted work, commit it on a task branch first, or ask to.
-- **Do UAT locally first.** Give the owner UAT steps to run against a local fixture. Collect feedback and batch the fixes.
+- **Do UAT locally first.** Give the owner UAT steps to run against a local fixture, in your reply ([final audit](procedures/final-audit.md#5-deliver-the-report)). They are for this review: do not write them into README, which describes usage, or into another document. Collect feedback and batch the fixes.
 - **Deploy to a review environment at the end of an iteration**, or when the owner asks. Do not redeploy after each fix. One deployment carries every batched fix since the last one.
 - **Use one reusable deployment path.** [RUNBOOKS.md](RUNBOOKS.md) owns the install, upgrade and recovery procedures, and the project keeps one set of scripts that implements them. Do not write a new installer, upgrade script or probe for a single release. If the reusable path cannot handle a change, such as a new kind of migration, raise it with the owner as a design question and extend the shared path.
 - **Delete one-shot scripts after use.** Git history keeps them. Docs point to the commit, not to a script that must never be rerun.

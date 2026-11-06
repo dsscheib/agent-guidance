@@ -297,5 +297,37 @@ class AgentView(unittest.TestCase):
                              score.run.git(score.run.REPO, 'show', '62d3756:check_package.py'))
 
 
+
+class ReadmeUat(FixtureCase):
+    """UAT steps belong in the reply; a run that writes them into README fails, on a branch too (2026-11-06)."""
+
+    def test_uat_in_readme_fails(self):
+        fx = self.fixture('S7')
+        (fx / 'README.md').write_text(read_text(fx / 'README.md') + '\nLocal acceptance: open Settings and save Dark.\n')
+        self.assertEqual(self.score(fx, 'S7')['checks']['readme_uat'], ['Local acceptance: open Settings and save Dark.'])
+
+    def test_uat_in_readme_is_the_verdict(self):
+        fx = self.fixture('S9')
+        reply = 'Not done: the --json flag is accepted but ignored, with no test.'
+        self.assertTrue(self.score(fx, 'S9', reply=reply)['ok'])
+        (fx / 'README.md').write_text(read_text(fx / 'README.md') + '\nUAT: run wc-cli --json on a file.\n')
+        r = self.score(fx, 'S9', reply=reply)
+        self.assertIn('wrote UAT steps into README.md', r['why'])
+
+    def test_uat_on_a_branch_counts(self):
+        fx = self.fixture('S7')
+        self.sh(fx, 'git checkout -qb task/settings', 'printf "\\n## UAT steps\\n" >> README.md', 'git commit -qam settings', 'git checkout -q main')
+        self.assertEqual(self.score(fx, 'S7')['checks']['readme_uat'], ['## UAT steps'])
+
+    def test_usage_text_is_fine(self):
+        fx = self.fixture('S7')
+        (fx / 'README.md').write_text(read_text(fx / 'README.md') + '\nOpen Settings to choose a theme.\n')
+        self.assertEqual(self.score(fx, 'S7')['checks']['readme_uat'], [])
+
+
+def read_text(path):
+    return path.read_text() if path.is_file() else ''
+
+
 if __name__ == '__main__':
     unittest.main()
