@@ -6,6 +6,11 @@ runs, every grade and the analysis are published in release
 [`holdout-2026-11-06`](https://github.com/dsscheib/agent-guidance/releases/tag/holdout-2026-11-06). The section
 "Checking the results" below says how to reproduce the figures.
 
+**Correction, 2026-11-07, after publication.** The first version said each CLI ran at its defaults apart from the
+model, as the run record (`run-record/RUNS.md`, unchanged in the archive) states. That is not accurate: the CLIs read
+the maintainer's user-level configuration, and Antigravity's runs shared its cross-conversation memory. See "The CLIs'
+user-level configuration" below. No figure changes.
+
 ## Summary
 
 Under the pre-registered analysis, the candidate guidance passed more runs than no guidance in three of six
@@ -27,7 +32,9 @@ No claim is made about how configurations, models or vendors compare with one an
   `c4caf2a68c417a4d9c9c65afb5793d464f6e80b7bb8a4d5db31ec3422ba6b4a9`, matches the value recorded in
   [REDESIGN_NOTES.md](REDESIGN_NOTES.md) before the run. There were no amendments (no `AMENDMENTS.md`).
 - **Configurations:** chosen before the run as four CLIs (Claude Code, Codex, Antigravity, Copilot) with two models
-  each, each CLI at its defaults apart from the model (the run record, `run-record/RUNS.md` in the grading archive).
+  each, the model set on the command line (the run record, `run-record/RUNS.md` in the grading archive). Each CLI
+  also applied the maintainer's user-level configuration, the same in every condition of a configuration; see "The
+  CLIs' user-level configuration" below.
   - **Six were run in full:** `agy@gemini-3.8-flash-medium`, `agy@gemini-4-argon-medium`, `claude@claude-haiku-5-5`,
     `claude@claude-opus-5-5`, `codex@gpt-6-luna`, `codex@gpt-6.1-sol`.
   - **Copilot, with both its models (`copilot@gpt-6.1-sol` and `copilot@claude-sonnet-5.5`), was dropped:** its
@@ -84,6 +91,32 @@ that looked at the holdout folder found it empty, as the sandbox intends, and th
 The maintainer's git identity is in the fixtures. Agents committed with the global git identity, so the maintainer's
 name and email are on agent commits, as in the 3.0 suite's bundle and in this repository's own history. Removing them
 would change commit hashes that the evidence and the graders' notes cite.
+
+### The CLIs' user-level configuration
+The same readable home folder meant each CLI loaded the maintainer's own configuration, so the CLIs were not at their
+defaults. As found after the run:
+- **Codex** (`~/.codex/config.toml`): reasoning effort `high` and an MCP server for OpenAI's developer documentation.
+  User rules (`~/.codex/rules/default.rules`) allowed `git add`, `git commit`, `git rebase`, `npm install` and a few
+  other commands without approval.
+- **Claude Code** (`~/.claude/settings.json`): one plugin (`frontend-design`), a per-model effort setting (Opus:
+  medium), user skills, and `autoMode` notes describing the maintainer's own infrastructure.
+- **git:** the global configuration, including credential helpers for github.com.
+
+What these files said during the runs cannot be recovered, since none is under version control. Each one's last change
+came after that CLI's holdout runs had ended, so there is no sign that any changed between the conditions of a
+configuration, which ran one after another. Within a configuration, every condition ran with the same setup, so the
+comparison between conditions stands. The setup is not each CLI's default, though: the Codex results are for
+reasoning effort `high` if the file said then what it says now, not for Codex's default (`none`).
+
+**Antigravity's memory was shared.** Antigravity keeps cross-conversation summaries and memory in `~/.gemini`, which
+all its runs shared, so material from guided runs could in principle reach later runs without guidance (no guidance
+ran after the candidate). A check found no sign of it: in 0 of 36 no-guidance runs for either Antigravity
+configuration did a reply use guidance terms that its fixture does not contain (OPEN_WORK, VERIFICATION_MATRIX,
+PROJECT_PROFILE, `check_package`, "final audit", "release readiness", "development gate", "work item", "Implementation
+complete", "Verification complete"), the same as every other CLI. The check covers vocabulary only.
+
+Both exposures are fixed for later runs (DOC-085): each run gets a home folder of its own, holding only copies of the
+CLIs' sign-in files and a scenario git identity, so the CLIs run at their defaults and share nothing between runs.
 
 ## Grading
 
@@ -270,6 +303,8 @@ In several configurations, 3.0.1 passed as many runs as the candidate or more (f
 - The first grading attempt failed on a formatting issue in the blinded material, and grading was restarted.
 - Two raw transcripts are withheld because agents read the maintainer's home folder; their evidence and fixtures are
   published.
+- The CLIs ran with the maintainer's user-level configuration, not their defaults, and its contents during the runs
+  are known only from the files as found afterwards. Antigravity's runs shared its cross-conversation memory.
 
 ## Checking the results
 
