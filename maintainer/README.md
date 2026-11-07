@@ -46,7 +46,7 @@ The clearest lessons in [REDESIGN_NOTES.md](REDESIGN_NOTES.md) come from watchin
 
 ### 3. Guardrails can block authorized work in unattended mode
 
-In the holdout study (`H1`) and the Version 4 authorization pilot (`S19`), the user prompt explicitly authorized a `git push`. Because the shipped guardrails for Claude Code (`.claude/settings.json`) and Codex (`.codex/rules/guidance.rules`) set `git push` to ask for confirmation, running in unattended print mode with nobody present to approve caused the CLI to refuse the push. That blocked **11 of 18 candidate runs** on Claude Code and Codex in `H1` (against 0 blocked without guidance) and accounts for most of the holdout gap on `claude-opus-5-5` and `claude-haiku-5-5`. Interactive sessions prompt the user as intended, but unattended automation needs that rule adjusted when pushing is part of the job.
+In the holdout study (`H1`) and the Version 4 authorization pilot (`S19`), the user prompt explicitly authorized a `git push`. Because the shipped guardrails for Claude Code (`.claude/settings.json`) and Codex (`.codex/rules/guidance.rules`) set `git push` to ask for confirmation, running in unattended print mode with nobody present to approve caused the CLI to refuse the push. That blocked **11 of 18 candidate runs** on Claude Code and Codex in `H1` (against 0 blocked without guidance) and accounts for most of the holdout gap on `claude-opus-5-5` and `claude-haiku-5-5`. Interactive sessions prompt the user as intended, but unattended automation needs that rule adjusted when pushing is part of the job. **Fixed** (DOC-088, and in 3.0.2 for version 3): the guardrails no longer ask before `git push`, which AGENTS.md rule 3 governs, and outside Enterprise projects they no longer ask before `gh pr merge` or `gh release create` either. With the fix, S19 pushed in every run and no run pushed when it was not asked to.
 
 ### 4. Version 3.0.1 remains the strongest proven baseline
 
@@ -63,7 +63,6 @@ In the holdout's exploratory comparison, release `3.0.1` matched or beat the Ver
 
 ### Skip or strip it down when:
 - **You are building a quick prototype or single-person script with a frontier model.** Installing all 50+ files on a small repo is unnecessary ceremony. If you only use `claude-opus-5-5` or `gpt-6.1-sol` and your `README` already states your test commands and git rules, a short standalone `AGENTS.md` and a test runner will get you most of the way there.
-- **You run unattended batch agents that must push or deploy without a human prompt,** unless you remove `git push` from the ask-list in `.claude/settings.json` and `.codex/rules/guidance.rules`.
 
 ### Recommended adoption path
 
@@ -86,8 +85,8 @@ In the holdout's exploratory comparison, release `3.0.1` matched or beat the Ver
 | [HOLDOUT_RESULTS.md](HOLDOUT_RESULTS.md) | Public report for the 864-run pre-registered, blinded Version 4 holdout study |
 | [SCENARIOS.md](SCENARIOS.md) | Scenario catalog (`S1`–`S23`), pass criteria, and instructions for manual and automated runs |
 | [RESULTS.md](RESULTS.md) | Cumulative log of individual scenario runs across development and evaluation batches |
-| [REDESIGN_NOTES.md](REDESIGN_NOTES.md) | Chronological engineering findings (1–54) and the proposed Version 4 roadmap (`V4-1`–`V4-16`) |
-| [RESTRUCTURE_DESIGN.md](RESTRUCTURE_DESIGN.md) | Design record for the Version 3 modular tier restructure |
+| [REDESIGN_NOTES.md](REDESIGN_NOTES.md) | The Version 4 roadmap with each item's status (`V4-1`–`V4-19`), and the history of version 3 development with findings 1–54 |
+| [RESTRUCTURE_DESIGN.md](RESTRUCTURE_DESIGN.md) | Design record for the Version 3 modular tier restructure (implemented) |
 | [`run_scenario.py`](run_scenario.py) & [`scenarios.json`](scenarios.json) | Reproducible scenario fixture builder and machine-readable scenario definitions |
 | [`test_install.py`](test_install.py) | Deterministic test suite for `--install`, tiers, tools, budgets, `--verify`, and upgrades |
 | [`harness/`](harness/) | Bubblewrap sandboxes, multi-CLI runner, automatic scorer, blinding tool, and holdout analysis scripts |

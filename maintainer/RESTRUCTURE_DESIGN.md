@@ -1,6 +1,6 @@
 # Restructure design: core plus tier modules
 
-Repository-only. **Status: approved by the owner on 2026-11-03, with the decisions recorded at the end.** Phases 1–3 implemented (DOC-018 to DOC-020) and the merged Internal tier (DOC-030); friction budgets and adoption cleanup follow. Background and evidence are in [REDESIGN_NOTES.md](REDESIGN_NOTES.md); finding numbers below refer to it.
+Repository-only. **Status: implemented; this is the design record of version 3.** Approved by the owner on 2026-11-03, with the decisions recorded at the end, and built in all five phases: modules and tier-aware install (DOC-018 to DOC-020), the merged Internal tier (DOC-030), friction budgets (DOC-031 to DOC-038) and the upgrade procedure with adoption cleanup (DOC-039 to DOC-041). Where the build differs from the design, a note says so. Current plans are in the [Version 4 roadmap](REDESIGN_NOTES.md#version-4-roadmap); background and evidence are in [REDESIGN_NOTES.md](REDESIGN_NOTES.md), and finding numbers below refer to it.
 
 ## Why
 - **Every project gets everything.** Today `--install` copies all 49 files (about 155 KB) whatever the tier, and lower tiers "exclude" the rest by a note in the profile. Agents still read and edit those files: on one-line changes, Codex edited about three guidance documents per task (finding 4).
@@ -36,14 +36,14 @@ Measured from the manifest: today every project receives 155 KB, of which 102 KB
 ## The Enterprise tier
 Everything in Production service, plus:
 - **Traceability.** Every change names a requirement or ticket ID. The checker can verify that commit messages or the PR description carry one; the pattern (for example `PROJ-123`) is set in the profile.
-- **Separation of duties.** The profile records roles (product owner, approver, release manager) instead of one owner. An agent never approves, merges or accepts its own work; the guardrails ask before `gh pr merge` and similar. CODEOWNERS and protected-branch settings are expected and named in the profile.
+- **Separation of duties.** The profile records roles (product owner, approver, release manager) instead of one owner. An agent never approves, merges or accepts its own work; the guardrails ask before `gh pr merge` and similar. *Since DOC-088 the merge and release rules are installed with the Enterprise module only, and the checker fails an Enterprise project without them; `gh pr review` asks in every tier.* CODEOWNERS and protected-branch settings are expected and named in the profile.
 - **Machine-generated evidence.** CI runs `check_package.py --verify release --receipt` and keeps the receipt as a build artifact. Release records link CI runs instead of restating results.
 - **Supply chain.** Release gates in the command inventory for a dependency audit, an SBOM (format set in the profile) and a license check. Missing tools are gaps, as for any gate.
 - **Pluggable registers.** OPEN_WORK, release records and ADRs may live in an external tracker; the profile names where, and OPEN_WORK.md then holds only a pointer.
 
 ## Mechanics
 - **Manifest.** Each file in `PACKAGE_MANIFEST.json` gets a `module`. The manifest lists which modules each tier requires and which features add.
-- **Install.** `check_package.py --install DIR --tier internal --features ui` copies the core plus those modules. `--add-module` adds one later, for example when a project gains a UI or moves up a tier. Bootstrap proposes the tier and features and asks the owner, as today.
+- **Install.** `check_package.py --install DIR --tier internal --features ui` copies the core plus those modules. `--add-module` adds one later, for example when a project gains a UI or moves up a tier. *As built: there is no `--add-module`; rerunning `--install` with a higher `--tier` or more `--features` adds the modules and keeps the project's files, and version 4 adds `--plan-upgrade` for package upgrades.* Bootstrap proposes the tier and features and asks the owner, as today.
 - **Generated routing table.** AGENTS.md keeps its rules, but its routing table is generated at install time from the installed modules, so agents never see rows for documents that are not there. This also keeps AGENTS.md small at the lower tiers.
 - **Checker.** Project mode knows the installed tier and modules: it no longer reports absent modules as missing, flags a module that the tier requires but is absent, and enforces each tier's mechanical rules (document budget everywhere; ticket IDs, CODEOWNERS and a CI receipt at Enterprise).
 - **Tier table.** PROJECT_PROFILE.md's tier table gains the Enterprise column and states, per gate, whether it runs per change or at release.
@@ -70,7 +70,7 @@ What a routine change (S2, S6 or S10) may touch, besides code and tests:
 2. **Generated routing table and a slimmer core AGENTS.md.** Rerun S1–S12 on Flash, Haiku and Opus. *Checkpoint: no regression.*
 3. **Enterprise module and scenarios.** *Checkpoint: owner reviews the enterprise rules.*
 4. **Friction scenarios and budgets**, tuning the guidance until each tier meets its budget. Routine changes first (S2, S6 and S10 under each tier), then S7, then a **COTS test scenario** (owner, 2026-11-04): a repository of tests against an off-the-shelf tool with one deliberately failing vendor behavior, measuring how many gates bootstrap must exclude and whether agents report the failure or weaken the test. *Done (DOC-031 to DOC-038): routine changes, S7 and the COTS scenarios meet their budgets, and the largest AGENTS.md is back under 10 KB.*
-5. **Upgrade procedure and adoption cleanup** for existing projects, tested on that fixture, then on the real project with the owner. *Fixture and scenario S18 done (DOC-039): 5/6 on the current procedure; the real project with the owner remains.*
+5. **Upgrade procedure and adoption cleanup** for existing projects, tested on that fixture, then on the real project with the owner. *Fixture and scenario S18 done (DOC-039): 5/6 on the current procedure. The real project was then migrated with the owner (findings 48 and 49).*
 
 ## Owner decisions, 2026-11-03
 1. **Module boundaries: as proposed.** DOMAIN_RULES stays in the design module; RELEASE_NOTES installs with operations.
