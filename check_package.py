@@ -585,7 +585,7 @@ def excluded(path, exclusions):
     return any(path == e or (e.endswith('/') and path.startswith(e)) for e in exclusions)
 
 
-def check_links(files, errors, uninstalled=frozenset()):
+def check_links(files, errors, uninstalled=frozenset(), repo_only=()):
     """Fail on links that resolve nowhere. Links to packaged files of modules this project did not install are
     expected (the shared documents mention every module) and are counted instead. Returns that count."""
     skipped = 0
@@ -596,6 +596,8 @@ def check_links(files, errors, uninstalled=frozenset()):
             if '://' in link or link.startswith(('#', 'mailto:')):
                 continue
             target = (path.parent / link.split('#')[0]).resolve()
+            if target.is_relative_to(root) and not target.exists() and rel(target).startswith(repo_only):
+                continue
             if target.is_relative_to(root) and not target.exists() and rel(target) in uninstalled:
                 skipped += 1
             elif not target.is_relative_to(root) or not target.exists():
@@ -1009,7 +1011,8 @@ def main():
     uninstalled |= recorded
     # Scenario fixtures are project content whose links resolve inside the project built from them, not in this repository.
     exempt = tuple(manifest.get('shim_exempt', []))
-    linked_elsewhere = check_links([f for f in files if not rel(f).startswith(exempt)], errors, uninstalled)
+    repo_only = () if (root / 'maintainer').is_dir() else tuple(manifest.get('repo_only', []))
+    linked_elsewhere = check_links([f for f in files if not rel(f).startswith(exempt)], errors, uninstalled, repo_only)
     check_shims(files, errors, tuple(manifest.get('shim_exempt', [])), tools is None or 'claude' in tools)
     check_adapters(manifest, errors, tools)
     agents = generate_agents(root / 'AGENTS.md', manifest, modules_in_checkout(manifest, template))
