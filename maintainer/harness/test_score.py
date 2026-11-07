@@ -3,7 +3,7 @@
 
   python3 maintainer/harness/test_score.py
 """
-import json, os, shutil, subprocess, sys
+import contextlib, io, json, os, shutil, subprocess, sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -515,6 +515,87 @@ class GraderSandbox(unittest.TestCase):
             self.skipTest('no session bus socket on this machine')
         r = self.grade(script, GR_KEYRING='1')
         self.assertEqual(r.stdout.split('\n')[:2], ['bus ', f'bus=unix:path={run_dir}/bus'], r.stderr)
+
+
+class Bundle(unittest.TestCase):
+    """bundle.py: publishes reruns and agent views, withholds named files, refuses history and home listings."""
+
+    def setUp(self):
+        import bundle
+        self.bundle = bundle
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp)
+        out = self.out = self.tmp / 'suite'
+        run = out / 'logs' / 'lab' / 'H1-r1'
+        run.mkdir(parents=True)
+        (run / 'evidence.json').write_text(json.dumps({'fixture': f'{out}/fx/lab/H1-r1', 'home': str(Path.home())}))
+        (run / 'step1.out').write_text('{"output": "ok"}\n')
+        (out / 'reruns' / 'logs' / 'lab' / 'H1-r1-attempt1').mkdir(parents=True)
+        (out / 'reruns' / 'logs' / 'lab' / 'H1-r1-attempt1' / 'step1.out').write_text('authentication failed\n')
+        (out / 'snapshots' / 'g-agent').mkdir(parents=True)
+        (out / 'snapshots' / 'g-agent' / 'AGENTS.md').write_text('rules\n')
+        (out / 'snapshots' / 'g').mkdir()
+        (out / 'snapshots' / 'g' / 'NOTES.md').write_text('maintainer only\n')
+
+    def pack(self, *extra, src=None):
+        archive = self.tmp / f'b{len(list(self.tmp.glob("b*.tar.zst")))}.tar.zst'
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.bundle.main([str(src or self.out), str(archive), *extra])
+        return self.tmp / archive.name.split('.')[0]
+
+    def test_reruns_and_agent_views_are_packed_and_paths_rewritten(self):
+        stage = self.pack()
+        self.assertTrue((stage / 'reruns/logs/lab/H1-r1-attempt1/step1.out').is_file())
+        self.assertTrue((stage / 'snapshots/g-agent/AGENTS.md').is_file())
+        self.assertFalse((stage / 'snapshots/g').exists())
+        ev = json.loads((stage / 'logs/lab/H1-r1/evidence.json').read_text())
+        self.assertEqual(ev, {'fixture': '$SUITE/fx/lab/H1-r1', 'home': '~'})
+
+    def test_shell_history_and_home_listings_are_refused_until_withheld(self):
+        f = self.out / 'logs' / 'lab' / 'H1-r1' / 'step1.out'
+        for text in ('{"output": "x\\r\\n: 1793227714:0;git clone https://example.invalid/private.git"}\n',
+                     '{"output": "-rw------- 1 me me 11168 Nov  4 17:02 .zsh_history\\r\\n"}\n',
+                     'rclone config update remote client_secret GOCSPX-' + 'x' * 28 + '\n',
+                     '| id | repository | summary | created_at | _query_source |\n'):
+            f.write_text(text)
+            with self.assertRaises(SystemExit) as e, contextlib.redirect_stdout(io.StringIO()):
+                self.pack()
+            self.assertIn('logs/lab/H1-r1/step1.out', str(e.exception))
+            shutil.rmtree(next(p for p in self.tmp.glob('b*') if p.is_dir()))
+        stage = self.pack('--withhold', 'logs/lab/H1-r1/step1.out', '--reason', 'it held what an agent read outside its fixture')
+        self.assertEqual((stage / 'logs/lab/H1-r1/step1.out').read_text(),
+                         'Withheld from publication: it held what an agent read outside its fixture\n')
+
+    def test_withhold_needs_a_reason_and_an_existing_file(self):
+        with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+            self.pack('--withhold', 'logs/lab/H1-r1/step1.out')
+        with self.assertRaises(SystemExit):
+            self.pack('--withhold', 'logs/lab/H9-r1/step1.out', '--reason', 'r')
+
+    def test_tree_packs_every_file_with_the_same_rewriting(self):
+        src = self.tmp / 'grading'
+        (src / 'key').mkdir(parents=True)
+        (src / 'key' / 'KEY.json').write_text(json.dumps({'source': f'{Path.home()}/runs/lab/H1-r1'}))
+        (src / 'sheet.json').write_text('{}')
+        stage = self.pack('--tree', src=src)
+        self.assertEqual(sorted(p.relative_to(stage).as_posix() for p in stage.rglob('*') if p.is_file()),
+                         ['key/KEY.json', 'sheet.json'])
+        self.assertEqual(json.loads((stage / 'key/KEY.json').read_text()), {'source': '~/runs/lab/H1-r1'})
+
+    def test_verbatim_files_are_kept_byte_for_byte_but_still_scanned(self):
+        src = self.tmp / 'grading'
+        (src / 'originals').mkdir(parents=True)
+        note = '{"notes": {"B1": "the diff yields api_key=[REDACTED] while the test uses api_key=<redacted>;"}}'
+        (src / 'originals' / 'g1.json').write_text(note)
+        (src / 'notes.md').write_text('api_key=[REDACTED]\n')
+        stage = self.pack('--tree', '--verbatim', 'originals/*.json', src=src)
+        self.assertEqual((stage / 'originals/g1.json').read_text(), note)
+        self.assertEqual((stage / 'notes.md').read_text(), 'api_key=<redacted>\n')  # other files are still rewritten
+        (src / 'originals' / 'g1.json').write_text('{"leak": "ghp_' + 'a' * 36 + '"}')
+        with self.assertRaises(SystemExit):
+            self.pack('--tree', '--verbatim', 'originals/*.json', src=src)
+        with self.assertRaises(SystemExit):
+            self.pack('--tree', '--verbatim', 'nothing/*.json', src=src)
 
 
 class Blinding(unittest.TestCase):
