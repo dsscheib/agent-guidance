@@ -49,6 +49,14 @@ for v in $KEEP_ENV; do
 done
 run_dir="/run/user/$(id -u)"
 [ -d "$run_dir" ] && hides="$hides --tmpfs $run_dir"
+# GR_KEYRING=1 mounts only the session bus socket back, for CLIs that sign in from the keyring (Antigravity, Copilot).
+# Every command the grader runs can then ask the keyring for secrets, as in sandbox.sh's SB_KEYRING (finding 53), and
+# talk to other session services; no grading material is reachable that way. Off unless the CLI needs it.
+if [ "${GR_KEYRING:-}" = 1 ]; then
+  [ -S "$run_dir/bus" ] || { echo "GR_KEYRING=1 but $run_dir/bus is not a socket" >&2; exit 2; }
+  ro="$ro --bind $run_dir/bus $run_dir/bus"
+  envs="$envs --setenv XDG_RUNTIME_DIR $run_dir --setenv DBUS_SESSION_BUS_ADDRESS unix:path=$run_dir/bus"
+fi
 # shellcheck disable=SC2086  # $hides, $ro and $envs are lists of option words built above.
 exec bwrap --die-with-parent --unshare-pid \
   --ro-bind / / --dev /dev --proc /proc \

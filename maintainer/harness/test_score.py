@@ -506,6 +506,16 @@ class GraderSandbox(unittest.TestCase):
         self.assertEqual(r.returncode, 2)
         self.assertIn('earlier sessions', r.stderr)
 
+    def test_keyring_mounts_only_the_session_bus(self):
+        run_dir = Path(f'/run/user/{os.getuid()}')
+        script = f'ls -A {run_dir} | tr "\\n" " "; echo; echo "bus=${{DBUS_SESSION_BUS_ADDRESS:-unset}}"'
+        r = self.grade(script)
+        self.assertEqual(r.stdout.split('\n')[:2], ['', 'bus=unset'], r.stderr)  # off by default: nothing in /run/user
+        if not (run_dir / 'bus').is_socket():
+            self.skipTest('no session bus socket on this machine')
+        r = self.grade(script, GR_KEYRING='1')
+        self.assertEqual(r.stdout.split('\n')[:2], ['bus ', f'bus=unix:path={run_dir}/bus'], r.stderr)
+
 
 class Blinding(unittest.TestCase):
     """blind.py: graders get every message, command and git ref, and nothing that names the CLI, model or condition."""
