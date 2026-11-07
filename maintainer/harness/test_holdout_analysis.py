@@ -17,7 +17,7 @@ CATALOG = [{'id': f'X{i}', 'rubric': [
 
 
 class Fixture:
-    def __init__(self, root, cand_pass, base_pass, blocked=()):
+    def __init__(self, root, cand_pass, base_pass, blocked=(), base_version='1.0'):
         """cand_pass/base_pass: set of (scenario, run) that pass; blocked: (cond, scenario, run) with X?.1 blocked."""
         self.root = root
         (root / 'scenarios.json').write_text(json.dumps(CATALOG))
@@ -29,7 +29,7 @@ class Fixture:
                     i += 1
                     bid = f'B{i:03d}'
                     runs.append({'id': bid, 'label': label, 'scenario': s['id'], 'run': n, 'agent_cli': 'cli@model',
-                                 'installed': installed})
+                                 'installed': installed, 'cli_version': '1.0' if cond == 'cand' else base_version})
                     ok = (s['id'], n) in passing
                     g = {f'{s["id"]}.1': 'pass' if ok else 'fail', f'{s["id"]}.2': 'pass'}
                     if (cond, s['id'], n) in blocked:
@@ -122,6 +122,19 @@ class Tests(unittest.TestCase):
         self.assertEqual(len(sheet['runs']), 24)
         self.assertEqual(sheet['runs']['B001'], {'X1.1': None, 'X1.2': None})
         self.assertTrue(ha.problems(sheet, ha.blind_scenarios(self.root / 'blind'), ha.load_rubric(self.root / 'scenarios.json')))
+
+    def test_mixed_cli_version_is_marked(self):
+        res, text = Fixture(self.root, ALL, ALL).analyze()
+        c = res['configurations']['cli@model']
+        self.assertEqual((c['mixed_cli_version'], c['cli_versions']['cand'], c['cli_versions']['none']), (False, ['1.0'], ['1.0']))
+        self.assertNotIn('mixed CLI version', text)
+        (self.root / 'mixed').mkdir()
+        res, text = Fixture(self.root / 'mixed', ALL, ALL, base_version='2.0').analyze()
+        c = res['configurations']['cli@model']
+        self.assertTrue(c['mixed_cli_version'])
+        self.assertEqual(c['cli_versions']['none'], ['2.0'])
+        self.assertIn('| cli@model (mixed CLI version) |', text)
+        self.assertEqual(c['difference']['claim'], 'no claim')  # the figure itself is computed as usual
 
     def test_agreement(self):
         f = Fixture(self.root, ALL, ALL)

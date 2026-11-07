@@ -1033,11 +1033,12 @@ def main():
             result = subprocess.run([sys.executable, '-B', str(tests)], capture_output=True, text=True)
             if result.returncode:
                 errors.append('Install tests:\n  ' + (result.stdout + result.stderr).strip().replace('\n', '\n  '))
-        scorer_tests = root / 'maintainer' / 'harness' / 'test_score.py'
-        if scorer_tests.is_file():
-            result = subprocess.run([sys.executable, '-B', str(scorer_tests)], capture_output=True, text=True)
-            if result.returncode:
-                errors.append('Scorer tests:\n  ' + (result.stdout + result.stderr).strip().replace('\n', '\n  '))
+        for name, tests in (('Scorer', 'test_score.py'), ('Holdout analysis', 'test_holdout_analysis.py')):
+            harness_tests = root / 'maintainer' / 'harness' / tests
+            if harness_tests.is_file():
+                result = subprocess.run([sys.executable, '-B', str(harness_tests)], capture_output=True, text=True)
+                if result.returncode:
+                    errors.append(f'{name} tests:\n  ' + (result.stdout + result.stderr).strip().replace('\n', '\n  '))
         scenarios = root / 'maintainer' / 'run_scenario.py'
         if scenarios.is_file():
             result = subprocess.run([sys.executable, str(scenarios), '--check'], capture_output=True, text=True)

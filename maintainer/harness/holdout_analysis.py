@@ -37,6 +37,9 @@ Sheet format, for each grader, the settled grades and an automatic scorer alike:
   runs per configuration.
 - Agreement: for each pair of --original sheets, and for --scorer against the settled grades, the share of criteria
   and of run outcomes graded the same, and Cohen's kappa on criteria.
+- CLI versions: the key's cli_version for each condition of each configuration. A configuration whose candidate and
+  baseline runs used different versions, or more than one, is marked "mixed CLI version" beside the primary figure,
+  which is computed as usual: the comparison is confounded with the version change.
 A difference whose interval includes zero is marked "no claim".
 """
 import argparse
@@ -189,7 +192,7 @@ def analyze(a):
             sys.exit(f'{c}: not a criterion in the catalog')
     kind_of = {c: (k, cat) for crits in rubric.values() for c, k, cat in crits}
 
-    rows = []  # (config, condition, scenario, run, outcome, grades)
+    rows = []  # (config, condition, scenario, run, outcome, grades, cli version)
     for bid, r in sorted(runs.items()):
         hit = [n for n, rx in conds if rx.search(r['label'])]
         if len(hit) != 1:
@@ -197,7 +200,7 @@ def analyze(a):
         if hit[0] == 'none' and r.get('installed'):
             sys.exit(f'{bid} (label {r["label"]}) is in condition "none" but had guidance installed')
         g = settled['runs'][bid]
-        rows.append((r.get('agent_cli') or r['label'], hit[0], r['scenario'], r['run'], outcome(g), g))
+        rows.append((r.get('agent_cli') or r['label'], hit[0], r['scenario'], r['run'], outcome(g), g, r.get('cli_version')))
     configs = sorted({r[0] for r in rows})
 
     res = {'seed': a.seed, 'resamples': a.resamples, 'candidate': a.candidate, 'baseline': a.baseline,
@@ -236,7 +239,12 @@ def analyze(a):
             entry['difference'] = {'point': diff, 'claim': claim}
         partial = any(e['runs'] < e['expected_runs_if_complete'] for e in (ce, be))
         entry['partial'] = partial
-        out.append(f'| {cfg}{" (partial)" if partial else ""} | {ce["passed"]}/{ce["runs"]} | {ce["blocked"]} | '
+        versions = {cond: sorted({str(r[6]) for r in c_rows if r[1] == cond}) for cond in names}
+        entry['cli_versions'] = versions
+        mixed = len(set(versions[a.candidate]) | set(versions[a.baseline])) > 1
+        entry['mixed_cli_version'] = mixed
+        marks = [m for m, on in (('partial', partial), ('mixed CLI version', mixed)) if on]
+        out.append(f'| {cfg}{" (" + ", ".join(marks) + ")" if marks else ""} | {ce["passed"]}/{ce["runs"]} | {ce["blocked"]} | '
                    f'{be["passed"]}/{be["runs"]} | {be["blocked"]} | '
                    f'{"n/a" if diff != diff else f"{100 * diff:+.1f} pts"} | {iv} | {claim} |')
         if exclude:
@@ -244,6 +252,10 @@ def analyze(a):
                                         if r[1] == cond and r[2] in exclude] for cond in names}
         res['configurations'][cfg] = entry
 
+    out += ['', '## CLI versions', '', '| Configuration | ' + ' | '.join(names) + ' |', '|---|' + '---|' * len(names)]
+    for cfg in configs:
+        v = res['configurations'][cfg]['cli_versions']
+        out.append(f'| {cfg} | ' + ' | '.join(', '.join(v[n]) or '-' for n in names) + ' |')
     out += ['', '## Run outcomes by condition', '', '| Configuration | Condition | Passed | Blocked | Failed | Runs |',
             '|---|---|---|---|---|---|']
     for cfg in configs:
