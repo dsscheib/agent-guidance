@@ -9,7 +9,8 @@
 # SB_HIDE lists folders replaced by an empty tmpfs (space-separated): this repository with the scenarios' expected
 # answers, the private holdout set and stored results. The fixture, SB_LOGDIR and SB_GUIDANCE are mounted back
 # inside them afterwards, so a run sees only its own files.
-# /tmp is a private tmpfs, so agents cannot see other runs. ~/.ssh is hidden and SSH_AUTH_SOCK unset, so no run can
+# /tmp is a private tmpfs, so agents cannot see other runs. The run has its own process namespace: without it, /proc lists
+# every process of the user, and their command lines (other runs' prompts, the harness's labels) are readable. ~/.ssh is hidden and SSH_AUTH_SOCK unset, so no run can
 # reach a real server over SSH, even from a copy of a project whose scripts deploy that way.
 # The environment is cleared except for KEEP_ENV: agents run `env`, and a token in the caller's environment would land
 # in the transcript and go to the model provider (finding 53).
@@ -43,7 +44,7 @@ if [ -d "$run_dir" ]; then
   if [ "${SB_KEYRING:-}" = 1 ]; then binds="$binds --bind $run_dir $run_dir"; else binds="$binds --tmpfs $run_dir"; fi
 fi
 # shellcheck disable=SC2086  # $binds and $hides are lists of option words built above.
-exec bwrap --die-with-parent \
+exec bwrap --die-with-parent --unshare-pid \
   --ro-bind / / --dev /dev --proc /proc \
   --tmpfs /tmp \
   $hides \
