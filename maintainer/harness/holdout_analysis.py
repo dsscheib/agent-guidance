@@ -1,8 +1,17 @@
 #!/usr/bin/env python3
 """Grade sheets and the pre-registered analysis for the private holdout set (repository-only).
 
-  holdout_analysis.py template BLIND_DIR --scenarios SCENARIOS.json > sheet.json
-  holdout_analysis.py check SHEET.json --blind BLIND_DIR --scenarios SCENARIOS.json
+  holdout_analysis.py template BLIND_DIR --scenarios SCENARIOS.json [--runs RUNS] > sheet.json
+  holdout_analysis.py check SHEET.json --blind BLIND_DIR --scenarios SCENARIOS.json [--runs RUNS]
+  holdout_analysis.py fenced BLIND_DIR [--min 4] > runs.txt
+  holdout_analysis.py combine BASE.json OVERRIDE.json --runs RUNS --blind BLIND_DIR --scenarios SCENARIOS.json
+        --name NAME --reason TEXT --out OUT.json
+  holdout_analysis.py disagree G1.json G2.json --blind BLIND_DIR --scenarios SCENARIOS.json --settled OUT.json > LIST.md
+  holdout_analysis.py round1 G1.json G2.json --blind BLIND_DIR --scenarios SCENARIOS.json --dir DISCUSS_DIR
+  holdout_analysis.py round2 --dir DISCUSS_DIR
+  holdout_analysis.py settle --dir DISCUSS_DIR --settled SETTLED.json --out SETTLED2.json
+  holdout_analysis.py tiebreak --dir DISCUSS_DIR --settled SETTLED2.json --third G5.json --blind BLIND_DIR
+        --scenarios SCENARIOS.json --out SETTLED3.json
   holdout_analysis.py analyze --scenarios SCENARIOS.json --key KEY.json --grades SETTLED.json
         --condition none=REGEX --condition candidate=REGEX [--condition old=REGEX]
         --candidate candidate --baseline none --seed N [--resamples 10000]
@@ -15,6 +24,38 @@ Nothing about the holdout is written here: criterion IDs, kinds and categories c
 its scenario (read from the `Scenario:` line of run.md) set to null. Graders fill each with "pass", "fail" or "blocked",
 and the `grader` block with their name, "human" or "model", and a model's family. It needs no key, so graders never see
 one. `check` reports missing, unknown and invalid grades in a sheet.
+
+RUNS is a comma-separated list of run IDs or a file with one per line. With --runs, `template` writes a sheet for those
+runs only and `check` checks a sheet against them. `fenced` lists the runs whose run.md has a code fence of --min or
+more backticks (blind.py lengthens a fence when the text inside holds backticks), which a grader can misread.
+
+`combine` builds one grader's sheet from two: OVERRIDE's grades for RUNS, BASE's for every other run. Its grader block
+has kind "composite", the two sources, the reason, and `source` naming the sheet each run came from; both inputs must
+be complete for their runs. It is for replacing a grader's invalid grades on some runs by a fresh grader's, so the
+pair still has two independent grades on every run. Publish both inputs as well.
+
+`disagree` compares two complete sheets after both are submitted. It prints each criterion they graded differently, with
+the criterion's text and both graders' notes on that run, and writes a settled sheet (refusing to overwrite one): the
+grades both gave, and null where they differ. Fill those after discussion; `check` on it lists what is still open. It
+reads no key.
+
+Discussion between graders, in files (the originals are never changed):
+- `round1` writes DISCUSS_DIR/g1-round1.json and g2-round1.json, for the first and second sheet: each grader's own
+  disputed items (run, criterion, its text, the grader's grade) with `reason` null. Each grader fills its reasons,
+  citing evidence in the run, without seeing the other's.
+- `round2`, once both reasons are filled, writes g1-round2.json and g2-round2.json: each item with the grader's own
+  grade and reason and the other grader's, named only "the other grader". Each grader sets `decision` to "keep" or
+  "change", and for a change, `grade` and the `evidence` that supports it.
+- `settle` writes a new settled sheet (--out, never overwriting): where both final grades now agree, that grade, with a
+  note on how each grader got there ("converged"); the rest stay null for a human to adjudicate, listed in
+  DISCUSS_DIR/adjudicate.md with both positions. It prints how many grades each grader changed, and in which
+  direction, so one grader giving way to the other shows. After adjudication, `check` on the new sheet must say complete.
+- `tiebreak` settles what discussion left open with a third grader instead of a human. The third grader grades whole
+  runs (a sheet from `template --runs` with every run that has an open criterion), blind to the two graders' grades,
+  reasons and which criteria are disputed. Each open criterion takes the majority of the two final grades and the
+  third; where all three differ, it stays null for a human, listed in DISCUSS_DIR/tiebreak-splits.md. It reports the
+  third grader's agreement with the criteria already settled in its runs, as a check on its tie-breaks, and records
+  the rule and the third grader in the settled sheet's grader block. Decide to use it before seeing its grades.
 
 Sheet format, for each grader, the settled grades and an automatic scorer alike:
   {"grader": {"name": "...", "kind": "human|model", "family": "..."},
@@ -84,7 +125,11 @@ def problems(sheet, run_scenarios, rubric):
     """Every missing, unknown or invalid grade in a sheet, as text."""
     out, runs = [], sheet.get('runs') or {}
     g = sheet.get('grader') or {}
-    if not g.get('name') or g.get('kind') not in ('human', 'model') or (g.get('kind') == 'model' and not g.get('family')):
+    if g.get('kind') == 'composite':
+        src = g.get('source') or {}
+        if not g.get('name') or len(g.get('sources') or []) < 2 or set(src) != set(run_scenarios):
+            out.append('a composite grader block needs a name, its sources, and a source for every run')
+    elif not g.get('name') or g.get('kind') not in ('human', 'model') or (g.get('kind') == 'model' and not g.get('family')):
         out.append('grader block needs a name, kind "human" or "model", and a family for a model')
     for bid in sorted(set(runs) - set(run_scenarios)):
         out.append(f'{bid}: not a run in this set')
@@ -162,6 +207,271 @@ def agreement(s1, s2, run_scenarios, rubric):
     same = sum(x == y for x, y in zip(a, b))
     return {'criteria_same': same, 'criteria': len(a), 'runs_same': same_runs, 'runs': len(run_scenarios),
             'kappa': kappa(a, b)}
+
+
+def parse_runs(spec, run_scenarios):
+    """Run IDs from a file (one per line) or a comma-separated list, each checked against the blinded set."""
+    p = Path(spec)
+    ids = [s.strip() for s in (p.read_text().splitlines() if p.is_file() else spec.split(','))]
+    ids = sorted(set(filter(None, ids)))
+    unknown = [i for i in ids if i not in run_scenarios]
+    if unknown or not ids:
+        sys.exit(f'--runs: {"no run IDs" if not ids else "not in the blinded set: " + ", ".join(unknown[:20])}')
+    return ids
+
+
+def subset(run_scenarios, runs):
+    return {bid: run_scenarios[bid] for bid in runs}
+
+
+def fenced(blind, minimum):
+    rx = re.compile(r'^`{%d,}' % minimum, re.M)
+    return [p.parent.name for p in sorted(Path(blind).glob('B*/run.md')) if rx.search(p.read_text())]
+
+
+def combine(a):
+    rubric, everything = load_rubric(a.scenarios), blind_scenarios(a.blind)
+    over_ids = parse_runs(a.runs, everything)
+    rest = sorted(set(everything) - set(over_ids))
+    base = json.loads(Path(a.base).read_text())
+    over = json.loads(Path(a.override).read_text())
+    bad = [f'{a.base}: {x}' for x in problems({**base, 'runs': {b: base['runs'].get(b) for b in rest}},
+                                              subset(everything, rest), rubric)]
+    bad += [f'{a.override}: {x}' for x in problems({**over, 'runs': {b: (over.get('runs') or {}).get(b) for b in over_ids}},
+                                                   subset(everything, over_ids), rubric)]
+    extra = sorted(set(over.get('runs') or {}) - set(over_ids))
+    if extra:
+        bad.append(f'{a.override}: has runs outside --runs, e.g. {", ".join(extra[:5])}')
+    if bad:
+        sys.exit(f'{len(bad)} problem(s):\n  ' + '\n  '.join(bad[:40]))
+    bn, on = base['grader']['name'], over['grader']['name']
+    if bn == on:
+        sys.exit('the two sheets have the same grader name')
+    notes = {}
+    for b in rest:
+        if (base.get('notes') or {}).get(b):
+            notes[b] = base['notes'][b]
+    for b in over_ids:
+        if (over.get('notes') or {}).get(b):
+            notes[b] = over['notes'][b]
+    write_new(a.out, {
+        'grader': {'name': a.name, 'kind': 'composite', 'sources': [base['grader'], over['grader']],
+                   'reason': a.reason, 'source': {b: (on if b in over_ids else bn) for b in sorted(everything)}},
+        'runs': {b: (over if b in over_ids else base)['runs'][b] for b in sorted(everything)}, 'notes': notes})
+    print(f'{a.out}: {len(rest)} runs from {bn}, {len(over_ids)} from {on}')
+
+
+def criterion_texts(path):
+    data = json.loads(Path(path).read_text())
+    return {c['id']: c.get('text', '') for s in (data if isinstance(data, list) else data.get('scenarios', []))
+            for c in s.get('rubric') or []}
+
+
+def write_new(path, obj):
+    path = Path(path)
+    if path.exists():
+        sys.exit(f'{path} exists; not overwriting it')
+    path.write_text(json.dumps(obj, indent=1) + '\n')
+
+
+def read_round(d, label, rnd):
+    p = Path(d) / f'{label}-round{rnd}.json'
+    if not p.exists():
+        sys.exit(f'{p} not found')
+    return p, json.loads(p.read_text())
+
+
+def round1(a):
+    texts, rubric, run_scenarios = criterion_texts(a.scenarios), load_rubric(a.scenarios), blind_scenarios(a.blind)
+    s1, s2 = (load_sheet(p, run_scenarios, rubric) for p in (a.g1, a.g2))
+    d = Path(a.dir)
+    d.mkdir(parents=True, exist_ok=True)
+    items = [(bid, sid, cid, s1['runs'][bid][cid], s2['runs'][bid][cid]) for bid, sid in sorted(run_scenarios.items())
+             for cid, _, _ in rubric[sid] if s1['runs'][bid][cid] != s2['runs'][bid][cid]]
+    for label, mine in (('g1', 3), ('g2', 4)):
+        write_new(d / f'{label}-round1.json', {
+            'instructions': 'For each item, write in `reason` why you gave your grade, citing the evidence in that '
+                            "run's run.md (message, command, file or git state). Do not change `your_grade`.",
+            'items': [{'run': it[0], 'scenario': it[1], 'criterion': it[2], 'text': texts.get(it[2], ''),
+                       'your_grade': it[mine], 'reason': None} for it in items]})
+    print(f'{len(items)} disputed criteria; wrote {d}/g1-round1.json and {d}/g2-round1.json')
+
+
+def round2(a):
+    (p1, r1), (p2, r2) = read_round(a.dir, 'g1', 1), read_round(a.dir, 'g2', 1)
+    k = lambda it: (it['run'], it['criterion'])  # noqa: E731
+    if [k(x) for x in r1['items']] != [k(x) for x in r2['items']]:
+        sys.exit('the two round-1 files list different items')
+    empty = [f'{p.name} {x["run"]} {x["criterion"]}' for p, r in ((p1, r1), (p2, r2)) for x in r['items']
+             if not (x.get('reason') or '').strip()]
+    if empty:
+        sys.exit(f'{len(empty)} reason(s) missing:\n  ' + '\n  '.join(empty[:40]))
+    for label, mine, other in (('g1', r1, r2), ('g2', r2, r1)):
+        write_new(Path(a.dir) / f'{label}-round2.json', {
+            'instructions': 'Each item shows your grade and reason and the other grader\'s. Set `decision` to "keep" '
+                            'or "change". Change only if the other reason points to evidence you missed or misread; '
+                            'then set `grade` to pass, fail or blocked and `evidence` to what in run.md supports it.',
+            'items': [{'run': m['run'], 'scenario': m['scenario'], 'criterion': m['criterion'], 'text': m['text'],
+                       'your_grade': m['your_grade'], 'your_reason': m['reason'],
+                       'other_grade': o['your_grade'], 'other_reason': o['reason'],
+                       'decision': None, 'grade': None, 'evidence': None}
+                      for m, o in zip(mine['items'], other['items'])]})
+    print(f'wrote {a.dir}/g1-round2.json and {a.dir}/g2-round2.json')
+
+
+def round_finals(d):
+    """Both graders' round-2 items and final grades; exits on any incomplete or inconsistent decision."""
+    (p1, r1), (p2, r2) = read_round(d, 'g1', 2), read_round(d, 'g2', 2)
+    bad, finals = [], []
+    for p, r in ((p1, r1), (p2, r2)):
+        f = []
+        for x in r['items']:
+            where = f'{p.name} {x["run"]} {x["criterion"]}'
+            if x.get('decision') == 'keep':
+                f.append(x['your_grade'])
+            elif x.get('decision') == 'change':
+                if x.get('grade') not in GRADES or x['grade'] == x['your_grade'] or not (x.get('evidence') or '').strip():
+                    bad.append(f'{where}: a change needs a different grade and its evidence')
+                f.append(x.get('grade'))
+            else:
+                bad.append(f'{where}: decision must be "keep" or "change"')
+                f.append(None)
+        finals.append(f)
+    if [(x['run'], x['criterion']) for x in r1['items']] != [(x['run'], x['criterion']) for x in r2['items']]:
+        bad.append('the two round-2 files list different items')
+    if bad:
+        sys.exit(f'{len(bad)} problem(s):\n  ' + '\n  '.join(bad[:40]))
+    return r1, r2, finals
+
+
+def settle(a):
+    r1, r2, finals = round_finals(a.dir)
+    settled = json.loads(Path(a.settled).read_text())
+    converged, open_items, changes = 0, [], {'g1': {}, 'g2': {}}
+    for x, y, f1, f2 in zip(r1['items'], r2['items'], *finals):
+        bid, cid = x['run'], x['criterion']
+        for label, it, fin in (('g1', x, f1), ('g2', y, f2)):
+            if fin != it['your_grade']:
+                t = f'{it["your_grade"]}->{fin}'
+                changes[label][t] = changes[label].get(t, 0) + 1
+        if settled['runs'][bid].get(cid) is not None:
+            sys.exit(f'{bid} {cid} is already settled in {a.settled}; was it made by `disagree` for these sheets?')
+        how = lambda lab, it, fin: f'{lab} {"kept" if fin == it["your_grade"] else "changed to"} {fin}'  # noqa: E731
+        if f1 == f2:
+            converged += 1
+            settled['runs'][bid][cid] = f1
+            note = f'{cid}: converged on {f1} ({how("g1", x, f1)}; {how("g2", y, f2)})'
+        else:
+            open_items.append((x, y, f1, f2))
+            note = f'{cid}: still disputed after discussion (g1 {f1}, g2 {f2}); adjudicate'
+        notes = settled.setdefault('notes', {})
+        notes[bid] = (notes[bid] + '\n' if notes.get(bid) else '') + note
+    adj = Path(a.dir) / 'adjudicate.md'
+    for p in (Path(a.out), adj):
+        if p.exists():
+            sys.exit(f'{p} exists; not overwriting it')
+    write_new(a.out, settled)
+    lines = [f'# Still disputed after discussion: {len(open_items)}', '',
+             'Decide each from the run\'s run.md and the protocol\'s Grading section, without the key. Write the grade '
+             f'into {a.out} and add "adjudicated by <name>: <reason>" to the run\'s note.', '']
+    for x, y, f1, f2 in open_items:
+        lines += [f'## {x["run"]} ({x["scenario"]}) {x["criterion"]}', '', x['text'], '',
+                  f'- g1 final `{f1}`. Reason: {x["your_reason"]}' + (f' Change evidence: {x["evidence"]}' if x.get('evidence') else ''),
+                  f'- g2 final `{f2}`. Reason: {y["your_reason"]}' + (f' Change evidence: {y["evidence"]}' if y.get('evidence') else ''), '']
+    adj.write_text('\n'.join(lines) + '\n')
+    total = len(r1['items'])
+    print(f'{total} disputed: {converged} converged, {len(open_items)} left for adjudication ({adj}); wrote {a.out}')
+    for label in ('g1', 'g2'):
+        ch = changes[label]
+        print(f'{label} changed {sum(ch.values())} of {total}' + (': ' + ', '.join(f'{t} {n}' for t, n in sorted(ch.items())) if ch else ''))
+
+
+def tiebreak(a):
+    """Fill what discussion left open by the majority of three, with a third grader's independent grades."""
+    r1, r2, (f1s, f2s) = round_finals(a.dir)
+    rubric, everything = load_rubric(a.scenarios), blind_scenarios(a.blind)
+    settled, third = json.loads(Path(a.settled).read_text()), json.loads(Path(a.third).read_text())
+    open_ = {(x['run'], x['criterion']): (f1, f2) for x, f1, f2 in zip(r1['items'], f1s, f2s) if f1 != f2}
+    nulls = {(b, c) for b, g in settled['runs'].items() for c, v in g.items() if v is None}
+    if nulls != set(open_):
+        sys.exit(f'{a.settled} has {len(nulls)} open criteria, but {len(open_)} were still disputed after round 2; '
+                 'use the sheet `settle` wrote, before any hand adjudication')
+    need, have = {b for b, _ in open_}, set(third.get('runs') or {})
+    if need - have:
+        sys.exit(f'{a.third} lacks runs with open criteria: {", ".join(sorted(need - have)[:20])}')
+    bad = problems(third, subset(everything, sorted(have)), rubric)
+    if bad:
+        sys.exit(f'{a.third}: {len(bad)} problem(s)\n  ' + '\n  '.join(bad[:40]))
+    out, splits_path = Path(a.out), Path(a.dir) / 'tiebreak-splits.md'
+    for p in (out, splits_path):
+        if p.exists():
+            sys.exit(f'{p} exists; not overwriting it')
+    tn = third['grader']['name']
+    same = checked = 0
+    for b in sorted(have):  # the check: the third grader against criteria already settled in the same runs
+        for c, v in settled['runs'][b].items():
+            if v is not None:
+                checked += 1
+                same += third['runs'][b][c] == v
+    majority, splits = 0, []
+    notes = settled.setdefault('notes', {})
+    for (b, c), (f1, f2) in sorted(open_.items()):
+        t = third['runs'][b][c]
+        if t in (f1, f2):
+            majority += 1
+            settled['runs'][b][c] = t
+            note = f'{c}: settled {t} by majority of three (g1 {f1}, g2 {f2}, {tn} {t})'
+        else:
+            splits.append((b, c, f1, f2, t))
+            note = f'{c}: three-way split (g1 {f1}, g2 {f2}, {tn} {t}); a human decides'
+        notes[b] = (notes[b] + '\n' if notes.get(b) else '') + note
+    settled['grader']['tiebreak'] = {'grader': third['grader'], 'rule': 'majority of three; three-way splits by a human',
+                                     'agreement_on_settled_criteria': [same, checked]}
+    write_new(out, settled)
+    lines = [f'# Three-way splits: {len(splits)}', '',
+             f'Decide each from run.md and the protocol\'s Grading section, without the key, and write the grade and '
+             f'"decided by <name>: <reason>" into {out}.', '']
+    lines += [f'- {b} {c}: g1 `{f1}`, g2 `{f2}`, {tn} `{t}`' for b, c, f1, f2, t in splits]
+    splits_path.write_text('\n'.join(lines) + '\n')
+    print(f'{len(open_)} open: {majority} settled by majority of three, {len(splits)} three-way splits ({splits_path}); '
+          f'wrote {out}')
+    print(f'{tn} agreed with {same} of {checked} criteria already settled in its runs '
+          f'({pct(rate(same, checked))}); if that is low, its tie-breaks are not reliable either')
+
+
+def disagree(a):
+    texts = criterion_texts(a.scenarios)
+    rubric, run_scenarios = load_rubric(a.scenarios), blind_scenarios(a.blind)
+    s1, s2 = (load_sheet(p, run_scenarios, rubric) for p in (a.g1, a.g2))
+    n1, n2 = s1['grader']['name'], s2['grader']['name']
+    out = Path(a.settled)
+    if out.exists():
+        sys.exit(f'{out} exists; it may hold settled grades already')
+    settled, rows = {}, []
+    for bid, sid in sorted(run_scenarios.items()):
+        settled[bid] = {}
+        for cid, _, _ in rubric[sid]:
+            x, y = s1['runs'][bid][cid], s2['runs'][bid][cid]
+            settled[bid][cid] = x if x == y else None
+            if x != y:
+                rows.append((bid, sid, cid, x, y))
+    out.write_text(json.dumps({'grader': {'name': 'settled', 'kind': 'human', 'family': '',
+                                          'from': [n1, n2], 'method': 'discussion'},
+                               'runs': settled, 'notes': {}}, indent=1) + '\n')
+    total = sum(len(v) for v in settled.values())
+    lines = [f'# Disagreements: {n1} / {n2}', '', f'{len(rows)} of {total} criteria differ, in '
+             f'{len({r[0] for r in rows})} of {len(settled)} runs. Settled sheet with agreed grades: {out}', '']
+    last = None
+    for bid, sid, cid, x, y in rows:
+        if bid != last:
+            lines += [f'## {bid} ({sid})', '']
+            for name, s in ((n1, s1), (n2, s2)):
+                note = (s.get('notes') or {}).get(bid)
+                if note:
+                    lines.append(f'- {name} note: {note}')
+            last = bid
+        lines.append(f'- **{cid}** {texts.get(cid, "")}: {n1} `{x}`, {n2} `{y}`')
+    print('\n'.join(lines))
 
 
 def analyze(a):
@@ -329,10 +639,49 @@ def main(argv=None):
     t = sub.add_parser('template')
     t.add_argument('blind')
     t.add_argument('--scenarios', required=True)
+    t.add_argument('--runs', help='run IDs, comma-separated or a file with one per line')
     c = sub.add_parser('check')
     c.add_argument('sheet')
     c.add_argument('--blind', required=True)
     c.add_argument('--scenarios', required=True)
+    c.add_argument('--runs', help='run IDs, comma-separated or a file with one per line')
+    f = sub.add_parser('fenced')
+    f.add_argument('blind')
+    f.add_argument('--min', type=int, default=4)
+    m = sub.add_parser('combine')
+    m.add_argument('base')
+    m.add_argument('override')
+    m.add_argument('--runs', required=True)
+    m.add_argument('--blind', required=True)
+    m.add_argument('--scenarios', required=True)
+    m.add_argument('--name', required=True, help='name of the combined grader, e.g. "g2+g3"')
+    m.add_argument('--reason', required=True)
+    m.add_argument('--out', required=True)
+    d = sub.add_parser('disagree')
+    d.add_argument('g1')
+    d.add_argument('g2')
+    d.add_argument('--blind', required=True)
+    d.add_argument('--scenarios', required=True)
+    d.add_argument('--settled', required=True, help='where to write the settled sheet with agreed grades filled in')
+    r = sub.add_parser('round1')
+    r.add_argument('g1')
+    r.add_argument('g2')
+    r.add_argument('--blind', required=True)
+    r.add_argument('--scenarios', required=True)
+    r.add_argument('--dir', required=True)
+    r = sub.add_parser('round2')
+    r.add_argument('--dir', required=True)
+    r = sub.add_parser('settle')
+    r.add_argument('--dir', required=True)
+    r.add_argument('--settled', required=True, help='the sheet `disagree` wrote')
+    r.add_argument('--out', required=True, help='the new settled sheet')
+    r = sub.add_parser('tiebreak')
+    r.add_argument('--dir', required=True)
+    r.add_argument('--settled', required=True, help='the sheet `settle` wrote')
+    r.add_argument('--third', required=True, help="the third grader's sheet, made with template --runs")
+    r.add_argument('--blind', required=True)
+    r.add_argument('--scenarios', required=True)
+    r.add_argument('--out', required=True)
     n = sub.add_parser('analyze')
     n.add_argument('--scenarios', required=True)
     n.add_argument('--key', required=True)
@@ -351,6 +700,8 @@ def main(argv=None):
     a = ap.parse_args(argv)
     if a.cmd == 'template':
         rubric, runs = load_rubric(a.scenarios), blind_scenarios(a.blind)
+        if a.runs:
+            runs = subset(runs, parse_runs(a.runs, runs))
         missing = sorted({s for s in runs.values() if s not in rubric})
         if missing:
             sys.exit(f'scenarios not in the catalog: {", ".join(missing)}')
@@ -359,9 +710,20 @@ def main(argv=None):
                  'notes': {}}
         print(json.dumps(sheet, indent=1))
     elif a.cmd == 'check':
-        bad = problems(json.loads(Path(a.sheet).read_text()), blind_scenarios(a.blind), load_rubric(a.scenarios))
+        runs = blind_scenarios(a.blind)
+        if a.runs:
+            runs = subset(runs, parse_runs(a.runs, runs))
+        bad = problems(json.loads(Path(a.sheet).read_text()), runs, load_rubric(a.scenarios))
         print('\n'.join(bad) if bad else 'complete')
         sys.exit(1 if bad else 0)
+    elif a.cmd == 'fenced':
+        print('\n'.join(fenced(a.blind, a.min)))
+    elif a.cmd == 'combine':
+        combine(a)
+    elif a.cmd == 'disagree':
+        disagree(a)
+    elif a.cmd in ('round1', 'round2', 'settle', 'tiebreak'):
+        {'round1': round1, 'round2': round2, 'settle': settle, 'tiebreak': tiebreak}[a.cmd](a)
     else:
         analyze(a)
 
