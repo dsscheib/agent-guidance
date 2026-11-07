@@ -423,6 +423,16 @@ class SkillUse(unittest.TestCase):
 class Holdout(unittest.TestCase):
     """The private holdout set runs from its own catalog, is scored as ungraded here, and is hidden from agents."""
 
+    def test_every_worktree_is_hidden(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            main, other = Path(tmp) / 'main', Path(tmp) / 'other'
+            g = lambda *a: subprocess.run(['git', '-C', str(main), *a], check=True, capture_output=True)
+            main.mkdir()
+            g('init', '-q')
+            g('-c', 'user.name=T', '-c', 'user.email=t@example.invalid', 'commit', '-q', '--allow-empty', '-m', 'x')
+            g('worktree', 'add', '-q', '--detach', str(other))
+            self.assertEqual({p.resolve() for p in score.run.checkouts(other)}, {main.resolve(), other.resolve()})
+
     def test_other_catalog_is_ungraded(self):
         ev = {'scenario': 'H1', 'fixture': '/nonexistent', 'steps': [{'step': 1, 'final': 'Verification: incomplete (development gates: 1 passed)', 'seconds': 3}]}
         r = score.score(ev)
@@ -451,6 +461,107 @@ class Holdout(unittest.TestCase):
             script = f'ls -A {secret}; ls -A {out}; cat {view}/AGENTS.md; touch {fx}/w && echo writable'
             r = subprocess.run([str(score.run.SANDBOX), str(fx), 'sh', '-c', script], capture_output=True, text=True, env=env)
             self.assertEqual(r.stdout.split(), ['fx', 'logs', 'view', 'guidance', 'writable'], r.stderr)
+
+
+class Blinding(unittest.TestCase):
+    """blind.py: graders get every message, command and git ref, and nothing that names the CLI, model or condition."""
+
+    LABELS = ('claude-haiku-x', 'claude-haiku-x-2.0', 'codex-sol-x')
+
+    def setUp(self):
+        import blind
+        from unittest import mock
+        self.blind, self.tmp = blind, Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp)
+        gitconfig = self.tmp / 'gitconfig'
+        gitconfig.write_text('[user]\n\tname = Pat Example\n\temail = pat@example.invalid\n')
+        patch = mock.patch.dict(os.environ, {'GIT_CONFIG_GLOBAL': str(gitconfig)})
+        patch.start()
+        self.addCleanup(patch.stop)
+        self.out = self.tmp / 'results'
+        for label in self.LABELS:
+            for n in (1, 2):
+                self.run_dir(label, n)
+
+    def run_dir(self, label, n):
+        fx, logs = self.out / 'fx' / label / f'H1-r{n}', self.out / 'logs' / label / f'H1-r{n}'
+        fx.mkdir(parents=True)
+        logs.mkdir(parents=True)
+        g = lambda *a: subprocess.run(['git', '-C', str(fx), *a], check=True, capture_output=True, text=True).stdout.strip()
+        g('init', '-q', '-b', 'main')
+        (fx / 'AGENTS.md').write_text('rules\n')
+        g('add', '.')
+        g('-c', 'user.name=Scenario Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'fixture')
+        start = g('rev-parse', 'HEAD')
+        g('update-ref', 'refs/remotes/origin/main', start)
+        (fx / 'app.py').write_text('print(1)\n')
+        g('add', '.')
+        g('commit', '-qm', 'Add app\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>')
+        g('tag', 'v1')
+        (fx / 'notes.md').write_text('Read CLAUDE.md and GEMINI.md first.\n')
+        message = (f'I am Codex on gpt-6.1-sol, or Claude Code with claude-haiku-5-5, or Gemini 3.8 Flash in Antigravity. '
+                   f'I read AGENTS.md and .github/copilot-instructions.md in {fx}, and peeked at '
+                   f'{self.out}/logs/claude-haiku-x-2.0/H1-r1, …sh-holdout-none/H3-r1, …ash-holdout/H2-r2 and agy-flash-hol…. Session 0f8e2a10-1b2c-4d3e-8f90-123456789abc.')
+        ev = {'agent': label, 'agent_cli': 'claude@claude-haiku-5-5', 'cli_version': '2.1.319 (Claude Code)',
+              'fixture': str(fx), 'guidance': str(self.tmp / 'snap-agent'), 'scenario': 'H1', 'run': n,
+              'start': {'head': start, 'changed': []},
+              'steps': [{'step': 1, 'prompt': 'Add the app.', 'exit': 0, 'seconds': 98765, 'final': message,
+                         'messages': ['Starting.', message], 'commands': [f'cat {fx}/AGENTS.md', 'git commit'],
+                         'tree': {'head': start, 'changed': []}}],
+              'evidence': {'tests_pass': True, 'tests_tail': 'OK', 'check_package': None, 'review_revision': None}}
+        (logs / 'evidence.json').write_text(json.dumps(ev))
+
+    def blind_runs(self, seed, dest='blind', key='key.json'):
+        import contextlib, io
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.blind.main([str(self.out), str(self.tmp / dest), '--key', str(self.tmp / key), '--seed', str(seed)])
+        return json.loads((self.tmp / key).read_text())
+
+    def test_names_paths_and_identity_are_replaced(self):
+        key = self.blind_runs(3)
+        self.assertEqual(len(key['runs']), 6)
+        for entry in key['runs']:
+            text = (self.tmp / 'blind' / entry['id'] / 'run.md').read_text()
+            self.assertIsNone(self.blind.TELL.search(text), entry['id'])
+            for gone in ('Pat Example', 'pat@example.invalid', str(self.tmp), 'gpt-', 'sol', '98765', 'seconds', '0f8e2a10',
+                         'holdout', 'flash', 'hol…'):
+                self.assertNotIn(gone, text)
+            self.assertNotIn('[run]-2.0', text)
+            for kept in ('[instructions]', '.github/[instructions]', '[model]', '[cli]', '[project]', 'Starting.', 'git commit'):
+                self.assertIn(kept, text)
+            if entry['label'] != 'claude-haiku-x-2.0':  # another run's folder; in that run itself it is [logs] or [run]
+                self.assertIn('[results]/logs/[other-run]/H1-r1', text)
+
+    def test_full_git_state_is_kept(self):
+        key = self.blind_runs(3)
+        text = (self.tmp / 'blind' / key['runs'][0]['id'] / 'run.md').read_text()
+        for kept in ('refs/heads/main', 'refs/tags/v1', 'refs/remotes/origin/main', 'Add app', '+print(1)',
+                     '#### notes.md', 'Read [instructions] and [instructions] first.', 'Scenario: H1'):
+            self.assertIn(kept, text)
+
+    def test_seed_fixes_the_order_and_key_stays_out(self):
+        first, again, other = self.blind_runs(3), self.blind_runs(3, 'b2', 'k2.json'), self.blind_runs(4, 'b3', 'k3.json')
+        order = lambda k: [(e['label'], e['run']) for e in k['runs']]
+        self.assertEqual(order(first), order(again))
+        self.assertNotEqual(order(first), order(other))
+        self.assertEqual(sorted(p.name for p in (self.tmp / 'blind').iterdir()), [f'B00{i}' for i in range(1, 7)] + ['BLINDING.md'])
+        seed = 271828182845904523536028747135266249775
+        big = self.blind_runs(seed, 'b5', 'k5.json')
+        given = ''.join(p.read_text() for p in (self.tmp / 'b5').rglob('*.md'))
+        self.assertNotIn(str(seed), given)  # with the seed, graders could rebuild the key
+        self.assertIn(self.blind.commitment(seed), given)
+        self.assertEqual((big['seed'], big['seed_sha256']), (seed, self.blind.commitment(seed)))
+        self.assertIn('partial', (self.tmp / 'blind' / 'BLINDING.md').read_text())
+        with self.assertRaises(SystemExit):
+            self.blind_runs(3, 'b4', 'b4/key.json')
+
+    def test_surviving_names_fail_without_printing_content(self):
+        import re
+        from unittest import mock
+        with mock.patch.object(self.blind, 'CLI', re.compile('(?!)')), self.assertRaises(SystemExit) as stop:
+            self.blind_runs(3)
+        self.assertIn('codex: ', str(stop.exception))
+        self.assertNotIn('I am', str(stop.exception))
 
 
 if __name__ == '__main__':

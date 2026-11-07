@@ -46,6 +46,12 @@ def git(cwd, *args, check=False):
     return r.stdout.strip()
 
 
+def checkouts(repo):
+    """Every worktree of this repository, the main checkout included: run from one worktree, the others must be hidden too."""
+    listing = subprocess.run(['git', '-C', str(repo), 'worktree', 'list', '--porcelain'], capture_output=True, text=True).stdout
+    return [repo] + [Path(line[len('worktree '):]) for line in listing.splitlines() if line.startswith('worktree ')]
+
+
 def snapshot(out):
     """Copy this checkout (tracked and untracked, not ignored) to a clean committed snapshot.
 
@@ -424,7 +430,8 @@ def main():
     ap.add_argument('--catalog', type=Path, help='scenario catalog to run instead of the snapshot\'s, such as the private holdout '
                     'set; its fixtures folder sits beside it, and the folder is hidden from agents')
     ap.add_argument('--hide', type=Path, action='append', default=[],
-                    help='another folder to hide from agents (repeatable); this repository, ~/holdout, ~/scenario-runs and --out always are')
+                    help='another folder to hide from agents (repeatable); this repository and its other worktrees, ~/holdout, '
+                         '~/scenario-runs and --out always are')
     ap.add_argument('--dry-run', action='store_true', help='build each fixture and check the sandbox hides what it should; run no agent')
     ap.add_argument('--copilot-user-hooks', action='store_true',
                     help="give Copilot the guidance stop hook as a user-level hook (~/.copilot/hooks), inside the sandbox only")
@@ -442,7 +449,7 @@ def main():
     home = Path.home()
     catalog_dir = [opts.catalog.resolve().parent] if opts.catalog else []
     opts.catalog = opts.catalog.resolve() if opts.catalog else None
-    opts.hide = sorted({p.resolve() for p in [REPO, home / 'holdout', home / 'scenario-runs', opts.out, *catalog_dir, *opts.hide]
+    opts.hide = sorted({p.resolve() for p in [*checkouts(REPO), home / 'holdout', home / 'scenario-runs', opts.out, *catalog_dir, *opts.hide]
                         if p.resolve() != home})
     opts.guidance = opts.guidance.resolve() if opts.guidance else snapshot(opts.out)
     if git(opts.guidance, 'status', '--porcelain'):
