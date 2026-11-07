@@ -457,7 +457,8 @@ class Holdout(unittest.TestCase):
             (secret / 'answers.json').write_text('{}')
             (out / 'other-run.txt').write_text('x')
             (view / 'AGENTS.md').write_text('guidance\n')
-            env = {**os.environ, 'SB_LOGDIR': str(logs), 'SB_GUIDANCE': str(view), 'SB_HIDE': f'{secret} {out}'}
+            env = {**os.environ, 'SB_HOME': str(Path(tmp) / 'home'), 'SB_LOGDIR': str(logs), 'SB_GUIDANCE': str(view),
+                   'SB_HIDE': f'{secret} {out}'}
             script = f'ls -A {secret}; ls -A {out}; cat {view}/AGENTS.md; touch {fx}/w && echo writable'
             r = subprocess.run([str(score.run.SANDBOX), str(fx), 'sh', '-c', script], capture_output=True, text=True, env=env)
             self.assertEqual(r.stdout.split(), ['fx', 'logs', 'view', 'guidance', 'writable'], r.stderr)
@@ -468,10 +469,35 @@ class Holdout(unittest.TestCase):
             fx, logs, view = (Path(tmp) / d for d in ('fx', 'logs', 'view'))
             for d in (fx, logs, view):
                 d.mkdir()
-            env = {**os.environ, 'SB_LOGDIR': str(logs), 'SB_GUIDANCE': str(view)}
+            env = {**os.environ, 'SB_HOME': str(Path(tmp) / 'home'), 'SB_LOGDIR': str(logs), 'SB_GUIDANCE': str(view)}
             r = subprocess.run([str(score.run.SANDBOX), str(fx), 'sh', '-c', 'ls -d /proc/[0-9]* | wc -l'],
                                capture_output=True, text=True, env=env)
             self.assertLessEqual(int(r.stdout.strip() or 99), 5, r.stderr)
+
+    @unittest.skipUnless(shutil.which('bwrap'), 'bubblewrap is not installed')
+    def test_sandbox_home_is_the_runs_own(self):
+        """Finding 54: the real home's files stay out of sight; only a copied sign-in file and a scenario identity are in."""
+        with tempfile.TemporaryDirectory(dir=Path.home()) as tmp:
+            t = Path(tmp)
+            fx, logs, view, home = (t / d for d in ('fx', 'logs', 'view', 'home'))
+            for d in (fx, logs, view):
+                d.mkdir()
+            (t / 'history.txt').write_text('private\n')         # stands in for ~/.zsh_history and the like
+            (t / 'cred.json').write_text('{"token": "x"}\n')     # stands in for a CLI's sign-in file
+            rel = t.relative_to(Path.home())
+            env = {**os.environ, 'SB_HOME': str(home), 'SB_LOGDIR': str(logs), 'SB_GUIDANCE': str(view),
+                   'SB_SIGN_IN': f'{rel}/cred.json', 'SB_TOOLS': ''}
+            script = (f'ls -A {t} | tr "\\n" " "; echo; cat $HOME/{rel}/cred.json; git config user.email; '
+                      'git config --get-regexp "^credential" || echo no-helper; touch w && echo writable')
+            r = subprocess.run([str(score.run.SANDBOX), str(fx), 'sh', '-c', script], capture_output=True, text=True,
+                               env=env, cwd=fx)
+            lines = r.stdout.splitlines()
+            self.assertNotIn('history.txt', lines[0], r.stderr)
+            self.assertEqual(lines[1:], ['{"token": "x"}', 'agent@example.invalid', 'no-helper', 'writable'], r.stderr)
+            self.assertEqual(sorted(p.name for p in home.iterdir()), sorted(['.gitconfig', rel.parts[0]]))
+            for bad in ({k: v for k, v in env.items() if k != 'SB_HOME'}, {**env, 'SB_HOME': str(Path.home())}):
+                r = subprocess.run([str(score.run.SANDBOX), str(fx), 'true'], capture_output=True, text=True, env=bad)
+                self.assertEqual(r.returncode, 2, r.stderr)
 
 
 class GraderSandbox(unittest.TestCase):
