@@ -237,7 +237,12 @@ Everything needed is in this directory, plus the raw runs.
    each run's evidence (prompts, replies, commands run, changed files), the CLI output and the final state of each
    fixture as a git repository. `harness/bundle.py` made it: local paths become `$SUITE` and `~`, IDs become `uuid-<n>`,
    secret-named values are redacted, and environments that agents installed are left out. The verdicts it rescores to are
-   identical to the originals.
+   identical to the originals. The asset was replaced on 2026-11-07 (SHA-256
+   `e94925c5d4ec1ff855a65841e4f9156e3c132ad213f710a7e19cf79fb91f8269`): five transcript files of four runs are
+   withheld, because the agents read the maintainer's data outside their fixtures (a home-folder listing in
+   `agy-flash-none` S15 r2; GitHub repositories in `claude-haiku-old` S14 r3 and `copilot-sol-none` S14 r1; recent
+   Copilot sessions in `copilot-sol-none` S14 r2; see finding 54 in [REDESIGN_NOTES.md](REDESIGN_NOTES.md)). Those
+   runs' evidence and fixtures are kept, and rescoring the replacement gives the same verdict for every run.
 2. **Rescore it.** Unpack it and run the scorer from this repository:
 
    ```sh
