@@ -2,6 +2,8 @@
 
 This package gives coding agents instructions, policies, templates and procedures for starting a new project. It works with Codex, Antigravity, Claude Code, Copilot CLI and any other agent that reads `AGENTS.md`. It is a starting point for a project. It is not evidence of implementation, testing, deployment authorization or release acceptance.
 
+**Evaluating whether to use this package?** Before adopting it, read the [testing summary and adoption guide](maintainer/README.md) for what 2,000+ benchmark and blinded holdout runs showed about where this guidance helps, where it is overkill, and which tier to pick.
+
 ## Start here
 **Existing project, or one that adopted an earlier version?** Do not use `--install`. Ask your agent to "upgrade the project guidance from `<path to this checkout>`". It follows the [upgrade procedure](docs/procedures/upgrade-guidance.md): it maps each upstream change onto the project's own documents, asks you the policy questions, and records the source commit. The steps below are for new repositories.
 
