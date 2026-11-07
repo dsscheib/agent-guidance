@@ -25,7 +25,8 @@ Each major version is tagged so it stays reviewable and can be benchmarked again
 |---|---|---|
 | `1.0` | `c8b4fa6` | The original Claude Code guidance. It has no installer, so the harness cannot install it yet |
 | `2.0` | `62d3756` | Agent-neutral guidance with adapters; the old guidance in the 3.0 evaluation and the release S18 upgrades from |
-| `3.0`, `3.0.1` | `9a90bd3`, `f12be44` | Tiered modules and computed verification; 3.0.1 is the last version 3 release |
+| `3.0`, `3.0.1` | `9a90bd3`, `f12be44` | Tiered modules and computed verification |
+| `3.0.2` | `c3e6b7f` | 3.0.1 with the guardrails no longer asking before `git push` (DOC-089, on branch `release/3.0`): the version 3 maintenance release. Fixes go to `release/3.0` from the `3.0.x` tags, not from `main` |
 
 Tag version 4 when it is released.
 
