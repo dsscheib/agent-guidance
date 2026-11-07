@@ -360,59 +360,76 @@ def run_one(opts, agent, s, n):
     if b.returncode:
         log(f'BUILD FAIL {label} {sid} r{n}: {(b.stdout + b.stderr).strip()[-300:]}')
         return
-    env = {**os.environ, 'SB_LOGDIR': str(logdir), 'SB_GUIDANCE': str(opts.shown), 'SB_HIDE': ' '.join(map(str, opts.hide))}
-    if opts.dry_run:
-        # No agent: from inside the sandbox, each hidden folder may show only the folders leading to this run's own
-        # mounts (fixture, logs, guidance view), and the fixture must be writable.
-        checks = []
-        for h in opts.hide:
-            allowed = {p.relative_to(h).parts[0] for p in (fx, logdir, opts.shown) if p.is_relative_to(h) and p != h}
-            keep = ' '.join(f'-e {a}' for a in sorted(allowed)) or '-e /'
-            checks.append(f'extra=$(ls -A {h} 2>/dev/null | grep -v -x {keep}); [ -z "$extra" ] || echo "VISIBLE in {h}: $extra"')
-        script = '; '.join(checks + ['touch .sandbox-probe && rm .sandbox-probe || echo "fixture not writable"'])
-        r = subprocess.run([str(SANDBOX), str(fx), 'sh', '-c', script], capture_output=True, text=True, env=env)
-        problems = [l for l in (r.stdout + r.stderr).splitlines() if l.strip()]
-        log(f"DRY RUN {label} {sid} r{n}: " + ('built; hidden folders empty apart from this run, fixture writable' if not problems
-                                                else 'PROBLEM ' + '; '.join(problems)))
-        shutil.rmtree(logdir, ignore_errors=True)
-        return
-    if cli_name(agent) in ('copilot', 'agy'):
-        env['SB_KEYRING'] = '1'  # both sign in from the keyring; Copilot's commands can read it too (finding 53)
-    if cli_name(agent) == 'copilot':
-        # Exactly "true" trusts the fixture, loading its hooks, on every step including resumed ones.
-        env['COPILOT_ALLOW_ALL'] = 'true'
-        if opts.copilot_user_hooks:
-            env['SB_COPILOT_HOOKS'] = str(opts.copilot_user_hooks)
-    session, steps, start = None, [], tree(fx)
-    for i, prompt in enumerate(s['prompts'], 1):
-        log(f'start {label} {sid} r{n} step {i}/{len(s["prompts"])}')
-        t0 = time.time()
-        try:
-            r = subprocess.run([str(SANDBOX), str(fx), *agent_cmd(agent, prompt, session, logdir, i, fx)],
-                               capture_output=True, text=True, env=env, stdin=subprocess.DEVNULL, timeout=STEP_TIMEOUT)
-            out, err, code = r.stdout, r.stderr, r.returncode
-        except subprocess.TimeoutExpired as e:
-            out = e.stdout.decode(errors='replace') if isinstance(e.stdout, bytes) else (e.stdout or '')
-            err, code = 'TIMEOUT', 'timeout'
-        (logdir / f'step{i}.out').write_text(out)
-        (logdir / f'step{i}.err').write_text(err)
-        if LIMIT.search((out + err)[-4000:]):
-            # A usage limit voids the run; leave no evidence.json so a later rerun picks it up.
-            log(f'USAGE LIMIT {label} {sid} r{n} step {i}; run left incomplete')
+    # The run's own home folder (sandbox.sh): sign-in copies, CLI sessions and a scenario git identity, outside logs/
+    # so nothing in it is published, and deleted when the run ends.
+    home = opts.out / 'homes' / label / f'{sid}-r{n}'
+    shutil.rmtree(home, ignore_errors=True)
+    env = {**os.environ, 'SB_HOME': str(home), 'SB_LOGDIR': str(logdir), 'SB_GUIDANCE': str(opts.shown),
+           'SB_HIDE': ' '.join(map(str, opts.hide))}
+    try:
+        if opts.dry_run:
+            # No agent: from inside the sandbox, each hidden folder may show only the folders leading to this run's own
+            # mounts (fixture, logs, guidance view), and the fixture must be writable.
+            checks = []
+            for h in opts.hide:
+                allowed = {p.relative_to(h).parts[0] for p in (fx, logdir, opts.shown) if p.is_relative_to(h) and p != h}
+                keep = ' '.join(f'-e {a}' for a in sorted(allowed)) or '-e /'
+                checks.append(f'extra=$(ls -A {h} 2>/dev/null | grep -v -x {keep}); [ -z "$extra" ] || echo "VISIBLE in {h}: $extra"')
+            # The home folder is the run's own (finding 54): no history, keys or earlier CLI sessions, and the
+            # scenario git identity with no credential helper.
+            private = ('.zsh_history', '.bash_history', '.ssh', '.gnupg', '.local/share/keyrings', '.claude/projects',
+                       '.claude/history.jsonl', '.claude.json', '.codex/sessions', '.codex/config.toml', '.copilot/session-state',
+                       '.gemini/antigravity-cli/conversations', '.config/gh', '.config/rclone')
+            checks.append('for f in ' + ' '.join(private) + '; do [ -e "$HOME/$f" ] && echo "VISIBLE in home: $f"; done')
+            checks.append('[ "$(git config user.email)" = agent@example.invalid ] || echo "git identity is not the scenario identity"')
+            checks.append('[ -z "$(git config --get-regexp "^credential" 2>/dev/null)" ] || echo "a git credential helper is set"')
+            script = '; '.join(checks + ['touch .sandbox-probe && rm .sandbox-probe || echo "fixture not writable"'])
+            r = subprocess.run([str(SANDBOX), str(fx), 'sh', '-c', script], capture_output=True, text=True, env=env)
+            problems = [l for l in (r.stdout + r.stderr).splitlines() if l.strip()]
+            log(f"DRY RUN {label} {sid} r{n}: " + ('built; hidden folders empty apart from this run, home folder the run\'s own, '
+                                                    'fixture writable' if not problems
+                                                    else 'PROBLEM ' + '; '.join(problems)))
+            shutil.rmtree(logdir, ignore_errors=True)
             return
-        sess, final, commands = parse_step(agent, out + '\n' + err, logdir, i)
-        session = session or sess
-        messages = step_messages(agent, out + '\n' + err, logdir, i)
-        steps.append({'step': i, 'prompt': prompt, 'exit': code, 'seconds': round(time.time() - t0),
-                      'final': final, 'messages': messages if messages else [final], 'commands': commands, 'tree': tree(fx)})
-        log(f'done  {label} {sid} r{n} step {i} exit={code} {round(time.time() - t0)}s')
-        if len(s['prompts']) > i and not session:
-            steps.append({'step': i, 'error': 'no session id; follow-ups not sent'})
-            break
-    ev = {'agent': label, 'agent_cli': agent, 'cli_version': cli_version(agent), 'date': time.strftime('%Y-%m-%d'), 'guidance': str(opts.shown), 'guidance_commit': git(opts.shown, 'rev-parse', 'HEAD'), 'guidance_snapshot': str(opts.guidance),
-          'installed': not opts.no_install, 'scenario': sid, 'run': n, 'session': session, 'start': start, 'steps': steps,
-          'fixture': str(fx), 'catalog': str(opts.catalog) if opts.catalog else None, 'evidence': evidence(fx)}
-    (logdir / 'evidence.json').write_text(json.dumps(ev, indent=1))
+        if cli_name(agent) in ('copilot', 'agy'):
+            env['SB_KEYRING'] = '1'  # both sign in from the keyring; Copilot's commands can read it too (finding 53)
+        if cli_name(agent) == 'copilot':
+            # Exactly "true" trusts the fixture, loading its hooks, on every step including resumed ones.
+            env['COPILOT_ALLOW_ALL'] = 'true'
+            if opts.copilot_user_hooks:
+                env['SB_COPILOT_HOOKS'] = str(opts.copilot_user_hooks)
+        session, steps, start = None, [], tree(fx)
+        for i, prompt in enumerate(s['prompts'], 1):
+            log(f'start {label} {sid} r{n} step {i}/{len(s["prompts"])}')
+            t0 = time.time()
+            try:
+                r = subprocess.run([str(SANDBOX), str(fx), *agent_cmd(agent, prompt, session, logdir, i, fx)],
+                                   capture_output=True, text=True, env=env, stdin=subprocess.DEVNULL, timeout=STEP_TIMEOUT)
+                out, err, code = r.stdout, r.stderr, r.returncode
+            except subprocess.TimeoutExpired as e:
+                out = e.stdout.decode(errors='replace') if isinstance(e.stdout, bytes) else (e.stdout or '')
+                err, code = 'TIMEOUT', 'timeout'
+            (logdir / f'step{i}.out').write_text(out)
+            (logdir / f'step{i}.err').write_text(err)
+            if LIMIT.search((out + err)[-4000:]):
+                # A usage limit voids the run; leave no evidence.json so a later rerun picks it up.
+                log(f'USAGE LIMIT {label} {sid} r{n} step {i}; run left incomplete')
+                return
+            sess, final, commands = parse_step(agent, out + '\n' + err, logdir, i)
+            session = session or sess
+            messages = step_messages(agent, out + '\n' + err, logdir, i)
+            steps.append({'step': i, 'prompt': prompt, 'exit': code, 'seconds': round(time.time() - t0),
+                          'final': final, 'messages': messages if messages else [final], 'commands': commands, 'tree': tree(fx)})
+            log(f'done  {label} {sid} r{n} step {i} exit={code} {round(time.time() - t0)}s')
+            if len(s['prompts']) > i and not session:
+                steps.append({'step': i, 'error': 'no session id; follow-ups not sent'})
+                break
+        ev = {'agent': label, 'agent_cli': agent, 'cli_version': cli_version(agent), 'date': time.strftime('%Y-%m-%d'), 'guidance': str(opts.shown), 'guidance_commit': git(opts.shown, 'rev-parse', 'HEAD'), 'guidance_snapshot': str(opts.guidance),
+              'installed': not opts.no_install, 'scenario': sid, 'run': n, 'session': session, 'start': start, 'steps': steps,
+              'fixture': str(fx), 'catalog': str(opts.catalog) if opts.catalog else None, 'evidence': evidence(fx)}
+        (logdir / 'evidence.json').write_text(json.dumps(ev, indent=1))
+    finally:
+        shutil.rmtree(home, ignore_errors=True)
 
 
 def main():

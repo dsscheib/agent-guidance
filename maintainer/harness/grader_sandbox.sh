@@ -3,10 +3,9 @@
 #
 # Usage: [GR_RO="PATH ..."] [GR_HIDE="DIR ..."] grader_sandbox.sh GRADER_HOME MATERIAL_DIR SHEET_DIR CMD [ARGS...]
 #
-# Unlike sandbox.sh, the whole home folder is replaced by GRADER_HOME, a fresh folder for this grader only. sandbox.sh
-# mounts each CLI's real config folder (~/.claude, ~/.codex, ...) so agents can sign in, and those folders keep every
-# earlier session, including the scenario runs, whose paths name the condition. Here a grader sees none of them: put
-# only the CLI's sign-in file in GRADER_HOME (for Claude Code, ~/.claude/.credentials.json -> GRADER_HOME/.claude/;
+# As in sandbox.sh since DOC-085, the whole home folder is replaced by GRADER_HOME, a fresh folder for this grader only.
+# The real CLI config folders (~/.claude, ~/.codex, ...) keep every earlier session, including the scenario runs, whose
+# paths name the condition, so a grader must see none of them: put only the CLI's sign-in file in GRADER_HOME (for Claude Code, ~/.claude/.credentials.json -> GRADER_HOME/.claude/;
 # for Codex, ~/.codex/auth.json -> GRADER_HOME/.codex/), never a copied config folder, history or ~/.claude.json.
 # The sign-in file is a live credential: delete it from GRADER_HOME when grading ends. Keep the rest of GRADER_HOME,
 # which holds the grader's own session logs.
