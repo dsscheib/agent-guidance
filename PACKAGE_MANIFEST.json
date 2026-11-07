@@ -228,15 +228,15 @@
     {
       "path": ".claude/settings.json",
       "kind": "guardrail",
-      "bytes": 519,
-      "sha256": "b41cf8da1756ed1e3ab9bb5504d29d62078c6e976c0c52683297b1136792d28e",
+      "bytes": 493,
+      "sha256": "07a707b05fa80b6f275026620f30f51ccf191cf30a2d59fd702399fe3dee39c2",
       "module": "core"
     },
     {
       "path": ".codex/rules/guidance.rules",
       "kind": "guardrail",
-      "bytes": 1694,
-      "sha256": "0db432007b679107afc18564cd63eeb19d1a8b402d70060bce1991897e4b8cd2",
+      "bytes": 1682,
+      "sha256": "043987ad770c3d67a5ec2b6f19fd589a3a08a516be3236891b2ab5ad9358c563",
       "module": "core"
     },
     {
@@ -249,8 +249,8 @@
     {
       "path": ".github/hooks/guidance_guardrail.py",
       "kind": "guardrail",
-      "bytes": 3393,
-      "sha256": "95c86f5fe78c80d5975be17e25484e0aa6ef3c3fec7e3f8de11a558db5f9eeed",
+      "bytes": 3455,
+      "sha256": "1987e60e0b26d92d1dc4cc6240283f30d024c2ffc1764013c2fc57c11216e3cb",
       "module": "core"
     },
     {
@@ -263,8 +263,8 @@
     {
       "path": "docs/AGENT_TOOLS.md",
       "kind": "policy",
-      "bytes": 11557,
-      "sha256": "8f5e9f2bf3be85153ea78fdbedc7b891d5e64a7bc49af0f0481adb28d831e0c2",
+      "bytes": 12229,
+      "sha256": "1aadb9bc167928aea79affe2d24621c759c3623059b2b81400dd59909c3d7f00",
       "module": "core"
     },
     {
