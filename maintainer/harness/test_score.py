@@ -463,6 +463,50 @@ class Holdout(unittest.TestCase):
             self.assertEqual(r.stdout.split(), ['fx', 'logs', 'view', 'guidance', 'writable'], r.stderr)
 
 
+    def test_sandbox_sees_only_its_own_processes(self):
+        with tempfile.TemporaryDirectory(dir=Path.home()) as tmp:
+            fx, logs, view = (Path(tmp) / d for d in ('fx', 'logs', 'view'))
+            for d in (fx, logs, view):
+                d.mkdir()
+            env = {**os.environ, 'SB_LOGDIR': str(logs), 'SB_GUIDANCE': str(view)}
+            r = subprocess.run([str(score.run.SANDBOX), str(fx), 'sh', '-c', 'ls -d /proc/[0-9]* | wc -l'],
+                               capture_output=True, text=True, env=env)
+            self.assertLessEqual(int(r.stdout.strip() or 99), 5, r.stderr)
+
+
+class GraderSandbox(unittest.TestCase):
+    """grader_sandbox.sh: a grader sees a fresh home with its material and sheet, and nothing else of the user's."""
+    SCRIPT = Path(__file__).resolve().parent / 'grader_sandbox.sh'
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(dir=Path.home()))  # under home, which the grader must not see
+        self.addCleanup(shutil.rmtree, self.tmp)
+        for d in ('home', 'material', 'sheet', 'key'):
+            (self.tmp / d).mkdir()
+        (self.tmp / 'material' / 'run.md').write_text('run\n')
+        (self.tmp / 'key' / 'KEY.json').write_text('{}')
+
+    def grade(self, script, **env):
+        t = self.tmp
+        return subprocess.run([str(self.SCRIPT), str(t / 'home'), str(t / 'material'), str(t / 'sheet'), 'sh', '-c', script],
+                              capture_output=True, text=True, env={**os.environ, **env})
+
+    def test_only_material_and_sheet_are_visible(self):
+        script = (f'ls -A $HOME; cat $HOME/material/run.md; ls {self.tmp}/key 2>/dev/null || echo no-key; '
+                  'touch $HOME/material/x 2>/dev/null || echo material-read-only; touch $HOME/sheet/s && echo sheet-writable; '
+                  'ls -d /proc/[0-9]* | wc -l')
+        r = self.grade(script)
+        out = r.stdout.split()
+        self.assertEqual(out[:6], ['material', 'sheet', 'run', 'no-key', 'material-read-only', 'sheet-writable'], r.stderr)
+        self.assertLessEqual(int(out[6]), 5)
+        self.assertTrue((self.tmp / 'sheet' / 's').is_file())
+
+    def test_config_folders_are_refused(self):
+        r = self.grade('true', GR_RO=str(Path.home() / '.claude'))
+        self.assertEqual(r.returncode, 2)
+        self.assertIn('earlier sessions', r.stderr)
+
+
 class Blinding(unittest.TestCase):
     """blind.py: graders get every message, command and git ref, and nothing that names the CLI, model or condition."""
 
