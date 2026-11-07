@@ -296,10 +296,22 @@ def install(manifest, target, force, tier=None, features=(), everything=False, d
     for path in wanted + [manifest_path.name]:
         dest = target / path
         if dest.exists() and not force:
+            # A guardrail file still as installed for the previous modules follows the new ones (an upgrade to
+            # Enterprise gains its merge and release rules); one the project changed is left for its owner.
+            if path in GUARDRAIL_FILES and previous.get('modules'):
+                package_text = (root / path).read_text()
+                if dest.read_text() == effective(path, package_text, manifest, set(previous['modules'])):
+                    new_text = effective(path, package_text, manifest, set(modules))
+                    if new_text != dest.read_text():
+                        dest.write_text(new_text)
+                        copied.append(path)
+                        continue
             skipped.append(path)
             continue
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(root / path, dest)
+        if path in GUARDRAIL_FILES:  # only the rules of the installed modules
+            dest.write_text(effective(path, (root / path).read_text(), manifest, set(modules)))
         copied.append(path)
     record = json.loads((target / manifest_path.name).read_text())
     if manifest_path.name in copied:
@@ -351,9 +363,52 @@ def plan_tools(manifest, record):
     return adopted_tools(manifest, record.get('installed'))
 
 
+# Guardrail files and the key of each one's form of a rule in the manifest's guardrail_rules. The template keeps every
+# module's rules; an install drops the rules of modules the project does not have (merges and releases ask only in
+# Enterprise projects, whose policy reserves them for a person even when the user asks).
+GUARDRAIL_FILES = {'.claude/settings.json': 'claude', '.codex/rules/guidance.rules': 'codex',
+                   '.github/hooks/guidance_guardrail.py': 'copilot'}
+
+
+def codex_rule(words):
+    return re.compile(r'prefix_rule\(\n    pattern = \[' + re.escape(', '.join(f'"{w}"' for w in words))
+                      + r'\],\n(?:    [^\n]*\n)*\)\n\n?')
+
+
+def copilot_rule(words):
+    return re.compile(r'^    \(' + re.escape(repr(words)) + r', [^\n]*\),\n', re.M)
+
+
+def has_guardrail(path, text, rule):
+    tool = GUARDRAIL_FILES[path]
+    if tool == 'claude':
+        return rule['claude'] in json.loads(text).get('permissions', {}).get('ask', [])
+    return bool((codex_rule if tool == 'codex' else copilot_rule)(rule[tool]).search(text))
+
+
+def without_guardrail(path, text, rule):
+    tool = GUARDRAIL_FILES[path]
+    if tool == 'claude':
+        data = json.loads(text)
+        ask = data.get('permissions', {}).get('ask', [])
+        if rule['claude'] in ask:
+            ask.remove(rule['claude'])
+        return json.dumps(data, indent=2) + '\n'
+    text = (codex_rule if tool == 'codex' else copilot_rule)(rule[tool]).sub('', text)
+    return text.rstrip('\n') + '\n'
+
+
 def effective(path, text, manifest, modules):
-    """A packaged file as an install writes it: AGENTS.md has its generated tables rendered for the project's modules."""
-    if path != 'AGENTS.md' or text is None:
+    """A packaged file as an install writes it: AGENTS.md has its generated tables rendered for the project's modules,
+    and the guardrail files keep only the rules of the project's modules."""
+    if text is None:
+        return text
+    if path in GUARDRAIL_FILES:
+        for rule in manifest.get('guardrail_rules', []):
+            if rule['module'] not in modules:
+                text = without_guardrail(path, text, rule)
+        return text
+    if path != 'AGENTS.md':
         return text
     return GENERATED.sub(lambda m: m.group(1) + render_block(manifest, m.group(2), modules) + m.group(4), text)
 
@@ -1019,6 +1074,15 @@ def main():
     if agents is not None and agents != (root / 'AGENTS.md').read_text():
         errors.append('AGENTS.md routing or procedure table does not match the installed modules; run check_package.py --sync-adapters')
     check_budget(errors)
+    # A module's guardrail rules must be in every guardrail file present: an Enterprise project relies on them, and in
+    # the template a manifest rule that matches no file would be dropped from nothing.
+    for path in GUARDRAIL_FILES:
+        if (root / path).is_file():
+            text = (root / path).read_text()
+            for rule in manifest.get('guardrail_rules', []):
+                if rule['module'] in installed_modules and not has_guardrail(path, text, rule):
+                    errors.append(f"{path} lacks the {rule['module']} guardrail that asks before you {rule['action']}; "
+                                  'restore it from the package')
     notes = []
     listed = {e['path']: e for e in manifest['files']}
     if template:

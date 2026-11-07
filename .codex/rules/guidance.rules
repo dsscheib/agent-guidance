@@ -1,13 +1,9 @@
-# Mirrors AGENTS.md rules 2 and 3: remote and destructive git operations, merges, approvals and
-# releases need confirmation.
+# Mirrors AGENTS.md rules 2 and 3: destructive git operations and approvals need confirmation, and in
+# Enterprise projects merges and releases too (the installer leaves those two rules out for other tiers).
+# `git push` is left to rule 3: a prompt cannot tell a push the owner asked for from one they did not,
+# so it only got in the way of authorized pushes.
 # Codex loads project rules only when this project's .codex/ layer is trusted.
 # Loosen only to match the agent git policy adopted in PROJECT_PROFILE.md.
-
-prefix_rule(
-    pattern = ["git", "push"],
-    decision = "prompt",
-    justification = "AGENTS.md rule 3: push only with explicit authorization.",
-)
 
 prefix_rule(
     pattern = ["git", "reset", "--hard"],

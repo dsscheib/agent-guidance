@@ -236,6 +236,36 @@
       "row": "| License check | {{LICENSE_CHECK_COMMAND}} | Release | {{TEST_ENVIRONMENT}} | Not verified |"
     }
   ],
+  "guardrail_rules": [
+    {
+      "module": "enterprise",
+      "action": "merge a pull request",
+      "claude": "Bash(gh pr merge:*)",
+      "codex": [
+        "gh",
+        "pr",
+        "merge"
+      ],
+      "copilot": [
+        "pr",
+        "merge"
+      ]
+    },
+    {
+      "module": "enterprise",
+      "action": "publish a release",
+      "claude": "Bash(gh release create:*)",
+      "codex": [
+        "gh",
+        "release",
+        "create"
+      ],
+      "copilot": [
+        "release",
+        "create"
+      ]
+    }
+  ],
   "files": [
     {
       "path": "AGENTS.md",
@@ -261,15 +291,15 @@
     {
       "path": ".claude/settings.json",
       "kind": "guardrail",
-      "bytes": 519,
-      "sha256": "b41cf8da1756ed1e3ab9bb5504d29d62078c6e976c0c52683297b1136792d28e",
+      "bytes": 493,
+      "sha256": "07a707b05fa80b6f275026620f30f51ccf191cf30a2d59fd702399fe3dee39c2",
       "module": "core"
     },
     {
       "path": ".codex/rules/guidance.rules",
       "kind": "guardrail",
-      "bytes": 1694,
-      "sha256": "0db432007b679107afc18564cd63eeb19d1a8b402d70060bce1991897e4b8cd2",
+      "bytes": 1777,
+      "sha256": "d8932e799201d50f4853d3402c3a5beec5a43175950c7d8c96dbcac1961d2c1d",
       "module": "core"
     },
     {
@@ -282,8 +312,8 @@
     {
       "path": ".github/hooks/guidance_guardrail.py",
       "kind": "guardrail",
-      "bytes": 3393,
-      "sha256": "95c86f5fe78c80d5975be17e25484e0aa6ef3c3fec7e3f8de11a558db5f9eeed",
+      "bytes": 3546,
+      "sha256": "83e686bcff34dd8d27382776bd2e3fd1a9fb396c884ad39305debf9acd015b38",
       "module": "core"
     },
     {
@@ -296,8 +326,8 @@
     {
       "path": "docs/AGENT_TOOLS.md",
       "kind": "policy",
-      "bytes": 12111,
-      "sha256": "8cce11f30cbabd5de090b788d59e238007347b0c3cf14cbce95cc8ac4def229a",
+      "bytes": 13379,
+      "sha256": "a83f645af79af6c79f562a70517523ad9f2980d920d2890700d3e4feaf04a14e",
       "module": "core"
     },
     {
@@ -325,8 +355,8 @@
       "path": "docs/ENTERPRISE.md",
       "kind": "policy",
       "module": "enterprise",
-      "bytes": 2873,
-      "sha256": "f263c3c00383647e6ea17d5ea459704a1df144e07375f6cb109d314495e0ad76"
+      "bytes": 2967,
+      "sha256": "df306c20933ffab5ca79e3fb530796daea49863edd56cad9158d7b592a8d03b7"
     },
     {
       "path": "docs/DOCUMENTATION.md",
@@ -542,8 +572,8 @@
     {
       "path": "check_package.py",
       "kind": "tooling",
-      "bytes": 64067,
-      "sha256": "43d904042b316dc1d11a8df08cedc2eb2e9514d574e6ae9820d67ea824d2fc96",
+      "bytes": 67432,
+      "sha256": "71184651f742f57124ac64e0e4932d7526b55f40f5aa603e1cd9422c82a177c7",
       "module": "core"
     },
     {

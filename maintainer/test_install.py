@@ -148,6 +148,62 @@ def case_enterprise(tmp):
     expect(passed and 'Enterprise:' in out, 'enterprise project check failed or reported nothing:\n    ' + out[:600])
 
 
+GUARDRAILS = ('.claude/settings.json', '.codex/rules/guidance.rules', '.github/hooks/guidance_guardrail.py')
+
+
+def guardrail_state(target):
+    """What each tool's guardrail does with a push, a merge, a release, a review and a hard reset."""
+    hook = target / '.github/hooks/guidance_guardrail.py'
+    copilot = {}
+    for command in ('git push origin main', 'gh pr merge 3', 'gh release create v1', 'gh pr review 3', 'git reset --hard'):
+        payload = json.dumps({'toolName': 'bash', 'toolArgs': json.dumps({'command': command})})
+        r = subprocess.run([sys.executable, '-B', str(hook)], input=payload, capture_output=True, text=True)
+        copilot[command] = json.loads(r.stdout).get('permissionDecision') if r.stdout.strip() else None
+    claude = json.loads((target / '.claude/settings.json').read_text())['permissions']['ask']
+    codex = (target / '.codex/rules/guidance.rules').read_text()
+    return copilot, claude, codex
+
+
+def case_guardrails(tmp):
+    """Push asks in no tier; review and hard reset in every tier; merge and release only with Enterprise, including
+    after an upgrade to it. Removing an Enterprise rule fails the check, and an upgrade plan leaves fresh guardrails alone."""
+    for tier in ('internal', 'enterprise'):
+        target = tmp / f'guardrails-{tier}'
+        target.mkdir()
+        install(target, '--tier', tier)
+        enterprise = tier == 'enterprise'
+        copilot, claude, codex = guardrail_state(target)
+        want = {'git push origin main': None, 'gh pr merge 3': 'ask' if enterprise else None,
+                'gh release create v1': 'ask' if enterprise else None, 'gh pr review 3': 'ask', 'git reset --hard': 'ask'}
+        expect(copilot == want, f'{tier}: Copilot guardrail decisions {copilot}, expected {want}')
+        for rule, wanted in (('Bash(git push:*)', False), ('Bash(gh pr merge:*)', enterprise),
+                             ('Bash(gh release create:*)', enterprise), ('Bash(gh pr review:*)', True)):
+            expect((rule in claude) == wanted, f'{tier}: .claude/settings.json {"lacks" if wanted else "has"} {rule}')
+        for words, wanted in (('"git", "push"', False), ('"gh", "pr", "merge"', enterprise),
+                              ('"gh", "release", "create"', enterprise), ('"gh", "pr", "review"', True)):
+            expect((f'pattern = [{words}]' in codex) == wanted, f'{tier}: .codex/rules/guidance.rules {"lacks" if wanted else "has"} {words}')
+        passed, out = check(target)
+        expect(passed, f'{tier}: project check failed:\n    ' + out[:500])
+    internal = tmp / 'guardrails-internal'
+    plan = subprocess.run([sys.executable, '-B', str(root / 'check_package.py'), '--plan-upgrade', str(internal)],
+                          capture_output=True, text=True)
+    proposed = {p for label in ('Replace', 'Merge', 'Conflict', 'Review', 'Add', 'Remove') for p in plan_section(plan.stdout, label)}
+    expect(not proposed & set(GUARDRAILS), f'the upgrade plan of a fresh internal install changes guardrails: {sorted(proposed & set(GUARDRAILS))}')
+    install(internal, '--tier', 'enterprise')
+    copilot, claude, codex = guardrail_state(internal)
+    expect(copilot['gh pr merge 3'] == 'ask' and 'Bash(gh release create:*)' in claude and '"gh", "pr", "merge"' in codex,
+           'an upgrade to enterprise did not add the merge and release guardrails')
+    passed, out = check(internal)
+    expect(passed, 'internal project upgraded to enterprise fails the check:\n    ' + out[:500])
+    settings = tmp / 'guardrails-enterprise' / '.claude/settings.json'
+    data = json.loads(settings.read_text())
+    data['permissions']['ask'].remove('Bash(gh pr merge:*)')
+    settings.write_text(json.dumps(data, indent=2) + '\n')
+    passed, out = check(tmp / 'guardrails-enterprise')
+    expect(not passed and 'lacks the enterprise guardrail that asks before you merge a pull request' in out,
+           'removing an Enterprise guardrail was not flagged:\n    ' + out[:500])
+
+
 def verify_output(target, *args):
     r = subprocess.run([sys.executable, '-B', 'check_package.py', '--verify', *args], cwd=target, capture_output=True, text=True)
     return (r.stdout + r.stderr).strip()
@@ -605,12 +661,12 @@ def main():
         return
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
-        for case in (case_tiers, case_policy, case_generated_tables, case_enterprise, case_proposed_exclusion, case_dependency_files, case_rename_scope, case_documentation_mode, case_copilot_stop, case_upgrade, case_plan_upgrade, case_tools, case_recorded_exclusions, case_gate_timeouts, case_default, case_missing_module, case_broken_link):
+        for case in (case_tiers, case_policy, case_generated_tables, case_enterprise, case_guardrails, case_proposed_exclusion, case_dependency_files, case_rename_scope, case_documentation_mode, case_copilot_stop, case_upgrade, case_plan_upgrade, case_tools, case_recorded_exclusions, case_gate_timeouts, case_default, case_missing_module, case_broken_link):
             case(tmp)
     if problems:
         print('\n'.join(problems))
         sys.exit(1)
-    print('Install tests OK: tiers, design policy, generated tables, enterprise rows, proposed exclusions, dependency files, rename scope, documentation mode, Copilot stop hook, features, upgrade, upgrade plan and check, tools, recorded exclusions, gate timeouts, tier required (dry run, --all, rerun), missing module and broken link.')
+    print('Install tests OK: tiers, design policy, generated tables, enterprise rows, guardrails by tier, proposed exclusions, dependency files, rename scope, documentation mode, Copilot stop hook, features, upgrade, upgrade plan and check, tools, recorded exclusions, gate timeouts, tier required (dry run, --all, rerun), missing module and broken link.')
 
 
 if __name__ == '__main__':

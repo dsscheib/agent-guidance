@@ -17,7 +17,7 @@ Kind: Policy with template fields. Applies at the Enterprise tier, in addition t
 | Approver | {{APPROVERS}} | Code review approval and merging to the default branch |
 | Release manager | {{RELEASE_MANAGER}} | Release acceptance for an identified candidate and environment |
 
-- **An agent never approves, merges or accepts its own work, or anyone's.** It prepares the change and its evidence; a person in the named role decides. The guardrails ask before `gh pr merge`, `gh pr review` and `gh release create`.
+- **An agent never approves, merges or accepts its own work, or anyone's.** It prepares the change and its evidence; a person in the named role decides. The guardrails ask before `gh pr merge`, `gh pr review` and `gh release create`; the merge and release rules come with this module, and the checker fails if they are removed.
 - When asked to approve, merge or accept, say which role decides and what evidence they need, and stop there.
 - CODEOWNERS and branch protection enforce review on the hosting service. The checker reports when no CODEOWNERS file exists.
 
