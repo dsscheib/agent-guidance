@@ -31,9 +31,9 @@ Two large benchmark suites and several dozen iterative experiments are recorded 
 | **V4 holdout** (12 unseen scenarios): Candidate guidance | **26/36 (72%)** | **23/36 (64%)** | 26/36 (72%) | 27/36 (75%) | 31/36 (86%) | 30/36 (83%)* |
 | **V4 holdout** 95% scenario-bootstrap interval | **+2.8 to +52.8 pts** | **+16.7 to +63.9 pts** | −11.1 to +50.0 pts | −30.6 to +33.3 pts | −11.1 to +30.6 pts | +5.6 to +44.4 pts* |
 
-*\*In the holdout, `gemini-4-argon` is confounded by an Antigravity CLI update (1.4.12 to 1.5.2) between conditions.*
+*\*In the holdout, `gemini-4-argon` is confounded by an Antigravity CLI update (1.4.12 to 1.5.2) between conditions, and both Codex configurations by a change in reasoning effort after the pilot (13 candidate runs at `medium`, every other run at `high`; [HOLDOUT_RESULTS](HOLDOUT_RESULTS.md)).*
 
-- **On cheaper models, the improvement holds up on unseen tasks.** Even when the unguided baseline was given the same business rules in the `README`, the holdout showed statistically significant gains for `gpt-6-luna` (+38.9 points) and `gemini-3.8-flash` (+27.8 points).
+- **On cheaper models, the improvement holds up on unseen tasks.** Even when the unguided baseline was given the same business rules in the `README`, the holdout's intervals excluded zero for `gemini-3.8-flash` (+27.8 points) and `gpt-6-luna` (+38.9 points), though Luna's comparison is confounded by Codex's reasoning effort (footnote).
 - **On frontier models, most of the Version 3 gain was policy delivery.** In the Version 3 suite, `claude-opus-5-5` and `gpt-6.1-sol` jumped by more than 35 points because the guidance supplied project rules (branch policy, ticket IDs, approver roles, release gates) that were absent without it. When the holdout put those rules into every fixture's `README`, unguided `opus` (26/36) and `sol` (28/36) already followed most of them, and the remaining differences were within the 12-scenario confidence intervals.
 
 ### 2. Mechanical checks work; prose rules get ignored or backfire
