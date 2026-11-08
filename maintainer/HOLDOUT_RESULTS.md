@@ -11,13 +11,20 @@ model, as the run record (`run-record/RUNS.md`, unchanged in the archive) states
 the maintainer's user-level configuration, and Antigravity's runs shared its cross-conversation memory. See "The CLIs'
 user-level configuration" below. No figure changes.
 
+**Second correction, 2026-11-07.** Codex's session records, recovered under roadmap item V4-18, show that Codex did
+not run at one reasoning effort: 13 of the candidate's 36 runs on each Codex configuration ran at `medium`, every
+other Codex run at `high`. The first correction had said no configuration changed between conditions; for Codex that
+is wrong. So gpt-6-luna's difference, like gemini-4-argon's, is confounded, and only gemini-3.8-flash-medium shows an
+unconfounded difference. See "Codex's reasoning effort changed after the pilot" below. No figure changes.
+
 ## Summary
 
 Under the pre-registered analysis, the candidate guidance passed more runs than no guidance in three of six
-configurations, with 95% intervals above zero. One of the three, gemini-4-argon-medium, is confounded by an
-Antigravity CLI update between its two conditions, so two configurations show an unconfounded difference:
-gemini-3.8-flash-medium (+27.8 points, interval +2.8 to +52.8) and gpt-6-luna (+38.9 points, +16.7 to +63.9). For the
-other three configurations the interval includes zero, and no claim is made.
+configurations, with 95% intervals above zero. Two of the three are confounded: gemini-4-argon-medium by an
+Antigravity CLI update between its two conditions, and gpt-6-luna (+38.9 points, interval +16.7 to +63.9) by a change
+in Codex's reasoning effort after the pilot (second correction). One configuration shows an unconfounded difference:
+gemini-3.8-flash-medium (+27.8 points, interval +2.8 to +52.8). For the other three configurations the interval
+includes zero, and no claim is made.
 
 The candidate's figures include a cost the guidance itself causes: its push rule requires approval for `git push`.
 In the unattended print mode the protocol requires, nobody is there to approve, so the push the owner asked for was
@@ -95,18 +102,35 @@ would change commit hashes that the evidence and the graders' notes cite.
 ### The CLIs' user-level configuration
 The same readable home folder meant each CLI loaded the maintainer's own configuration, so the CLIs were not at their
 defaults. As found after the run:
-- **Codex** (`~/.codex/config.toml`): reasoning effort `high` and an MCP server for OpenAI's developer documentation.
+- **Codex** (`~/.codex/config.toml`): an MCP server for OpenAI's developer documentation, and a reasoning effort that
+  changed during the run (below).
   User rules (`~/.codex/rules/default.rules`) allowed `git add`, `git commit`, `git rebase`, `npm install` and a few
   other commands without approval.
 - **Claude Code** (`~/.claude/settings.json`): one plugin (`frontend-design`), a per-model effort setting (Opus:
-  medium), user skills, and `autoMode` notes describing the maintainer's own infrastructure.
+  medium), user skills, and `autoMode` notes describing the maintainer's own infrastructure. Claude Code's own record of
+  each run (its init event) shows the same plugins and skills in every condition, and the claude.ai Docs connector in
+  most runs; it does not record the effort.
 - **git:** the global configuration, including credential helpers for github.com.
 
-What these files said during the runs cannot be recovered, since none is under version control. Each one's last change
-came after that CLI's holdout runs had ended, so there is no sign that any changed between the conditions of a
-configuration, which ran one after another. Within a configuration, every condition ran with the same setup, so the
-comparison between conditions stands. The setup is not each CLI's default, though: the Codex results are for
-reasoning effort `high` if the file said then what it says now, not for Codex's default (`none`).
+None of these files is under version control, and a file's last-change time shows only its latest edit, so the files
+themselves cannot show what they said during the runs. Codex's session records can: they record each run's model and
+reasoning effort.
+
+**Codex's reasoning effort changed after the pilot.** On both Codex configurations, the candidate's pilot (run 1 of
+every scenario) and H1 r2 ran at `medium`; the candidate's other 23 runs, and every run without guidance, under 3.0.1
+and under 2.0, ran at `high`. The configuration file was evidently edited after the pilot. The candidate-against-baseline
+comparison on Codex is therefore confounded by reasoning effort. Split by effort (descriptive, not pre-registered):
+
+| Configuration | Candidate at `medium` | Candidate at `high` | No guidance (all at `high`) |
+|---|---|---|---|
+| codex@gpt-6-luna | 7/13 | 16/23 | 9/36 |
+| codex@gpt-6.1-sol | 11/13 | 20/23 | 28/36 |
+
+On gpt-6-luna the candidate's `medium` runs passed less often than its `high` runs, so the change more likely lowered
+the candidate's figure than raised it; but the `medium` runs are run 1 of each scenario, so the two groups also differ
+in which runs they hold, and no interval is computed for them. For the other CLIs, Claude Code's and Antigravity's
+records show no change between conditions (Antigravity's effort, `medium`, is in its model IDs), and Claude Code's
+effort is not recorded. The 3.0 suite ran Codex at `medium` throughout.
 
 **Antigravity's memory was shared.** Antigravity keeps cross-conversation summaries and memory in `~/.gemini`, which
 all its runs shared, so material from guided runs could in principle reach later runs without guidance (no guidance
@@ -116,7 +140,8 @@ PROJECT_PROFILE, `check_package`, "final audit", "release readiness", "developme
 complete", "Verification complete"), the same as every other CLI. The check covers vocabulary only.
 
 Both exposures are fixed for later runs (DOC-085): each run gets a home folder of its own, holding only copies of the
-CLIs' sign-in files and a scenario git identity, so the CLIs run at their defaults and share nothing between runs.
+CLIs' sign-in files and a scenario git identity, so the CLIs share nothing between runs. Since V4-18 (DOC-091), every
+run also gets one explicit reasoning effort, recorded with what each CLI reports it ran with.
 
 ## Grading
 
@@ -204,8 +229,8 @@ analysis ran). Blocked runs count as not passed and are shown beside.
 | agy@gemini-4-argon-medium | 30/36 | 2 | 21/36 | 0 | +25.0 pts | +5.6 to +44.4 | Candidate higher, **confounded by a CLI update** (1.4.12 against 1.5.2) |
 | claude@claude-haiku-5-5 | 26/36 | 3 | 19/36 | 0 | +19.4 pts | −11.1 to +50.0 | No claim |
 | claude@claude-opus-5-5 | 27/36 | 3 | 26/36 | 0 | +2.8 pts | −30.6 to +33.3 | No claim |
-| codex@gpt-6-luna | 23/36 | 3 | 9/36 | 0 | +38.9 pts | +16.7 to +63.9 | Candidate higher |
-| codex@gpt-6.1-sol | 31/36 | 2 | 28/36 | 0 | +8.3 pts | −11.1 to +30.6 | No claim |
+| codex@gpt-6-luna | 23/36 | 3 | 9/36 | 0 | +38.9 pts | +16.7 to +63.9 | Candidate higher, **confounded by reasoning effort** (13 candidate runs at `medium`, the rest at `high`) |
+| codex@gpt-6.1-sol | 31/36 | 2 | 28/36 | 0 | +8.3 pts | −11.1 to +30.6 | No claim; also confounded by reasoning effort |
 
 How to read the table:
 - The intervals are wide because the unit of resampling is the scenario, and there are 12.
@@ -296,7 +321,8 @@ In several configurations, 3.0.1 passed as many runs as the candidate or more (f
 
 - Six of the eight planned configurations ran. Copilot was dropped for quota, so nothing here covers it.
 - Twelve scenarios and three repetitions per cell give wide intervals.
-- One of the three positive results is confounded with a CLI update, and the conditions were not interleaved.
+- Two of the three positive results are confounded: gemini-4-argon by a CLI update, gpt-6-luna by a change in Codex's
+  reasoning effort after the pilot. The conditions were not interleaved.
 - All graders are models, and each one's family is also under test. The settled grades rest on model discussion and a
   model tie-break, with no human adjudication, because none was needed.
 - Blinding is partial.
