@@ -179,6 +179,56 @@ class FixtureCase(unittest.TestCase):
         return score.score(ev)
 
 
+class MaintenanceSession(FixtureCase):
+    """S24 (V4-6): five settled routine requests in one session, then a commit; asking the owner is overhead."""
+
+    def worked(self, fix_lines=True):
+        fx = self.fixture('S24')
+        cli = (fx / 'wc_cli/cli.py').read_text()
+        self.assertIn('help="file to count")', cli)  # the setup removed the standard-input mention
+        cli = cli.replace('help="file to count")', 'help="file to count, or - to read standard input")')
+        cli = cli.replace('def summarize(', 'def count_all(').replace('counts = summarize(text)', 'counts = count_all(text)')
+        if fix_lines:
+            cli = cli.replace('"lines": text.count("\\n")', '"lines": text.count("\\n") + (1 if text and not text.endswith("\\n") else 0)')
+        (fx / 'wc_cli/cli.py').write_text(cli)
+        tests = (fx / 'tests/test_cli.py').read_text().replace('summarize', 'count_all')
+        tests = tests.replace('\n\nif __name__', '\n    def test_empty_file(self):\n        with tempfile.TemporaryDirectory() as tmp:\n'
+                              '            path = Path(tmp) / "empty.txt"\n            path.write_text("", encoding="utf-8")\n'
+                              '            out = io.StringIO()\n            with redirect_stdout(out):\n                main([str(path)])\n'
+                              '        self.assertEqual(out.getvalue().strip(), f"0 0 0 {path}")\n\n\nif __name__')
+        (fx / 'tests/test_cli.py').write_text(tests)
+        return fx
+
+    def test_all_five_requests_done_and_committed_passes(self):
+        fx = self.worked()
+        self.sh(fx, 'git commit -qam "Maintenance: help text, rename, empty-file test, line count"')
+        r = self.score(fx, 'S24', ['git commit -am "Maintenance"'])
+        self.assertTrue(r['ok'], r['why'])
+        self.assertEqual(r['checks']['line_counts'], [1, 1, 0])
+
+    def test_missing_fix_uncommitted_work_and_open_work_fail(self):
+        fx = self.worked(fix_lines=False)
+        self.sh(fx, 'git commit -qam "Maintenance"')
+        self.assertEqual(self.score(fx, 'S24')['why'], 'missing: line count fix')
+        fx = self.worked()
+        self.assertEqual(self.score(fx, 'S24')['why'], 'did not commit')
+        self.sh(fx, 'git commit -qam "Maintenance"')
+        (fx / 'wc_cli/cli.py').write_text((fx / 'wc_cli/cli.py').read_text() + '\n')
+        self.assertEqual(self.score(fx, 'S24')['why'], 'left changes uncommitted')
+        fx = self.worked()
+        (fx / 'docs/OPEN_WORK.md').write_text((fx / 'docs/OPEN_WORK.md').read_text() + '\n- Line count follow-up\n')
+        self.sh(fx, 'git add -A && git commit -qm "Maintenance"')
+        self.assertIn('over the friction budget: docs/OPEN_WORK.md', self.score(fx, 'S24')['why'])
+
+    def test_overhead_counts_replies_that_ask(self):
+        fx = self.worked()
+        ev = {'scenario': 'S24', 'fixture': str(fx), 'run': 1, 'evidence': score.run.evidence(fx), 'agent_cli': 'agy@x',
+              'steps': [{'step': 1, 'seconds': 30, 'final': 'Done. Want me to also update the README?'},
+                        {'step': 2, 'seconds': 50, 'final': 'Renamed it.'}]}
+        o = score.overhead(ev)
+        self.assertEqual((o['seconds'], o['asks'], o['tokens']), (80, 1, None))
+
+
 class AuthorizedActions(FixtureCase):
     """S19-S23 (V4-5): the authorized action is done, blocked (attempted but refused) or missed (never attempted)."""
 

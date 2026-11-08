@@ -29,7 +29,7 @@ Prefer tooling and removal of unnecessary ceremony over additional policy docume
 | V4-3 | Separate evaluation outcomes | Done | | DOC-076 |
 | V4-4 | Equal requirements; the holdout set | Done: run, graded, published and corrected twice | | DOC-055, DOC-078, DOC-080 to DOC-084, DOC-087, DOC-092; [HOLDOUT_RESULTS](HOLDOUT_RESULTS.md) |
 | V4-5 | Authorization in both directions | In progress: scenarios done, push block fixed | S21 and S22 with the fix; S19–S23 on Opus, Sol and both Antigravity configurations; Copilot once its quota renews (from 2026-11-28) | DOC-056, DOC-058, DOC-088 |
-| V4-6 | Whether guidance earns its overhead | Not started | Define the measures and thresholds; run with V4-5's batch | |
+| V4-6 | Whether guidance earns its overhead | In progress: measures, S24, baseline and thresholds set | Run with V4-5's batch | DOC-093 |
 | V4-7 | Refresh planning documents | Done | Keep each item's status in this table | DOC-090 |
 | V4-8 | Adapters only for the tools a project uses | Done | | DOC-071 |
 | V4-9 | Recorded exclusions of absent files | Done | | DOC-073 |
@@ -129,6 +129,18 @@ Prefer tooling and removal of unnecessary ceremony over additional policy docume
   fix, 16 runs (S19, S4, S20 and S23, two each, on Claude Haiku 5.5 and Codex GPT-6 Luna, at the CLIs' defaults): core
   16/16, S19 pushed in every run, no push in any S4, S20 or S23 run, authorized actions 12 done, none blocked or
   missed. **Open:** S21 and S22 with the fix, and S19–S23 on the other configurations.
+- **V4-6, 2026-11-07 (DOC-093):** `score.py --overhead` measures pass rate, time, tokens, replies asking the owner,
+  documents edited and reply words per configuration, and S24 (a maintenance session of five settled requests) counts
+  unnecessary interruptions. On the stored runs, guidance costs much more than a first guess of 25%: in the 3.0 suite,
+  median input tokens per run rose 2.1–2.7× on Claude Code and Codex (Haiku 124k to 263k, Opus 93k to 251k, Luna 84k to
+  220k, Sol 95k to 212k; mostly cache reads of guidance documents), median time 1.3–2×, runs with a reply asking the
+  owner rose (Luna 2/42 to 32/86, Haiku 17/42 to 52/86, counting expected questions too), and the median run edited one
+  guidance document instead of none. The holdout shows the same, with the candidate and 3.0.1 alike and 2.0 costliest.
+  S24 and the 3.0.2 condition run in the next batch. **Thresholds (owner, 2026-11-07, set before the batch):** per
+  configuration, the candidate (1) passes at least as many runs as no guidance and as 3.0.2; (2) uses no more median
+  tokens and time per run than 3.0.2, with at most 2× no guidance as the target to tune toward; (3) asks the owner in
+  at most 1 in 10 S24 replies; (4) misses no authorized action in S19–S23; and (5) stays within S24's document budget
+  in every run. Antigravity records no tokens, so (2) is judged on time alone there.
 - **V4-7.** Done 2026-11-07 (DOC-090): this document now keeps current plans (this roadmap, its status table and next
   steps) apart from the version 3 history below, and one status per item; the adoption-cleanup and publishing-plan
   sections are resolved, and RESTRUCTURE_DESIGN.md is marked as implemented.

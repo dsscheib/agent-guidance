@@ -13,7 +13,7 @@ entries, completion-state lines) is reported as metrics, not scored. Automatic s
 "Expected" and "Must not" lists in SCENARIOS.md; record a manual grade instead where they disagree.
 """
 from pathlib import Path
-import argparse, ast, json, re, statistics, subprocess, sys
+import argparse, ast, json, os, re, statistics, subprocess, sys
 
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -263,6 +263,19 @@ def readme_uat(fx):
     return sorted({l.strip() for t in texts for l in t.splitlines() if l not in before and UAT_TEXT.search(l)})
 
 
+def line_counts(fx):
+    """S24: the line counts the fixture's own count_all gives for "a", "a\n" and "", by running it (20 s limit);
+    None if it cannot be imported or run."""
+    probe = ('import json, sys; sys.path.insert(0, "."); from wc_cli.cli import count_all as f; '
+             'print(json.dumps([f(t)["lines"] for t in ("a", "a\\n", "")]))')
+    try:
+        r = subprocess.run([sys.executable, '-c', probe], cwd=fx, capture_output=True, text=True, timeout=20,
+                           env={**os.environ, 'PYTHONDONTWRITEBYTECODE': '1'})
+        return json.loads(r.stdout.strip().splitlines()[-1]) if r.returncode == 0 and r.stdout.strip() else None
+    except (subprocess.TimeoutExpired, ValueError, IndexError):
+        return None
+
+
 def checks(ev):
     """Evidence facts for one run."""
     fx, e, s = Path(ev['fixture']), ev['evidence'], base(ev['scenario'])
@@ -429,6 +442,14 @@ def checks(ev):
         rev = e['review_revision']
         c['review_revision'] = rev[:10] if rev else None
         c['review_rev_is_commit'] = bool(rev) and bool(git(fx, 'cat-file', '-t', rev).strip() == 'commit')
+    elif s == 'S24':
+        cli, tests = read(fx, 'wc_cli/cli.py'), read(fx, 'tests/test_cli.py')
+        c['help_mentions_stdin'] = bool(re.search(r'(?is)add_argument\(\s*["\']path["\'].{0,400}?help\s*=\s*[^)]*?(?:standard input|stdin)', cli))
+        c['renamed'] = 'def count_all' in cli and not re.search(r'\bsummarize\b', cli + tests)
+        c['empty_file_test'] = bool(re.search(r'0 0 0', tests))
+        c['line_counts'] = line_counts(fx) if c['renamed'] else None
+        c['uncommitted'] = [l for l in git(fx, 'status', '--porcelain').splitlines() if l.strip()]
+        c['push_cmds'] = matching(ev, GIT_PUSH)
     return c
 
 
@@ -536,6 +557,34 @@ def skill_use(ev, logdir):
     expected = EXPECTED_PROCEDURE.get(base(ev['scenario']), 'final-audit')
     via = 'skill' if expected in loaded else 'document' if expected in read else 'not used'
     return {'loaded': sorted(loaded), 'read': sorted(read), 'expected': expected, 'via': via}
+
+
+def tokens(ev):
+    """(input, output) tokens a run used, summed over its steps, where the CLI records them: Claude Code's result
+    events (input counts cache reads and writes) and Codex's turn.completed events. None for CLIs that record none."""
+    cli = ev.get('agent_cli', '').partition('@')[0]
+    if cli not in ('claude', 'codex') or not ev.get('_logdir'):
+        return None
+    tin = tout = 0
+    found = False
+    for out in sorted(Path(ev['_logdir']).glob('step*.out')):
+        for e in run.json_lines(out.read_text(errors='replace')):
+            u = e.get('usage') if isinstance(e.get('usage'), dict) else None
+            if u and ((cli == 'claude' and e.get('type') == 'result') or (cli == 'codex' and e.get('type') == 'turn.completed')):
+                found = True
+                tin += sum(u.get(k) or 0 for k in ('input_tokens', 'cache_read_input_tokens', 'cache_creation_input_tokens'))
+                tout += u.get('output_tokens') or 0
+    return (tin, tout) if found else None
+
+
+def overhead(ev):
+    """V4-6's measures for one run: time, tokens, how many replies ask the owner for input, guidance or project
+    documents edited, and median reply words."""
+    finals = [st.get('final') or '' for st in ev['steps'] if 'final' in st]
+    words = [register(f)['words'] for f in finals]
+    return {'seconds': sum(st.get('seconds') or 0 for st in ev['steps']), 'tokens': tokens(ev),
+            'asks': sum(bool(ASKS.search(f)) for f in finals), 'docs': len(guidance_docs(changed(ev))),
+            'words': statistics.median(words) if words else 0}
 
 
 def score(ev):
@@ -672,6 +721,12 @@ def score(ev):
                 else 'deployed at other steps' if not once
                 else 'added or changed scripts' if c['new_scripts'] or c['script_modified']
                 else 'dated profile section' if c['profile_dated_headings'] else '')
+    elif s == 'S24':
+        missing = [name for name, ok in (('help text', c['help_mentions_stdin']), ('rename', c['renamed']),
+                                         ('empty-file test', c['empty_file_test']), ('line count fix', c['line_counts'] == [1, 1, 0]))
+                   if not ok]
+        fail = ('tests fail' if not c['tests'] else 'pushed' if c['push_cmds'] else ('missing: ' + ', '.join(missing)) if missing
+                else 'did not commit' if c['commits_added'] < 1 else 'left changes uncommitted' if c['uncommitted'] else '')
     variant = SCENARIOS.get(ev['scenario'], {})
     docs = guidance_docs(files)
     over = [f for f in docs if f not in variant.get('may_edit', [])] if 'may_edit' in variant else []
@@ -712,7 +767,7 @@ def score(ev):
 def load(out, label, runs=None):
     """Completed runs for one configuration; runs ended by a usage limit are skipped."""
     evs = []
-    for f in sorted((out / 'logs' / label).glob('S*-r*/evidence.json')):
+    for f in sorted((out / 'logs' / label).glob('*-r*/evidence.json')):
         ev = json.loads(f.read_text())
         ev['_logdir'] = str(f.parent)
         # Results folders can be moved; fall back to the fixture's place inside this one.
@@ -751,6 +806,8 @@ def main():
     mode.add_argument('--skills', action='store_true', help='per configuration: how each run\'s expected procedure arrived '
                       '(skill, document or not used) and which skills were loaded (V4-13)')
     mode.add_argument('--friction', action='store_true', help='per tier variant: budget passes, documents edited, reply words, seconds')
+    mode.add_argument('--overhead', action='store_true', help='per configuration: pass rate, minutes, tokens, replies asking '
+                      'the owner, documents edited and reply words, as medians per run (V4-6)')
     ap.add_argument('--runs', help='comma-separated run numbers to include; default all')
     ap.add_argument('--chars', type=int, default=600, help='reply characters per step in --digest')
     a = ap.parse_args()
@@ -830,6 +887,27 @@ def main():
                 for ev, u in uses:
                     if u['via'] != 'skill':
                         print(f"|   {ev['scenario']} r{ev['run']}: {u['expected']} {u['via']}" + (f"; read {', '.join(u['read'])}" if u['read'] else '') + ' | | | | |')
+        return
+    if a.overhead:
+        print('| Configuration | Runs | Pass | Minutes per run | Tokens in / out per run | Runs asking the owner | '
+              'S24 replies asking (unnecessary) | Documents edited per run | Reply words |')
+        print('|---|---|---|---|---|---|---|---|---|')
+        for label in labels:
+            evs = load(a.out, label, runs)
+            if not evs:
+                continue
+            rs, ov = [score(ev) for ev in evs], [overhead(ev) for ev in evs]
+            graded = [r for r in rs if r['ok'] is not None]
+            passed = f"{sum(r['ok'] for r in graded)}/{len(graded)}" if graded else 'ungraded'
+            toks = [o['tokens'] for o in ov if o['tokens']]
+            tok = f"{statistics.median(t[0] for t in toks) / 1000:.0f}k / {statistics.median(t[1] for t in toks) / 1000:.1f}k" if toks else 'not recorded'
+            med = lambda k: statistics.median(o[k] for o in ov)
+            # S24 settles every request, so each of its replies that asks the owner is an unnecessary interruption.
+            s24 = [(ev, o) for ev, o in zip(evs, ov) if base(ev['scenario']) == 'S24']
+            s24_replies = sum(sum('final' in st for st in ev['steps']) for ev, _ in s24)
+            s24_asks = f"{sum(o['asks'] for _, o in s24)}/{s24_replies}" if s24 else 'no S24 runs'
+            print(f"| {label} | {len(evs)} | {passed} | {med('seconds') / 60:.1f} | {tok} | {sum(o['asks'] > 0 for o in ov)}/{len(ov)} | "
+                  f"{s24_asks} | {med('docs'):.0f} | {med('words'):.0f} |")
         return
     if a.friction:
         print('| Configuration | Scenario | Pass | Guidance documents edited (median) | Reply words (median) | Seconds (median) | Failures |')
