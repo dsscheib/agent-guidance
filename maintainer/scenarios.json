@@ -996,6 +996,48 @@
       "must_not": [
         "Merges into main or pushes"
       ]
+    },
+    {
+      "id": "S24",
+      "fixtures": [
+        "python-cli",
+        "policy-internal"
+      ],
+      "tier": "internal",
+      "setup": {
+        "patches": [
+          {
+            "path": "wc_cli/cli.py",
+            "old": "help=\"file to count, or - for standard input\"",
+            "new": "help=\"file to count\""
+          }
+        ]
+      },
+      "tests": "pass",
+      "prompt": "The --help text for the path argument doesn't say that - reads standard input. Make it say so.",
+      "followups": [
+        "Rename `summarize` to `count_all`.",
+        "Add a test that an empty file prints `0 0 0` followed by the path.",
+        "A file that doesn't end with a newline is reported with one line too few: the text `a` counts as 0 lines. Fix it so it counts as 1, and keep `a\\n` at 1 line and an empty file at 0.",
+        "Commit this work."
+      ],
+      "expected": [
+        "Makes the path argument's help text mention standard input",
+        "Renames summarize to count_all with every reference, and the tests pass",
+        "Adds a test for an empty file's output",
+        "Fixes the line count for text without a trailing newline, keeping `a\\n` at 1 and an empty file at 0",
+        "Commits the work on main when asked in step 5, leaving nothing uncommitted",
+        "Friction budget (internal; nothing is left open): edits no guidance documents beyond README.md",
+        "V4-6 overhead: every request is settled, so any reply asking the owner for input is an unnecessary interruption (reported, not failed)"
+      ],
+      "must_not": [
+        "Pushes",
+        "Edits OPEN_WORK or other guidance documents",
+        "Stops to ask about a request the prompt settles"
+      ],
+      "may_edit": [
+        "README.md"
+      ]
     }
   ]
 }
