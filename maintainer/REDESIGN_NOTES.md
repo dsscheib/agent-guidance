@@ -27,7 +27,7 @@ Prefer tooling and removal of unnecessary ceremony over additional policy docume
 | V4-1 | Minimal installation by default | Done | | DOC-063 |
 | V4-2 | Reviewable upgrades | Done; agent results weak on Codex and Claude Code | Look again before 4.0 (progress notes) | DOC-064 to DOC-069 |
 | V4-3 | Separate evaluation outcomes | Done | | DOC-076 |
-| V4-4 | Equal requirements; the holdout set | Done: run, graded, published and corrected | | DOC-055, DOC-078, DOC-080 to DOC-084, DOC-087; [HOLDOUT_RESULTS](HOLDOUT_RESULTS.md) |
+| V4-4 | Equal requirements; the holdout set | Done: run, graded, published and corrected; a second correction is due | Correct the report for the Codex effort change found under V4-18 | DOC-055, DOC-078, DOC-080 to DOC-084, DOC-087; [HOLDOUT_RESULTS](HOLDOUT_RESULTS.md) |
 | V4-5 | Authorization in both directions | In progress: scenarios done, push block fixed | S21 and S22 with the fix; S19–S23 on Opus, Sol and both Antigravity configurations; Copilot once its quota renews (from 2026-11-28) | DOC-056, DOC-058, DOC-088 |
 | V4-6 | Whether guidance earns its overhead | Not started | Define the measures and thresholds; run with V4-5's batch | |
 | V4-7 | Refresh planning documents | Done | Keep each item's status in this table | DOC-090 |
@@ -41,11 +41,11 @@ Prefer tooling and removal of unnecessary ceremony over additional policy docume
 | V4-15 | Other skill candidates | Candidate list only | | DOC-074 |
 | V4-16 | Test the release review | Procedure shipped (DOC-079); scenario not built | Build the planted-defect scenario, then the fix phase | DOC-079 |
 | V4-17 | Why the candidate does not beat 3.0.1 | Proposed | Compare per scenario on the holdout and the next batch | |
-| V4-18 | Comparable run configuration | Proposed | Fix each configuration's CLI settings before the next batch | |
+| V4-18 | Comparable run configuration | Done | Rerun a baseline before comparing with an earlier suite | DOC-091 |
 | V4-19 | Harness fixes from the holdout | Proposed | | |
 
 ### Next steps
-1. **Settle the run configuration (V4-18)**, so the next batch is comparable and records its settings.
+1. **Settle the run configuration (V4-18).** Done (DOC-091); the holdout report needs the correction it found.
 2. **One batch for V4-5's remainder and V4-6's overhead measures**, which share the quota; use it for V4-17's
    per-scenario comparison as well. The owner approves the batch's size first.
 3. **Recheck V4-2 on Codex and Claude Code**, and **build V4-16's scenario**.
@@ -156,6 +156,18 @@ Prefer tooling and removal of unnecessary ceremony over additional policy docume
   253, not used 63, with pass rates of 94%, 92% and 90%. GPT-6.1 Sol in Codex loaded the skill in 84 of 86 runs;
   Gemini 3.8 Flash read the document in 67 and Claude Haiku skipped the procedure in 30. The pass-rate gap is small
   and not controlled, so it does not show that skills help; it gives V4-12, V4-14 and V4-15 a baseline.
+- **V4-18 done 2026-11-07 (DOC-091):** every run gets one reasoning effort, `medium` by owner decision, passed
+  explicitly to each CLI, and Claude Code gets no MCP server (owner decision), so the claude.ai Docs connector neither
+  varies runs nor reaches the maintainer's documents. The evidence records the requested settings and what each CLI
+  reports it ran with. Recovering the earlier suites' settings from Codex's session records found that the 3.0 suite
+  ran Codex at `medium`, while the holdout ran it at `high`, except 13 runs per Codex configuration at `medium`: all
+  of them candidate runs, the pilot (run 1 of every scenario) and H1 r2. The configuration file was evidently changed
+  after the pilot, which its last-change time could not show. So the holdout's candidate-against-baseline comparison
+  on both Codex configurations is confounded by reasoning effort, gpt-6-luna's +38.9 points included, and
+  HOLDOUT_RESULTS.md needs a second correction. Claude Code's holdout runs had the same extras in every condition (the
+  `frontend-design` plugin, the maintainer's user skills and, in most runs, the claude.ai Docs connector), and its
+  effort was not recorded. Antigravity ran at `medium`, named in its model IDs. Since DOC-085 the runs used each CLI's
+  default (Codex `none`).
 
 ### Working rules for the roadmap
 Keep the status table current with each change (V4-7). Define acceptance criteria and preserve baseline evidence before
