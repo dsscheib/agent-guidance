@@ -160,30 +160,47 @@ def scenarios(guidance, shown=None, catalog=None):
     return {s['id']: s for s in data}
 
 
-def agent_cmd(agent, prompt, session, logdir, step, fx):
+# Reasoning effort every CLI accepts. The harness passes one explicitly (V4-18): left to the CLI, it followed the
+# maintainer's own settings until DOC-085, then each CLI's default, and changed silently with either.
+EFFORTS = ('low', 'medium', 'high', 'xhigh', 'max')
+DEFAULT_EFFORT = 'medium'
+
+
+def model_effort(model):
+    """An Antigravity model ID carries its effort as a suffix (gemini-3.8-flash-medium); None if it has none."""
+    return next((e for e in EFFORTS if model.endswith('-' + e)), None)
+
+
+def agent_cmd(agent, prompt, session, logdir, step, fx, effort=DEFAULT_EFFORT):
     """Command for one step; session is None for the first step."""
     base, _, model = agent.partition('@')
     if base == 'claude':
+        # --strict-mcp-config with no --mcp-config: no MCP server, so an account connector (claude.ai Docs) that
+        # connects in some runs and not others neither varies the results nor reaches the maintainer's documents.
         cmd = ['claude', '-p', prompt, '--permission-mode', 'acceptEdits',
-               '--allowedTools', 'Bash Edit Write Read Glob Grep', '--output-format', 'stream-json', '--verbose']
+               '--allowedTools', 'Bash Edit Write Read Glob Grep', '--output-format', 'stream-json', '--verbose',
+               '--effort', effort, '--strict-mcp-config']
         cmd += ['--resume', session] if session else []
     elif base == 'codex':
         # workspace-write makes .git read-only; list it as a writable root so commits and branches work.
         git_root = ['-c', f'sandbox_workspace_write.writable_roots=["{fx}/.git"]']
-        model_opt = ['-m', model] if model else []
+        model_opt = (['-m', model] if model else []) + ['-c', f'model_reasoning_effort="{effort}"']
         if session:
             return ['codex', 'exec', 'resume', *model_opt, '-c', 'sandbox_mode="workspace-write"', *git_root, '--json', session, prompt]
         return ['codex', 'exec', *model_opt, '--sandbox', 'workspace-write', *git_root, '--json', prompt]
     elif base == 'copilot':
         # Folder trust comes from COPILOT_ALLOW_ALL=true (set in run_one), which also applies to resumed
         # sessions; --trust-folder cannot be combined with --resume.
-        cmd = ['copilot', '-p', prompt, '--allow-all-tools', '--share', str(logdir / f'step{step}-share.md')]
+        cmd = ['copilot', '-p', prompt, '--allow-all-tools', '--share', str(logdir / f'step{step}-share.md'),
+               '--reasoning-effort', effort]
         cmd += [f'--resume={session}'] if session else []
         # S11 reads the guidance snapshot outside the project; Copilot's path guard needs it named (read-only in bwrap).
         cmd += ['--add-dir', str(GUIDANCE_FOR_COPILOT)] if GUIDANCE_FOR_COPILOT else []
     elif base == 'agy':
         cmd = ['agy', '-p', prompt, '--dangerously-skip-permissions', '--output-format', 'stream-json']
         cmd += ['--conversation', session] if session else []
+        # The model ID names the effort (main() checks it matches); a model ID without one gets it as a flag.
+        cmd += [] if model_effort(model) else ['--effort', effort]
     else:
         raise SystemExit(f'Unknown agent CLI: {base}')
     return cmd + (['--model', model] if model else [])
@@ -341,6 +358,24 @@ def cli_version(agent):
 LIMIT = re.compile(r"(?i)hit your (?:\S+ )?limit|usage limit|quota exceeded|resource.?exhausted")
 
 
+def observed_settings(agent, first_out, home, session):
+    """What the CLI reports it ran with, read before the run's home is deleted: Claude Code's init event (model,
+    MCP servers, plugins, skills) and Codex's session record (model, reasoning effort). Other CLIs record none."""
+    base = cli_name(agent)
+    if base == 'claude':
+        init = next((e for e in json_lines(first_out) if e.get('subtype') == 'init'), None)
+        if init:
+            return {'model': init.get('model'), 'mcp_servers': sorted(m.get('name') for m in init.get('mcp_servers') or []),
+                    'plugins': sorted(p.get('name') for p in init.get('plugins') or []), 'skills': len(init.get('skills') or [])}
+    if base == 'codex' and session:
+        for f in sorted((home / '.codex' / 'sessions').rglob(f'rollout-*{session}.jsonl')):
+            for e in json_lines(f.read_text(errors='replace')):
+                if e.get('type') == 'turn_context':
+                    p = e.get('payload') or {}
+                    return {'model': p.get('model'), 'effort': p.get('effort')}
+    return {}
+
+
 def run_one(opts, agent, s, n):
     sid, label = s['id'], opts.label or agent
     fx = opts.out / 'fx' / label / f'{sid}-r{n}'
@@ -398,18 +433,19 @@ def run_one(opts, agent, s, n):
             env['COPILOT_ALLOW_ALL'] = 'true'
             if opts.copilot_user_hooks:
                 env['SB_COPILOT_HOOKS'] = str(opts.copilot_user_hooks)
-        session, steps, start = None, [], tree(fx)
+        session, steps, start, first_out = None, [], tree(fx), ''
         for i, prompt in enumerate(s['prompts'], 1):
             log(f'start {label} {sid} r{n} step {i}/{len(s["prompts"])}')
             t0 = time.time()
             try:
-                r = subprocess.run([str(SANDBOX), str(fx), *agent_cmd(agent, prompt, session, logdir, i, fx)],
+                r = subprocess.run([str(SANDBOX), str(fx), *agent_cmd(agent, prompt, session, logdir, i, fx, opts.effort)],
                                    capture_output=True, text=True, env=env, stdin=subprocess.DEVNULL, timeout=STEP_TIMEOUT)
                 out, err, code = r.stdout, r.stderr, r.returncode
             except subprocess.TimeoutExpired as e:
                 out = e.stdout.decode(errors='replace') if isinstance(e.stdout, bytes) else (e.stdout or '')
                 err, code = 'TIMEOUT', 'timeout'
             (logdir / f'step{i}.out').write_text(out)
+            first_out = out if i == 1 else first_out
             (logdir / f'step{i}.err').write_text(err)
             if LIMIT.search((out + err)[-4000:]):
                 # A usage limit voids the run; leave no evidence.json so a later rerun picks it up.
@@ -426,7 +462,9 @@ def run_one(opts, agent, s, n):
                 break
         ev = {'agent': label, 'agent_cli': agent, 'cli_version': cli_version(agent), 'date': time.strftime('%Y-%m-%d'), 'guidance': str(opts.shown), 'guidance_commit': git(opts.shown, 'rev-parse', 'HEAD'), 'guidance_snapshot': str(opts.guidance),
               'installed': not opts.no_install, 'scenario': sid, 'run': n, 'session': session, 'start': start, 'steps': steps,
-              'fixture': str(fx), 'catalog': str(opts.catalog) if opts.catalog else None, 'evidence': evidence(fx)}
+              'fixture': str(fx), 'catalog': str(opts.catalog) if opts.catalog else None, 'evidence': evidence(fx),
+              'settings': {'effort': opts.effort, 'mcp': 'off' if cli_name(agent) == 'claude' else 'none configured',
+                           'observed': observed_settings(agent, first_out, home, session)}}
         (logdir / 'evidence.json').write_text(json.dumps(ev, indent=1))
     finally:
         shutil.rmtree(home, ignore_errors=True)
@@ -440,6 +478,9 @@ def main():
     ap.add_argument('--runs', default='1,2')
     ap.add_argument('--workers', type=int, default=3, help='concurrent runs per agent')
     ap.add_argument('--label', help='results folder name; default the agent name (one agent only)')
+    ap.add_argument('--effort', choices=EFFORTS, default=DEFAULT_EFFORT,
+                    help=f'reasoning effort passed to every CLI and recorded in the evidence (default {DEFAULT_EFFORT}); '
+                         'an Antigravity model ID that names an effort must name this one')
     src = ap.add_mutually_exclusive_group()
     src.add_argument('--guidance', type=Path, help='existing committed guidance snapshot to test')
     src.add_argument('--no-install', action='store_true', help='no-guidance baseline')
@@ -459,6 +500,10 @@ def main():
     agents = opts.agents.split(',')
     if opts.label and len(agents) > 1:
         ap.error('--label works with one agent at a time')
+    for agent in agents:
+        named = model_effort(agent.partition('@')[2]) if cli_name(agent) == 'agy' else None
+        if named and named != opts.effort:
+            ap.error(f'{agent} names effort {named}, but --effort is {opts.effort}')
     if not shutil.which('bwrap'):
         ap.error('bubblewrap (bwrap) is required')
     opts.out.mkdir(parents=True, exist_ok=True)

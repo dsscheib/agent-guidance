@@ -500,6 +500,54 @@ class Holdout(unittest.TestCase):
                 self.assertEqual(r.returncode, 2, r.stderr)
 
 
+class RunSettings(unittest.TestCase):
+    """V4-18: every CLI gets the batch's reasoning effort explicitly, Claude Code gets no MCP server, and the evidence
+    records what each CLI reports it ran with."""
+    harness = score.run
+
+    def cmd(self, agent, session=None, effort='medium'):
+        return self.harness.agent_cmd(agent, 'p', session, Path('/l'), 1, Path('/f'), effort)
+
+    def test_each_cli_gets_the_effort(self):
+        for session in (None, 's1'):
+            c = self.cmd('claude@claude-haiku-5-5', session, 'high')
+            self.assertEqual(c[c.index('--effort') + 1], 'high')
+            self.assertIn('--strict-mcp-config', c)
+            x = self.cmd('codex@gpt-6-luna', session, 'high')
+            self.assertIn('model_reasoning_effort="high"', x)
+            self.assertEqual(x[x.index('model_reasoning_effort="high"') - 1], '-c')
+        p = self.cmd('copilot@gpt-6.1-sol', effort='low')
+        self.assertEqual(p[p.index('--reasoning-effort') + 1], 'low')
+        self.assertNotIn('--effort', self.cmd('agy@gemini-3.8-flash-medium'))   # the model ID names it
+        a = self.cmd('agy@gemini-next', effort='high')
+        self.assertEqual(a[a.index('--effort') + 1], 'high')
+        self.assertEqual((self.harness.model_effort('gemini-4-argon-medium'), self.harness.model_effort('gemini-next')), ('medium', None))
+
+    def test_an_antigravity_model_naming_another_effort_is_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            r = subprocess.run([sys.executable, str(score.run.HERE / 'run.py'), '--out', str(Path(tmp) / 'o'),
+                                '--agents', 'agy@gemini-3.8-flash-medium', '--effort', 'high'], capture_output=True, text=True)
+            self.assertEqual(r.returncode, 2)
+            self.assertIn('names effort medium, but --effort is high', r.stderr)
+            self.assertFalse((Path(tmp) / 'o').exists())
+
+    def test_observed_settings_are_read_from_the_cli_records(self):
+        init = json.dumps({'type': 'system', 'subtype': 'init', 'model': 'claude-haiku-5-5', 'mcp_servers': [],
+                           'plugins': [{'name': 'cc-plugin-privacy'}], 'skills': ['final-audit', 'debug']})
+        self.assertEqual(self.harness.observed_settings('claude@claude-haiku-5-5', init + '\n{"type":"assistant"}\n', Path('/x'), None),
+                         {'model': 'claude-haiku-5-5', 'mcp_servers': [], 'plugins': ['cc-plugin-privacy'], 'skills': 2})
+        with tempfile.TemporaryDirectory() as tmp:
+            home, sid = Path(tmp), '01a1b279-72d4-7241-b201-9e88c593dbfe'
+            day = home / '.codex' / 'sessions' / '2026' / '11' / '07'
+            day.mkdir(parents=True)
+            (day / f'rollout-2026-11-07T10-00-00-{sid}.jsonl').write_text(
+                json.dumps({'type': 'session_meta', 'payload': {}}) + '\n'
+                + json.dumps({'type': 'turn_context', 'payload': {'model': 'gpt-6-luna', 'effort': 'medium'}}) + '\n')
+            self.assertEqual(self.harness.observed_settings('codex@gpt-6-luna', '', home, sid), {'model': 'gpt-6-luna', 'effort': 'medium'})
+            self.assertEqual(self.harness.observed_settings('codex@gpt-6-luna', '', home, 'other'), {})
+        self.assertEqual(self.harness.observed_settings('agy@gemini-3.8-flash-medium', '', Path('/x'), 's'), {})
+
+
 class GraderSandbox(unittest.TestCase):
     """grader_sandbox.sh: a grader sees a fresh home with its material and sheet, and nothing else of the user's."""
     SCRIPT = Path(__file__).resolve().parent / 'grader_sandbox.sh'
