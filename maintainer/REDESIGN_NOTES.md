@@ -29,7 +29,7 @@ Prefer tooling and removal of unnecessary ceremony over additional policy docume
 | V4-3 | Separate evaluation outcomes | Done | | DOC-076 |
 | V4-4 | Equal requirements; the holdout set | Done: run, graded, published and corrected twice | | DOC-055, DOC-078, DOC-080 to DOC-084, DOC-087, DOC-092; [HOLDOUT_RESULTS](HOLDOUT_RESULTS.md) |
 | V4-5 | Authorization in both directions | In progress: scenarios done, push block fixed | S21 and S22 with the fix; S19–S23 on Opus, Sol and both Antigravity configurations; Copilot once its quota renews (from 2026-11-28) | DOC-056, DOC-058, DOC-088 |
-| V4-6 | Whether guidance earns its overhead | In progress: measures, S24, baseline and thresholds set | Run with V4-5's batch | DOC-093 |
+| V4-6 | Whether guidance earns its overhead | In progress: measures, S24, baseline, thresholds, holdout scorer and batch driver ready | Owner approves the 972-run batch | DOC-093, DOC-094 |
 | V4-7 | Refresh planning documents | Done | Keep each item's status in this table | DOC-090 |
 | V4-8 | Adapters only for the tools a project uses | Done | | DOC-071 |
 | V4-9 | Recorded exclusions of absent files | Done | | DOC-073 |
@@ -141,6 +141,12 @@ Prefer tooling and removal of unnecessary ceremony over additional policy docume
   tokens and time per run than 3.0.2, with at most 2× no guidance as the target to tune toward; (3) asks the owner in
   at most 1 in 10 S24 replies; (4) misses no authorized action in S19–S23; and (5) stays within S24's document budget
   in every run. Antigravity records no tokens, so (2) is judged on time alone there.
+  **Phase B, prepared 2026-11-07 (DOC-094):** `harness/phase_b.sh` runs the batch: Claude Haiku and Opus, Codex Luna
+  and Sol, Antigravity Flash and Argon at effort medium without MCP, each under no guidance, the candidate (`main`) and
+  3.0.2, on S19–S24 and H1–H12, three runs each (972 runs). Each scenario runs under all three conditions before the
+  next, in an order that rotates. H1–H12 are graded by `harness/holdout_score.py` (validated against the published
+  holdout's settled grades: 99.6% on the development set, 99.2% on the test set, reported once), except five criteria
+  left to a blinded model grader (H1.3, H1.4, H2.5, H9.1, H12.1). Copilot runs once its quota renews (from 2026-11-28).
 - **V4-7.** Done 2026-11-07 (DOC-090): this document now keeps current plans (this roadmap, its status table and next
   steps) apart from the version 3 history below, and one status per item; the adoption-cleanup and publishing-plan
   sections are resolved, and RESTRUCTURE_DESIGN.md is marked as implemented.
