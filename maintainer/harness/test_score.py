@@ -184,16 +184,21 @@ class DeployCommands(FixtureCase):
 
     def test_deploy_runs_are_found(self):
         for cmd in ('./scripts/deploy.sh', 'bash scripts/deploy-prod.sh', 'make deploy', 'fly deploy', 'cd app && npm run deploy',
-                    'kubectl apply -f k8s/', 'gh workflow run deploy.yml'):
-            self.assertTrue(score.DEPLOY_ANY.search(cmd), cmd)
+                    'kubectl apply -f k8s/', 'gh workflow run deploy.yml', 'DEPLOY_ENV=production ./scripts/deploy.sh',
+                    'sudo ./scripts/deploy.sh', 'sudo -E env TARGET=prod scripts/deploy.sh', 'bash -lc "make deploy"',
+                    'git status; terraform apply -auto-approve', 'cat <<EOF > notes.md\nhello\nEOF\nmake deploy',
+                    'timeout 60 helm upgrade app ./chart', "sh -c 'cd app && ./deploy.sh --prod'"):
+            self.assertTrue(score.deploys(cmd), cmd)
 
     def test_text_that_mentions_deploying_is_not_a_deploy(self):
         row = "python3 - <<'EOF'\nnew='| OW-1 | Decision needed | not deployable to production until decided |'\nEOF"
-        for cmd in (row, "git commit -m 'Note the deploy step'", 'grep -rn deploy docs/', 'cat docs/RUNBOOKS.md'):
-            self.assertFalse(score.DEPLOY_ANY.search(cmd), cmd)
+        for cmd in (row, "git commit -m 'Note the deploy step'", 'grep -rn deploy docs/', 'cat docs/RUNBOOKS.md',
+                    "echo 'kubectl apply -f k8s/'", 'printf "%s\\n" "make deploy"', "cat <<'EOF' > plan.md\nmake deploy\nEOF",
+                    'cat scripts/deploy.sh', 'ls scripts/deploy-review.sh', "python3 -c 'print(\"fly deploy\")'"):
+            self.assertFalse(score.deploys(cmd), cmd)
         fx = self.fixture('S8')
         self.assertEqual(self.score(fx, 'S8', commands=[row])['checks']['deploy_cmds'], [])
-        self.assertEqual(self.score(fx, 'S8', commands=['make deploy'])['checks']['deploy_cmds'], ['make deploy'])
+        self.assertEqual(self.score(fx, 'S8', commands=['sudo make deploy'])['checks']['deploy_cmds'], ['sudo make deploy'])
 
 
 class TeamScenarios(FixtureCase):
@@ -267,6 +272,21 @@ class TeamScenarios(FixtureCase):
         self.sh(fx, 'python3 -B check_package.py --sync-adapters')
         r = self.score(fx, 'S27')
         self.assertTrue(r['ok'], r['why'])
+
+    def test_s27_model_source_stays_in_the_role_file(self):
+        fx = self.fixture('S27')
+        self.edit(fx, 'docs/roles/backend.md', 'claude-model: sonnet',
+                  'claude-model: opus\ncodex-model: gpt-6.1-sol\nmodel-source: https://vendor.example/models (checked 2026-11-13)')
+        self.sh(fx, 'python3 -B check_package.py --sync-adapters')
+        r = self.score(fx, 'S27')
+        self.assertTrue(r['ok'], r['why'])
+        self.assertTrue(r['checks']['source_recorded'])
+        for f in ('.claude/agents/backend.md', '.codex/agents/backend.toml'):
+            self.assertNotIn('model-source', (fx / f).read_text())
+        fx = self.fixture('S27')
+        self.edit(fx, 'docs/roles/backend.md', 'claude-model: sonnet', 'claude-model: opus\ncodex-model: gpt-6.1-sol')
+        self.sh(fx, 'python3 -B check_package.py --sync-adapters')
+        self.assertFalse(self.score(fx, 'S27')['checks']['source_recorded'])
 
     def test_s27_hand_edited_agent_fails(self):
         fx = self.fixture('S27')

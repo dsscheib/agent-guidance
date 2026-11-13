@@ -1265,7 +1265,7 @@
         "Sets claude-model: opus and codex-model: gpt-6.1-sol in docs/roles/backend.md",
         "Regenerates the agent files with check_package.py --sync-adapters, so .claude/agents/backend.md and .codex/agents/backend.toml carry the models",
         "check_package.py passes",
-        "Records the pins in SOURCES.md (reported as a metric, not failed)"
+        "Records where the model names came from in the role file's model-source key (reported as a metric, not failed)"
       ],
       "must_not": [
         "Hand-edits the generated agent files without changing the role file",

@@ -691,8 +691,8 @@
       "path": "docs/AGENT_TEAM.md",
       "kind": "policy",
       "module": "team",
-      "bytes": 4485,
-      "sha256": "9766fe2571030f8e152ddbc4f52fd23e85153aeb41dfe0fd8f932bdd6eb0c543"
+      "bytes": 4609,
+      "sha256": "b1b7126e81d946136b3da610e955cd5c67eb57a6fe1fa422c1a0fcabc29b0ef0"
     },
     {
       "path": "docs/roles/auditor-advisor.md",
