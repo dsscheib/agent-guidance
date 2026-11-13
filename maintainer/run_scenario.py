@@ -151,6 +151,11 @@ def build(scenario, target):
         stray = [p for p in ('check_package.py', 'PACKAGE_MANIFEST.json', 'PROJECT_PROFILE.md') if (target / p).exists()]
         if stray:
             problems.append('uninstalled fixture contains package files: ' + ', '.join(stray))
+    elif scenario.get('check_fails_with'):
+        # The scenario starts from a deliberately failing package check (S28): it must fail for the stated reason.
+        check = run([sys.executable, 'check_package.py'], target)
+        if check.returncode == 0 or scenario['check_fails_with'] not in check.stdout + check.stderr:
+            problems.append(f"check_package.py should fail with {scenario['check_fails_with']!r}: {(check.stdout + check.stderr).strip()[-200:]}")
     elif configured is not None:
         required = run([sys.executable, 'check_package.py', '--require', 'code'], target)
         if configured != (required.returncode == 0):

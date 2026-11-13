@@ -333,17 +333,25 @@ def tier_choice(manifest, target):
         previous = set(mods)
     lines += [f"Features: {', '.join(manifest['features'])}",
               f'Example: --install {target} --tier internal --features ui',
-              'Preview first with --dry-run. The 2.x set (every module except Enterprise): --all']
+              'Preview first with --dry-run. The 2.x set (every module except Enterprise and team): --all']
     return '\n'.join(lines)
 
 
+# Modules added after version 2 that only a tier or feature choice adds; the 2.x set (--all) is everything else.
+NOT_IN_V2 = ('enterprise', 'team')
+
+
+def v2_modules(modules):
+    return set(m for m in modules if m not in NOT_IN_V2)
+
+
 def resolve_modules(manifest, tier, features, everything=False):
-    """Modules for a tier plus features, or with everything=True the 2.x set: every module except enterprise.
-    Enterprise controls are only added by choosing that tier."""
+    """Modules for a tier plus features, or with everything=True the 2.x set: every module except enterprise and team.
+    Enterprise controls are only added by choosing that tier, and the team only by its feature."""
     unknown = [f for f in features if f not in manifest['features']]
     if unknown:
         sys.exit(f"Unknown feature(s): {', '.join(unknown)}; choose from {', '.join(manifest['features'])}")
-    modules = set(m for m in manifest['modules'] if m != 'enterprise') if everything else set(manifest['tiers'][tier]) if tier else set()
+    modules = v2_modules(manifest['modules']) if everything else set(manifest['tiers'][tier]) if tier else set()
     for feature in features:
         modules.update(manifest['features'][feature])
     return sorted(modules)
@@ -487,7 +495,7 @@ def project_record(target):
                  'Follow docs/procedures/upgrade-guidance.md by hand.')
     record = json.loads(path.read_text())
     new = json.loads(manifest_path.read_text())
-    modules = set(record.get('installed', {}).get('modules') or (m for m in new['modules'] if m != 'enterprise'))
+    modules = set(record.get('installed', {}).get('modules') or v2_modules(new['modules']))
     return record, modules, record.get('installed_from', {}).get('commit')
 
 
@@ -711,7 +719,7 @@ def check_upgrade(target, since='HEAD'):
             problems.append(f'{gone} was deleted but {", ".join(users)} still names it')
     record = json.loads(shown(manifest_path.name) or '{}')
     commit = record.get('installed_from', {}).get('commit')
-    modules = set(record.get('installed', {}).get('modules') or (m for m in record.get('modules', {}) if m != 'enterprise'))
+    modules = set(record.get('installed', {}).get('modules') or v2_modules(record.get('modules', {})))
     packaged = [e['path'] for e in record.get('files', []) if e['path'] in before_files
                 and (e.get('kind') not in FILLED_KINDS or e['path'] == 'AGENTS.md')]
     flat = lambda text: ' '.join(text.split())
@@ -1159,7 +1167,7 @@ def main():
                         help='with --install, install the core plus the modules this tier requires')
     parser.add_argument('--features', default='', help='with --install, comma-separated features to add: ui, data, stack-go, stack-rust')
     parser.add_argument('--tools', default='', help='with --install, comma-separated agent tools the project uses: claude, codex, antigravity, copilot (default all); only their adapters and guardrails are installed and checked')
-    parser.add_argument('--all', action='store_true', help='with --install, the 2.x set instead of a tier: every module except Enterprise')
+    parser.add_argument('--all', action='store_true', help='with --install, the 2.x set instead of a tier: every module except Enterprise and team')
     parser.add_argument('--dry-run', action='store_true', help='with --install, list the modules and files it would copy and write nothing')
     parser.add_argument('--plan-upgrade', metavar='DIR', help='say what upgrading an installed project to this package would do to each file; writes nothing there')
     parser.add_argument('--patch', metavar='FILE', help='with --plan-upgrade, write the proposed changes as a git-apply patch (outside the project)')

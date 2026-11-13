@@ -317,8 +317,8 @@
     {
       "path": "README.md",
       "kind": "entry",
-      "bytes": 9960,
-      "sha256": "c7fa23bc9cf4af9f18a4b4f3380e1733ed285a6d1a125d027ed11a8a1d71d2fc",
+      "bytes": 9982,
+      "sha256": "d94e592c9afc74555cc1f9c8d9d2bc9e245b8a560252354e15e9dc9d7c0cd1f1",
       "module": "core"
     },
     {
@@ -605,8 +605,8 @@
     {
       "path": "check_package.py",
       "kind": "tooling",
-      "bytes": 75622,
-      "sha256": "9b7a0bb11d9d2ed15ad8f3533610b2dfc2cbe3684f48164a540e2ae215e8c433",
+      "bytes": 75848,
+      "sha256": "4eaa335b89f7b6a70866c88b2789a1cbbbca5a6637621c0e1724c5b8be3ec607",
       "module": "core"
     },
     {

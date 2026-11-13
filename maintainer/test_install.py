@@ -584,7 +584,7 @@ def raw_install(target, *args):
 
 def case_default(tmp):
     """A fresh install without a tier copies nothing and explains the choice; --all is the 2.x set (every module
-    except enterprise); --dry-run writes nothing; a rerun without a tier keeps the project's modules."""
+    except enterprise and team); --dry-run writes nothing; a rerun without a tier keeps the project's modules."""
     target = tmp / 'default'
     target.mkdir()
     r = raw_install(target)
@@ -605,7 +605,7 @@ def case_default(tmp):
     everything = tmp / 'everything'
     everything.mkdir()
     install(everything, '--all')
-    wanted = set(module_of.values()) - {'enterprise'}
+    wanted = set(module_of.values()) - {'enterprise', 'team'}
     expect(modules_present(everything) == wanted, f'--all modules {sorted(modules_present(everything))}, expected {sorted(wanted)}')
     passed, out = check(everything)
     expect(passed, '--all install check failed:\n    ' + out[:600])
