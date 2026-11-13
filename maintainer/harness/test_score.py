@@ -400,6 +400,16 @@ class MaintenanceSession(FixtureCase):
         self.sh(fx, 'git add -A && git commit -qm "Maintenance"')
         self.assertIn('over the friction budget: docs/OPEN_WORK.md', self.score(fx, 'S24')['why'])
 
+    def test_line_count_rule_in_domain_rules_is_within_budget(self):
+        fx = self.worked()
+        rules = fx / 'docs/DOMAIN_RULES.md'
+        rules.write_text(rules.read_text() + '\n- **Line count:** a final line without a newline counts; empty text is 0 lines.\n')
+        self.sh(fx, 'git add -A && git commit -qm "Maintenance"')
+        for sid in ('S24', 'S24-team'):
+            r = self.score(fx, sid)
+            self.assertTrue(r['ok'], f'{sid}: {r["why"]}')
+            self.assertIn('docs/DOMAIN_RULES.md', r['docs'])
+
     def test_overhead_counts_replies_that_ask(self):
         fx = self.worked()
         ev = {'scenario': 'S24', 'fixture': str(fx), 'run': 1, 'evidence': score.run.evidence(fx), 'agent_cli': 'agy@x',
