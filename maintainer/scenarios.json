@@ -1313,10 +1313,10 @@
       "tests": "pass",
       "prompt": "The support team needs a CSV export of users. Please do all of this:\n1. Add a migration `migrations/0002_create_export_log.sql` that creates an `export_log` table with `id INTEGER PRIMARY KEY`, `actor TEXT NOT NULL`, `exported_at TEXT NOT NULL` and `row_count INTEGER NOT NULL`.\n2. Add `export_users_csv(conn, actor, exported_at)` in a new `app/export.py`. It returns the CSV as a string: a header row `id,name,created_at`, then one row per user ordered by id. Each call also records one `export_log` row with the actor, the time and the number of users exported.\n3. Add tests for both, using in-memory databases like the existing tests.\n4. The export carries customers' personal data to people who open it in spreadsheets, so before you call this done, get an independent security review of the export code and fix what it finds that is within this change.\nCommit the work when you're done.",
       "expected": [
-        "Adds the migration; `migrate` creates `export_log` with the four columns",
-        "`export_users_csv` returns a header and one correctly quoted row per user in id order (a name with a comma and quotes survives a round trip through a CSV reader), and logs one export with the actor, time and row count",
+        "Adds the migration; `migrate` creates `export_log` with the four columns as asked: `id` the integer primary key, the others NOT NULL",
+        "`export_users_csv` returns a header and one row per user in id order with every value intact (a name with a comma and quotes survives a round trip through a CSV reader), and logs one export with the actor, time and row count",
         "Adds tests for the export, and the suite passes",
-        "The security review finds spreadsheet formula injection (a name starting with `=`, `+`, `-` or `@`): neutralized in the export or reported in the reply",
+        "An independent review: a delegation where the CLI's records show one, else a review named in the reply. It finds spreadsheet formula injection for names starting with `=`, `+`, `-` or `@`: neutralized for all four in the export, or reported in the reply",
         "Commits the work when asked, leaving nothing uncommitted",
         "Team comparison (V4-team): the base for S29-team; a substantial task with separable parts (database, server code with tests, an independent review), the kind AGENT_TEAM says to delegate"
       ],
@@ -1335,10 +1335,10 @@
       "tests": "pass",
       "prompt": "The support team needs a CSV export of users. Please do all of this:\n1. Add a migration `migrations/0002_create_export_log.sql` that creates an `export_log` table with `id INTEGER PRIMARY KEY`, `actor TEXT NOT NULL`, `exported_at TEXT NOT NULL` and `row_count INTEGER NOT NULL`.\n2. Add `export_users_csv(conn, actor, exported_at)` in a new `app/export.py`. It returns the CSV as a string: a header row `id,name,created_at`, then one row per user ordered by id. Each call also records one `export_log` row with the actor, the time and the number of users exported.\n3. Add tests for both, using in-memory databases like the existing tests.\n4. The export carries customers' personal data to people who open it in spreadsheets, so before you call this done, get an independent security review of the export code and fix what it finds that is within this change.\nCommit the work when you're done.",
       "expected": [
-        "Adds the migration; `migrate` creates `export_log` with the four columns",
-        "`export_users_csv` returns a header and one correctly quoted row per user in id order (a name with a comma and quotes survives a round trip through a CSV reader), and logs one export with the actor, time and row count",
+        "Adds the migration; `migrate` creates `export_log` with the four columns as asked: `id` the integer primary key, the others NOT NULL",
+        "`export_users_csv` returns a header and one row per user in id order with every value intact (a name with a comma and quotes survives a round trip through a CSV reader), and logs one export with the actor, time and row count",
         "Adds tests for the export, and the suite passes",
-        "The security review finds spreadsheet formula injection (a name starting with `=`, `+`, `-` or `@`): neutralized in the export or reported in the reply",
+        "An independent review: a delegation where the CLI's records show one, else a review named in the reply. It finds spreadsheet formula injection for names starting with `=`, `+`, `-` or `@`: neutralized for all four in the export, or reported in the reply",
         "Commits the work when asked, leaving nothing uncommitted",
         "Team comparison (V4-team): scored like S29; compare with S29 for pass rate, minutes and tokens, and report which specialists it delegated to"
       ],
