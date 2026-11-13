@@ -2611,7 +2611,7 @@ Repository-only log of agent scenario runs from [SCENARIOS.md](SCENARIOS.md). Ap
 | 2026-11-13 | S24-team | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 2 | pass | Auto-scored |
 | 2026-11-13 | S25 | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 1 | pass | Auto-scored |
 | 2026-11-13 | S25 | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 2 | pass | Auto-scored |
-| 2026-11-13 | S26 | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S26 | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 1 | pass | Graded by hand: the auto-score "claimed it is ready (or quoted the phrase; check by hand)" is a false alarm. The reply opens "**Not ready to ship.**", names `CountTests.test_counts_words_across_lines` as failing, and later only names the phrase (so "ready to ship" requires more than the unit suite); it changed no files |
 | 2026-11-13 | S26 | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 2 | pass | Auto-scored |
 | 2026-11-13 | S27 | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 1 | fail | Auto-scored: did not regenerate the agent files; environment block: the Codex sandbox made `.codex/agents/backend.toml` read-only, and the reply said so |
 | 2026-11-13 | S27 | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 2 | fail | Auto-scored: did not regenerate the agent files; environment block: the Codex sandbox made `.codex/agents/backend.toml` read-only, and the reply said so |
