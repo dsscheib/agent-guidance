@@ -14,7 +14,7 @@ This package gives coding agents instructions, policies, templates and procedure
    python3 check_package.py --install /path/to/project --tier internal --features ui
    ```
 
-   Tiers are `prototype`, `internal`, `production` and `enterprise` (step 3 explains them); features are `ui`, `data`, `stack-go` and `stack-rust`. Without `--tier`, nothing is installed: the command lists the tiers and what each adds. `--dry-run` lists the modules and files it would copy and writes nothing. `--all` instead of `--tier` installs every module except Enterprise, as version 2 did. `--tools claude,codex,antigravity,copilot` names the agents the project uses, and only their adapters and guardrails are installed and checked; without it every tool's files are installed. Running `--install` again with a higher tier or another feature adds the missing modules without touching existing files; a rerun without `--tier` keeps the project's tier. The Enterprise tier adds `docs/ENTERPRISE.md` (roles, traceability, CI evidence, supply chain), a pull-request template and three release gates in the command inventory.
+   Tiers are `prototype`, `internal`, `production` and `enterprise` (step 3 explains them); features are `ui`, `data`, `stack-go`, `stack-rust` and `team` (specialist agents to delegate to; see below). Without `--tier`, nothing is installed: the command lists the tiers and what each adds. `--dry-run` lists the modules and files it would copy and writes nothing. `--all` instead of `--tier` installs every module except Enterprise, as version 2 did. `--tools claude,codex,antigravity,copilot` names the agents the project uses, and only their adapters and guardrails are installed and checked; without it every tool's files are installed. Running `--install` again with a higher tier or another feature adds the missing modules without touching existing files; a rerun without `--tier` keeps the project's tier. The Enterprise tier adds `docs/ENTERPRISE.md` (roles, traceability, CI evidence, supply chain), a pull-request template and three release gates in the command inventory.
 
    This copies only the packaged files listed in `PACKAGE_MANIFEST.json`, and records this checkout's commit as `installed_from` in the copied manifest so later upgrades know where to start. It skips any file that already exists, and lists those files so you can merge them by hand. `--force` overwrites them; review the result before committing. Maintainer-only files are never copied.
 2. **Bootstrap with your agent.** Ask it to "bootstrap the project guidance". The agent follows the [bootstrap procedure](docs/procedures/bootstrap-project.md): it inspects the repository, proposes the profile values in [PROJECT_PROFILE.md](PROJECT_PROFILE.md), asks you only the decisions it cannot infer, and records what you adopt.
@@ -33,7 +33,7 @@ This package gives coding agents instructions, policies, templates and procedure
 | Copilot CLI | `AGENTS.md` | `.agents/skills/` and `.claude/skills/` | `.github/hooks/guidance.json` (trusted folders); optional user-level stop hook in `~/.copilot/hooks/` ([setup](docs/AGENT_TOOLS.md#shipped-guardrails)) |
 | Other agents | `AGENTS.md` | Read `docs/procedures/` directly | Optional git hook in `scripts/hooks/` |
 
-[docs/AGENT_TOOLS.md](docs/AGENT_TOOLS.md) explains each adapter, how to keep them in sync, and how to add a tool.
+With the `team` feature, each tool also gets one generated specialist agent per role ([AGENT_TOOLS](docs/AGENT_TOOLS.md#specialist-agents)). [docs/AGENT_TOOLS.md](docs/AGENT_TOOLS.md) explains each adapter, how to keep them in sync, and how to add a tool.
 
 ## What is included
 | Kind | Files | Use |
@@ -44,6 +44,7 @@ This package gives coding agents instructions, policies, templates and procedure
 | Register | `docs/OPEN_WORK.md`, `VERIFICATION_MATRIX.md`, `RELEASE_NOTES.md`, `PRODUCTION_READINESS.md`, `ROADMAP.md`, `SOURCES.md` | Start empty. OPEN_WORK and the matrix are updated in place; RELEASE_NOTES gets one short entry per deployment |
 | Procedure | `docs/procedures/` | Bootstrap, upgrade, final audit, release readiness; exposed as skills |
 | Profile | `profiles/` | Optional stack or tier rules |
+| Team (optional) | `docs/AGENT_TEAM.md`, `docs/roles/` | With `--features team`: delegation rules and specialist roles, generated as agent files for each tool. Which roles install follows the tier and features ([AGENT_TEAM](docs/AGENT_TEAM.md#roles)) |
 | Tooling | `check_package.py`, `PACKAGE_MANIFEST.json`, `scripts/hooks/pre-commit` | Install, integrity and placeholder checks |
 
 The instructions are language- and host-neutral. No application routes, entities, data model, credentials, host addresses, product backlog, production results or historical approvals are carried over. Choose your own workload sizes, budgets, soak duration, retention, recovery objectives and supported environments; no inherited number is a universal requirement.

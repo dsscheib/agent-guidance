@@ -642,6 +642,60 @@ def case_broken_link(tmp):
     expect(not passed and 'MISSING.md' in out, 'a broken link passed the project check')
 
 
+def case_team(tmp):
+    """The team feature installs the roles its tier and features allow, generates each tool's agent files from them,
+    and never touches a project's own agents (AGENT_TEAM)."""
+    target = tmp / 'team'
+    target.mkdir()
+    if install(target, '--tier', 'prototype', '--features', 'team', '--tools', 'claude,codex').returncode:
+        return
+    names = lambda d, suffix: sorted(f.name[:-len(suffix)] for f in (target / d).glob('*' + suffix)) if (target / d).is_dir() else []
+    core = ['auditor-advisor', 'backend', 'documentation', 'integration-tester']
+    expect(names('docs/roles', '.md') == core, f"prototype + team installed roles {names('docs/roles', '.md')}, expected {core}")
+    expect(names('.claude/agents', '.md') == core and names('.codex/agents', '.toml') == core,
+           f"agent files do not match the roles: {names('.claude/agents', '.md')}, {names('.codex/agents', '.toml')}")
+    expect(not (target / '.agents/agents').exists() and not (target / '.github/agents').exists(),
+           'a claude and codex install copied Antigravity or Copilot agent files')
+    passed, out = check(target)
+    expect(passed, 'team project check failed:\n    ' + out[:600])
+    own = target / '.claude/agents/my-helper.md'
+    own.write_text('---\nname: my-helper\ndescription: The project\'s own agent\n---\nHelp.\n')
+    role = target / 'docs/roles/backend.md'
+    role.write_text(role.read_text().replace('claude-model: sonnet', 'claude-model: opus'))
+    passed, out = check(target)
+    expect(not passed and '.claude/agents/backend.md' in out, 'an edited role did not make its agent file stale:\n    ' + out[:400])
+    subprocess.run([sys.executable, '-B', 'check_package.py', '--sync-adapters'], cwd=target, capture_output=True, text=True)
+    passed, out = check(target)
+    expect(passed and 'model: opus' in (target / '.claude/agents/backend.md').read_text(), 'sync did not regenerate the edited role:\n    ' + out[:400])
+    expect(own.is_file(), "sync removed the project's own agent")
+    (target / '.claude/agents/documentation.md').write_text('---\nname: documentation\ndescription: Hand-written\n---\n')
+    subprocess.run([sys.executable, '-B', 'check_package.py', '--sync-adapters'], cwd=target, capture_output=True, text=True)
+    passed, out = check(target)
+    expect('Hand-written' in (target / '.claude/agents/documentation.md').read_text() and not passed and 'not generated' in out,
+           'sync overwrote a hand-written agent at a role path, or the check did not report it:\n    ' + out[:400])
+    (target / '.claude/agents/documentation.md').unlink()
+    subprocess.run([sys.executable, '-B', 'check_package.py', '--sync-adapters'], cwd=target, capture_output=True, text=True)
+    install(target, '--features', 'ui')
+    expect({'frontend', 'frontend-tester', 'ux-designer'} <= set(names('.codex/agents', '.toml')), 'adding ui did not add the UI roles')
+    expect('database' not in names('docs/roles', '.md'), 'a role whose module is not installed was copied')
+    passed, out = check(target)
+    expect(passed, 'project check failed after adding ui:\n    ' + out[:600])
+    plan = subprocess.run([sys.executable, '-B', str(root / 'check_package.py'), '--plan-upgrade', str(target)], capture_output=True, text=True)
+    expect('database' not in plan.stdout, 'the upgrade plan proposes a role whose module is not installed:\n    ' + plan.stdout[:600])
+    for tool, present, absent in (('antigravity', '.agents/agents', None), ('codex', '.codex/agents', '.agents/agents')):
+        other = tmp / f'team-{tool}'
+        other.mkdir()
+        install(other, '--tier', 'prototype', '--features', 'team', '--tools', tool)
+        expect((other / present).is_dir(), f'a {tool}-only team install lacks {present}')
+        expect(absent is None or not (other / absent).exists(), f'a {tool}-only team install copied {absent}')
+        passed, out = check(other)
+        expect(passed, f'{tool}-only team project check failed:\n    ' + out[:600])
+    plain = tmp / 'team-absent'
+    plain.mkdir()
+    install(plain, '--tier', 'production')
+    expect(not (plain / 'docs/roles').exists() and not (plain / '.claude/agents').exists(), 'a tier without the team feature installed roles')
+
+
 def table():
     sizes = {e['path']: e.get('bytes', 0) for e in manifest['files']}
     print('| Tier | Modules | Files | KB | Agent-facing prose KB |')
@@ -661,12 +715,12 @@ def main():
         return
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
-        for case in (case_tiers, case_policy, case_generated_tables, case_enterprise, case_guardrails, case_proposed_exclusion, case_dependency_files, case_rename_scope, case_documentation_mode, case_copilot_stop, case_upgrade, case_plan_upgrade, case_tools, case_recorded_exclusions, case_gate_timeouts, case_default, case_missing_module, case_broken_link):
+        for case in (case_tiers, case_policy, case_generated_tables, case_enterprise, case_guardrails, case_proposed_exclusion, case_dependency_files, case_rename_scope, case_documentation_mode, case_copilot_stop, case_upgrade, case_plan_upgrade, case_tools, case_team, case_recorded_exclusions, case_gate_timeouts, case_default, case_missing_module, case_broken_link):
             case(tmp)
     if problems:
         print('\n'.join(problems))
         sys.exit(1)
-    print('Install tests OK: tiers, design policy, generated tables, enterprise rows, guardrails by tier, proposed exclusions, dependency files, rename scope, documentation mode, Copilot stop hook, features, upgrade, upgrade plan and check, tools, recorded exclusions, gate timeouts, tier required (dry run, --all, rerun), missing module and broken link.')
+    print('Install tests OK: tiers, design policy, generated tables, enterprise rows, guardrails by tier, proposed exclusions, dependency files, rename scope, documentation mode, Copilot stop hook, features, upgrade, upgrade plan and check, tools, team, recorded exclusions, gate timeouts, tier required (dry run, --all, rerun), missing module and broken link.')
 
 
 if __name__ == '__main__':
