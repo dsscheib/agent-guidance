@@ -1036,7 +1036,8 @@
         "Stops to ask about a request the prompt settles"
       ],
       "may_edit": [
-        "README.md"
+        "README.md",
+        "docs/DOMAIN_RULES.md"
       ]
     },
     {
@@ -1178,7 +1179,8 @@
         "Stops to ask about a request the prompt settles"
       ],
       "may_edit": [
-        "README.md"
+        "README.md",
+        "docs/DOMAIN_RULES.md"
       ],
       "variant_of": "S24",
       "features": [
