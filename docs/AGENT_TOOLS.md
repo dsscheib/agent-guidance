@@ -16,6 +16,7 @@ Never put a rule only in an adapter, because the other agents would never see it
 |---|---|---|---|---|---|
 | Always-on instructions | `AGENTS.md` at the repo root and in nested directories down to the working directory. The combined size is capped by `project_doc_max_bytes` | `AGENTS.md` (or `GEMINI.md`) per directory, plus `.agents/rules/*.md` | `CLAUDE.md` per directory; ours contains `@AGENTS.md`, which imports this file | `AGENTS.md`, `CLAUDE.md`, `GEMINI.md` and `.github/copilot-instructions.md` from the repo root, the working directory and the directories between, all combined with no precedence order | `AGENTS.md` |
 | On-demand procedures | Skills in `.agents/skills/<name>/SKILL.md` | Skills in `.agents/skills/<name>/SKILL.md` | Skills in `.claude/skills/<name>/SKILL.md` | Skills from both `.agents/skills/` and `.claude/skills/` (also `.github/skills/`) | Read `docs/procedures/*.md` |
+| Specialist agents (`team` feature) | `.codex/agents/<role>.toml`, loaded only when the project is trusted | `.agents/agents/<role>.md` | `.claude/agents/<role>.md` | `.github/agents/<role>.agent.md` | Not loaded; delegate by hand using `docs/roles/` |
 | Command guardrails | `.codex/rules/*.rules` (`prefix_rule`), loaded only when the project's `.codex/` layer is trusted | User-level only, no repository file. App: permission preset in Settings (global, with per-project overrides). CLI: `permissions` in `~/.gemini/antigravity-cli/settings.json` | `permissions` in `.claude/settings.json` | `preToolUse` hooks in `.github/hooks/*.json`, loaded only for a trusted folder | Optional `scripts/hooks/pre-commit`, plus human review |
 
 ## Rules for maintaining adapters
@@ -26,6 +27,23 @@ Never put a rule only in an adapter, because the other agents would never see it
 - **Shim every nested AGENTS.md.** For a subdirectory that needs its own instructions, add `<dir>/AGENTS.md`, which Codex, Antigravity and Copilot CLI read, and a sibling `<dir>/CLAUDE.md` containing `@AGENTS.md`. The checker fails if the shim is missing.
 - **Mirror only the authorization rules in guardrails.** Guardrails mirror AGENTS.md rules 2, 3 and 9: destructive git operations and approvals ask for confirmation, merges and releases do too in Enterprise projects, and secret files are unreadable to Claude Code and Copilot CLI. Align them with the adopted git policy in PROJECT_PROFILE.md. A guardrail may be looser than the default only when the policy allows it. Guardrails are defense in depth, not the source of the rule.
 - **Pushes are left to rule 3, and merges and releases too outside Enterprise.** A guardrail matches command text, so it cannot tell an action the user asked for from one they did not: it asks either way, and where nobody can answer (unattended or print-mode runs) it refuses what the user explicitly requested. In the package's scenario runs the push rule refused many requested pushes and never stopped an unrequested one, because agents did not push unasked even without guidance; no agent merged or published unasked either. Enterprise projects keep the merge and release rules, because their policy reserves those actions for a person even when the user asks ([ENTERPRISE](ENTERPRISE.md#roles-and-separation-of-duties)); the installer writes them only when the Enterprise module is installed, and the checker fails an Enterprise project whose guardrails lack them. A project on another tier whose git policy reserves an action for a person can add its rule back: `Bash(git push:*)`, `Bash(gh pr merge:*)` or `Bash(gh release create:*)` in `.claude/settings.json`'s `ask` list, a prompt rule in `.codex/rules/guidance.rules`, and an entry in the Copilot guardrail's `ASK` or `GH_ASK` list.
+
+## Specialist agents
+With the `team` feature, `--sync-adapters` generates one agent file per role in `docs/roles/` for each installed tool ([AGENT_TEAM](AGENT_TEAM.md)). Each file only points to AGENTS.md and states the role's responsibilities and limits. The role's kind sets the tool list:
+
+| Tool | Implementer, tester | Inspector | Reviewer | Model without a pin |
+|---|---|---|---|---|
+| Claude Code | `Read, Grep, Glob, Edit, Write, Bash` | `Read, Grep, Glob, Bash` | `Read, Grep, Glob` | The delegating session's model |
+| Copilot CLI | `read, search, edit, execute` | `read, search, execute` | `read, search` | The CLI-selected model |
+| Antigravity | `view_file, grep_search, replace_file_content, run_command` | `view_file, grep_search, run_command` | `view_file, grep_search` | `inherit` |
+| Codex | No per-agent tool list | No per-agent tool list | `[features] shell_tool = false` | The parent session's model |
+
+- **Model pins** are frontmatter keys in the role file: `claude-model`, `codex-model` (with `codex-effort` for reasoning effort), `copilot-model` and `antigravity-model`. A role without a tool's key gets the model in the table's last column.
+- **Enforcement is best-effort and differs by tool.** Claude Code, Copilot CLI and Antigravity restrict the listed tools. Codex has no documented way to stop an agent editing files, and `sandbox_mode` in an agent file does not override the parent session, so on Codex the no-edit limit of inspectors and reviewers rests on their instructions. None of these limits protects credentials reachable through other tools.
+- **Copilot CLI** silently ignores tool names it does not recognize, so only its documented aliases are used. `strict-tools-list: true` keeps it from adding default tools, and `include-custom-instructions: true` gives the specialist the repository's instructions. A `copilot-model` pin also sets `model-policy: required`, so a missing model fails instead of falling back.
+- **Antigravity** may hang a subagent whose `tools` list names an unknown tool, so only the tool names in its documentation are used. `model` accepts `inherit`, `flash` or `pro`.
+- **Codex** discovers each `.codex/agents/*.toml` file on its own; the package never edits `.codex/config.toml`. Like `.codex/rules/`, project agents load only after you trust the project; in an untrusted project Codex sees none of them. An `[agents."<name>"]` table with `config_file` in `config.toml`, from older Codex releases, is not needed: Codex 0.167.2 showed the agent file's own description and ignored the table's. Subagents are on by default, and `agents.enabled = false` in the user's configuration turns them off.
+- **A project's own agents are left alone.** Sync rewrites or removes only files that carry its "Generated by check_package.py" marker. A role whose generated path is taken by another file fails the check until one of them is renamed.
 
 ## Shipped guardrails
 - **`.claude/settings.json`** asks before `git reset --hard`, `git clean`, `git branch -D`, `git rebase` and `git checkout -- .`, and before `gh pr review`, which approves; in Enterprise projects also before `gh pr merge` and `gh release create`, which merge and publish. It denies reading `.env` and `.env.*.local` files. Personal overrides belong in `.claude/settings.local.json`, which should not be committed.
@@ -99,6 +117,12 @@ Checked 2026-10-27:
 - Claude Code memory, skills and settings: <https://docs.claude.com/en/docs/claude-code>
 
 Checked 2026-11-05 against Antigravity CLI 1.4.12: the `permissions` key and ask-before-allow precedence in `~/.gemini/antigravity-cli/settings.json`, by a live prompt (no published source).
+
+Specialist agent file formats, checked 2026-11-13. Codex discovery was also confirmed against Codex CLI 0.167.2 with `codex debug prompt-input`: a project agent file is listed when the project is trusted and absent when it is not, with no `config.toml` entry:
+- Claude Code subagents: <https://code.claude.com/docs/en/sub-agents>
+- Codex subagents: <https://learn.chatgpt.com/docs/agent-configuration/subagents>
+- Copilot CLI custom agents: <https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/create-custom-agents-for-cli> and <https://docs.github.com/en/copilot/reference/custom-agents-configuration>
+- Antigravity subagents: <https://antigravity.google/docs/subagents>
 
 Checked 2026-10-29 against Copilot CLI 1.0.105:
 - Copilot CLI custom instructions: <https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions>

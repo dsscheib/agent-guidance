@@ -13,6 +13,30 @@
       "tools": "Claude Code and Copilot CLI"
     }
   ],
+  "roles": "docs/roles",
+  "maintainer_roles": "maintainer/roles",
+  "agent_dirs": [
+    {
+      "tool": "claude",
+      "dir": ".claude/agents",
+      "suffix": ".md"
+    },
+    {
+      "tool": "codex",
+      "dir": ".codex/agents",
+      "suffix": ".toml"
+    },
+    {
+      "tool": "copilot",
+      "dir": ".github/agents",
+      "suffix": ".agent.md"
+    },
+    {
+      "tool": "antigravity",
+      "dir": ".agents/agents",
+      "suffix": ".md"
+    }
+  ],
   "repo_only": [
     "MAINTAINING.md",
     "LICENSE",
@@ -32,7 +56,8 @@
     "ui": "Feature: UX, UI patterns, acceptance checklist and branding",
     "data": "Feature: import, export and file formats",
     "stack-go": "Feature: server-rendered web profile for Go",
-    "stack-rust": "Feature: server-rendered web profile for Rust"
+    "stack-rust": "Feature: server-rendered web profile for Rust",
+    "team": "Feature: specialist agent team, delegation policy and role definitions"
   },
   "tiers": {
     "prototype": [
@@ -71,6 +96,9 @@
     ],
     "stack-rust": [
       "stack-rust"
+    ],
+    "team": [
+      "team"
     ]
   },
   "tools": {
@@ -91,14 +119,16 @@
     "antigravity": {
       "name": "Antigravity",
       "paths": [
-        ".agents/"
+        ".agents/",
+        ".agents/agents/"
       ]
     },
     "copilot": {
       "name": "Copilot CLI",
       "paths": [
         ".github/hooks/",
-        ".agents/"
+        ".agents/",
+        ".github/agents/"
       ]
     }
   },
@@ -179,6 +209,10 @@
       {
         "module": "core",
         "row": "| Anything unresolved: decisions, gaps, defects, blockers | [OPEN_WORK](docs/OPEN_WORK.md) | OPEN_WORK |"
+      },
+      {
+        "module": "team",
+        "row": "| Delegating work to a specialist agent, or changing the team | [AGENT_TEAM](docs/AGENT_TEAM.md) | The role file in `docs/roles/`, then `python3 check_package.py --sync-adapters` |"
       },
       {
         "module": "core",
@@ -270,8 +304,8 @@
     {
       "path": "AGENTS.md",
       "kind": "entry",
-      "bytes": 10333,
-      "sha256": "738b41e8a9b77ecb204807fe6c41f6fc468690d6b8e2841e22a54ba464d6e883",
+      "bytes": 10514,
+      "sha256": "dd5d347ef8d91a2f0be622a95c52360d2122b91fe5c00bfce782c61824581966",
       "module": "core"
     },
     {
@@ -284,8 +318,8 @@
     {
       "path": "README.md",
       "kind": "entry",
-      "bytes": 9511,
-      "sha256": "2649b98f0d0666fc54006e1e8cb0b1ab2decbe72b3caccf0e6cf2a723c416607",
+      "bytes": 9982,
+      "sha256": "d94e592c9afc74555cc1f9c8d9d2bc9e245b8a560252354e15e9dc9d7c0cd1f1",
       "module": "core"
     },
     {
@@ -326,8 +360,8 @@
     {
       "path": "docs/AGENT_TOOLS.md",
       "kind": "policy",
-      "bytes": 13379,
-      "sha256": "a83f645af79af6c79f562a70517523ad9f2980d920d2890700d3e4feaf04a14e",
+      "bytes": 17224,
+      "sha256": "a70c60719870e6a45fd33c0b4ee76387f0d96ea48318187e6449916716c39110",
       "module": "core"
     },
     {
@@ -572,8 +606,8 @@
     {
       "path": "check_package.py",
       "kind": "tooling",
-      "bytes": 67432,
-      "sha256": "71184651f742f57124ac64e0e4932d7526b55f40f5aa603e1cd9422c82a177c7",
+      "bytes": 80447,
+      "sha256": "b26a77dd4a571ff96f016865949de1e3aea2e201f0137cb5f366936c6fb21c44",
       "module": "core"
     },
     {
@@ -652,6 +686,503 @@
       "bytes": 782,
       "sha256": "4f7437c9b972d12f2808b8daae517c3eff74876b8ca55f5159d68b50a38b0297",
       "module": "core"
+    },
+    {
+      "path": "docs/AGENT_TEAM.md",
+      "kind": "policy",
+      "module": "team",
+      "bytes": 4609,
+      "sha256": "b1b7126e81d946136b3da610e955cd5c67eb57a6fe1fa422c1a0fcabc29b0ef0"
+    },
+    {
+      "path": "docs/roles/auditor-advisor.md",
+      "kind": "template",
+      "module": "team",
+      "bytes": 872,
+      "sha256": "bf3dc4200618827931a2551ef0a5849d4ca48c3df055bd0d33afd01ce3c60978"
+    },
+    {
+      "path": "docs/roles/backend.md",
+      "kind": "template",
+      "module": "team",
+      "bytes": 711,
+      "sha256": "95305577ef94b1de382f34371f5ade23250655e94cc372601de46cc83bf0dc53"
+    },
+    {
+      "path": "docs/roles/database.md",
+      "kind": "template",
+      "module": "team",
+      "requires": [
+        "data"
+      ],
+      "bytes": 747,
+      "sha256": "ecf5fe83340b2b2d508ee2317bd3da8853afc273c101594abb686fde6aadb4fb"
+    },
+    {
+      "path": "docs/roles/devops.md",
+      "kind": "template",
+      "module": "team",
+      "requires": [
+        "operations"
+      ],
+      "bytes": 756,
+      "sha256": "175599d2ea17f4cd529968bcfd8d6df432f9dff2725215d1e1643f9156178ecd"
+    },
+    {
+      "path": "docs/roles/documentation.md",
+      "kind": "template",
+      "module": "team",
+      "bytes": 710,
+      "sha256": "2a3bd3e119e0db54d8716620c3e24755283dea75d5c6e54555500832fb3f6e7a"
+    },
+    {
+      "path": "docs/roles/frontend-tester.md",
+      "kind": "template",
+      "module": "team",
+      "requires": [
+        "ui"
+      ],
+      "bytes": 775,
+      "sha256": "63fb857a9b092cca3a3cf0b51f4a833d8496d7c506a98045e205c113fb2cc82a"
+    },
+    {
+      "path": "docs/roles/frontend.md",
+      "kind": "template",
+      "module": "team",
+      "requires": [
+        "ui"
+      ],
+      "bytes": 687,
+      "sha256": "235456fc12e971fa0523c069d8540be8e4888e3af063db2047e98013f28d5607"
+    },
+    {
+      "path": "docs/roles/integration-tester.md",
+      "kind": "template",
+      "module": "team",
+      "bytes": 755,
+      "sha256": "a743835fcb37912c20859c7cabf3bbd205db52032d1a0c139cc2d9931fdba13a"
+    },
+    {
+      "path": "docs/roles/performance.md",
+      "kind": "template",
+      "module": "team",
+      "requires": [
+        "production-ops"
+      ],
+      "bytes": 707,
+      "sha256": "4fa00ae73089e66c4352b19dcc21bad178d1757a825447ba85417179e65366ab"
+    },
+    {
+      "path": "docs/roles/security.md",
+      "kind": "template",
+      "module": "team",
+      "requires": [
+        "operations"
+      ],
+      "bytes": 796,
+      "sha256": "85e940697689a0e04ea7bfdba628a5bbc0ee2e2436bcdc8d0ffe786e1438d48c"
+    },
+    {
+      "path": "docs/roles/ux-designer.md",
+      "kind": "template",
+      "module": "team",
+      "requires": [
+        "ui"
+      ],
+      "bytes": 712,
+      "sha256": "1594032578e22fe01e11be210f56c0a15051110a1536ecf5ac2ab7a2e1a14c90"
+    },
+    {
+      "path": ".agents/agents/auditor-advisor.md",
+      "kind": "adapter",
+      "module": "team",
+      "bytes": 1106,
+      "sha256": "c7cd63e8f583bc86ecdcc58a5af72d76cfaee49cf9696e93b73b04d10a48d1bc"
+    },
+    {
+      "path": ".agents/agents/backend.md",
+      "kind": "adapter",
+      "module": "team",
+      "bytes": 1017,
+      "sha256": "d371d0870ab80b86be997d603a101e66d2fb676c9394847ebf2a745dfaefac0e"
+    },
+    {
+      "path": ".agents/agents/database.md",
+      "kind": "adapter",
+      "module": "team",
+      "requires": [
+        "data"
+      ],
+      "bytes": 1038,
+      "sha256": "3f5c072f0473e2bc98f7761fdf3e946fe8981a029ad8720cb156e7a3606b8ea7"
+    },
+    {
+      "path": ".agents/agents/devops.md",
+      "kind": "adapter",
+      "module": "team",
+      "requires": [
+        "operations"
+      ],
+      "bytes": 1035,
+      "sha256": "ed2acf2935e62bda3ada637dd0806043f164796d235c5a68adaa675446453e58"
+    },
+    {
+      "path": ".agents/agents/documentation.md",
+      "kind": "adapter",
+      "module": "team",
+      "bytes": 1016,
+      "sha256": "50771f105b173ed5bfcfd4ba193184d6c3542791224021ceec3beb666638a98b"
+    },
+    {
+      "path": ".agents/agents/frontend-tester.md",
+      "kind": "adapter",
+      "module": "team",
+      "requires": [
+        "ui"
+      ],
+      "bytes": 1119,
+      "sha256": "55fef5ba6c3c218fae1519b8efbaa090d682554c0c69c00308f0ca89a75dbe8c"
+    },
+    {
+      "path": ".agents/agents/frontend.md",
+      "kind": "adapter",
+      "module": "team",
+      "requires": [
+        "ui"
+      ],
+      "bytes": 980,
+      "sha256": "160b19f71b2bffaf2ad961e81f81b7a012bcd8896ba435a526ee5529abb6e665"
+    },
+    {
+      "path": ".agents/agents/integration-tester.md",
+      "kind": "adapter",
+      "module": "team",
+      "bytes": 1062,
+      "sha256": "001389970c410a0b1d6571069a6419d7e2c579bee6a90252d811f01b2f373e0a"
+    },
+    {
+      "path": ".agents/agents/performance.md",
+      "kind": "adapter",
+      "module": "team",
+      "requires": [
+        "production-ops"
+      ],
+      "bytes": 1030,
+      "sha256": "285807be32ad68b143372e8676231e2c2c48d567cf5de038375e79fe5346b8db"
+    },
+    {
+      "path": ".agents/agents/security.md",
+      "kind": "adapter",
+      "module": "team",
+      "requires": [
+        "operations"
+      ],
+      "bytes": 1012,
+      "sha256": "dc763647712a164f2fc8b6c0ba5ead83b0a4a58c7482881e5bf9c4d0fa481b8a"
+    },
+    {
+      "path": ".agents/agents/ux-designer.md",
+      "kind": "adapter",
+      "module": "team",
+      "requires": [
+        "ui"
+      ],
+      "bytes": 945,
+      "sha256": "1da41597c75901362d95fb35399ee67c04afba1a72e72f6e7614e8c3428ed157"
+    },
+    {
+      "path": ".claude/agents/auditor-advisor.md",
+      "kind": "adapter",
+      "module": "team",
+      "bytes": 1026,
+      "sha256": "52548b7db12abe4caf3fe335e0c639c53e1b27ebae737a38e4c03783a6588be8"
+    },
+    {
+      "path": ".claude/agents/backend.md",
+      "kind": "adapter",
+      "module": "team",
+      "bytes": 917,
+      "sha256": "bcbd0198150d79a5dcfbb9bd0e283703d89ea6dfca788a528b59eac86b76a52a"
+    },
+    {
+      "path": ".claude/agents/database.md",
+      "kind": "adapter",
+      "module": "team",
+      "requires": [
+        "data"
+      ],
+      "bytes": 938,
+      "sha256": "3da306482b7f6df8a06d2879c8ab67fa91f5cc71f85b0874515997cdd4ce5b0e"
+    },
+    {
+      "path": ".claude/agents/devops.md",
+      "kind": "adapter",
+      "module": "team",
+      "requires": [
+        "operations"
+      ],
+      "bytes": 935,
+      "sha256": "8bff681caa6929be20787eaf9f58999e2c6a1c7f7c3fd9f565acc41d55db0dc4"
+    },
+    {
+      "path": ".claude/agents/documentation.md",
+      "kind": "adapter",
+      "module": "team",
+      "bytes": 916,
+      "sha256": "24ca852a98ebc3fdce9240d60dbef1039f62ea072fff8c96cecd1251893d62d2"
+    },
+    {
+      "path": ".claude/agents/frontend-tester.md",
+      "kind": "adapter",
+      "module": "team",
+      "requires": [
+        "ui"
+      ],
+      "bytes": 1031,
+      "sha256": "45f738efdee671d405ae5210a025503e89725f6ae556cceb4e01bff2c93f9d59"
+    },
+    {
+      "path": ".claude/agents/frontend.md",
+      "kind": "adapter",
+      "module": "team",
+      "requires": [
+        "ui"
+      ],
+      "bytes": 880,
+      "sha256": "a5e26229c55db25eff1be0c48b74712c5ecae8d64b29f7b638f02a14ebbd74a9"
+    },
+    {
+      "path": ".claude/agents/integration-tester.md",
+      "kind": "adapter",
+      "module": "team",
+      "bytes": 962,
+      "sha256": "71ccd9f889e44575be05a257cfda8544af3edf476ff587a31da5360337b58517"
+    },
+    {
+      "path": ".claude/agents/performance.md",
+      "kind": "adapter",
+      "module": "team",
+      "requires": [
+        "production-ops"
+      ],
+      "bytes": 942,
+      "sha256": "6495f1efd04f7fd354663f64f8f514126b84edbda331b6ef8955b7d3c664ef34"
+    },
+    {
+      "path": ".claude/agents/security.md",
+      "kind": "adapter",
+      "module": "team",
+      "requires": [
+        "operations"
+      ],
+      "bytes": 932,
+      "sha256": "8362a724f8faa79c1b8384a51cd1e109156acb0ba51d51a2eed73ddcf47551ef"
+    },
+    {
+      "path": ".claude/agents/ux-designer.md",
+      "kind": "adapter",
+      "module": "team",
+      "requires": [
+        "ui"
+      ],
+      "bytes": 867,
+      "sha256": "971b35f470db586bcda0f913bafdcb442e3325a11fe376063bf29748aeb79b63"
+    },
+    {
+      "path": ".codex/agents/auditor-advisor.toml",
+      "kind": "adapter",
+      "module": "team",
+      "bytes": 1042,
+      "sha256": "d663d92547717f7f4cc80622f0290ab9f18748e5a30097f1474ef249026f756e"
+    },
+    {
+      "path": ".codex/agents/backend.toml",
+      "kind": "adapter",
+      "module": "team",
+      "bytes": 881,
+      "sha256": "41655b2060c8b094f4889aba675d97dc38251e96dc2896da4e5865d751962151"
+    },
+    {
+      "path": ".codex/agents/database.toml",
+      "kind": "adapter",
+      "module": "team",
+      "requires": [
+        "data"
+      ],
+      "bytes": 902,
+      "sha256": "29ca43343b331a8683ec6f6825ba5c2d87ec9aca615fb797b44d86502bd1fe6f"
+    },
+    {
+      "path": ".codex/agents/devops.toml",
+      "kind": "adapter",
+      "module": "team",
+      "requires": [
+        "operations"
+      ],
+      "bytes": 899,
+      "sha256": "5a31c0cb729266bf10b5fde289fff2460ad6669e3d813be0c79d3332de373fd4"
+    },
+    {
+      "path": ".codex/agents/documentation.toml",
+      "kind": "adapter",
+      "module": "team",
+      "bytes": 880,
+      "sha256": "fd7b483a7187ba9df70527d26e2bd7cc4afa7068937b5a896a34dc01d52a087e"
+    },
+    {
+      "path": ".codex/agents/frontend-tester.toml",
+      "kind": "adapter",
+      "module": "team",
+      "requires": [
+        "ui"
+      ],
+      "bytes": 1008,
+      "sha256": "3a25bef6586e3edd8f1e0e25b730bef14d05bb63a799ad24cf7817cdfc28dd9f"
+    },
+    {
+      "path": ".codex/agents/frontend.toml",
+      "kind": "adapter",
+      "module": "team",
+      "requires": [
+        "ui"
+      ],
+      "bytes": 844,
+      "sha256": "cd4e03ebf972401558fef93e46ebd79628b71ec07379e08a9d39358acd0c6f06"
+    },
+    {
+      "path": ".codex/agents/integration-tester.toml",
+      "kind": "adapter",
+      "module": "team",
+      "bytes": 926,
+      "sha256": "d4419494fd2820ce6e56097508cef6eaa567ee41d5124fd90376728e91e180a4"
+    },
+    {
+      "path": ".codex/agents/performance.toml",
+      "kind": "adapter",
+      "module": "team",
+      "requires": [
+        "production-ops"
+      ],
+      "bytes": 919,
+      "sha256": "be27630cdb65ba3ea380859f3cfe83166c114ae0aed437d50cb4d900ea17610f"
+    },
+    {
+      "path": ".codex/agents/security.toml",
+      "kind": "adapter",
+      "module": "team",
+      "requires": [
+        "operations"
+      ],
+      "bytes": 948,
+      "sha256": "9aff1cc8e9a8c52b096bb5d56b2108619df92dae8dbef0ad746f1998149a6c34"
+    },
+    {
+      "path": ".codex/agents/ux-designer.toml",
+      "kind": "adapter",
+      "module": "team",
+      "requires": [
+        "ui"
+      ],
+      "bytes": 881,
+      "sha256": "286e40d7dcecdd7cd436d2827db27760e5a07b80b4c87e198c8ce3cc7d0b6657"
+    },
+    {
+      "path": ".github/agents/auditor-advisor.agent.md",
+      "kind": "adapter",
+      "module": "team",
+      "bytes": 1074,
+      "sha256": "5b8762da1b22f9ddb19c499d6694bd13034eb2f0154784b58cb584b5d901bd9c"
+    },
+    {
+      "path": ".github/agents/backend.agent.md",
+      "kind": "adapter",
+      "module": "team",
+      "bytes": 963,
+      "sha256": "a105f1b7e9dfd5fab0299d480dcd35c9ea0e340e467c15423f97ad774c874257"
+    },
+    {
+      "path": ".github/agents/database.agent.md",
+      "kind": "adapter",
+      "module": "team",
+      "requires": [
+        "data"
+      ],
+      "bytes": 984,
+      "sha256": "c541a2080ad5d1a5dcf5b1c7b0e9e4ba3a9dc36360976bb63b7268c8859b5c29"
+    },
+    {
+      "path": ".github/agents/devops.agent.md",
+      "kind": "adapter",
+      "module": "team",
+      "requires": [
+        "operations"
+      ],
+      "bytes": 981,
+      "sha256": "bfcb4de6cae7c71ce9bd37ba3a691273a83ac62b6f68491e5ee997a606198400"
+    },
+    {
+      "path": ".github/agents/documentation.agent.md",
+      "kind": "adapter",
+      "module": "team",
+      "bytes": 962,
+      "sha256": "192ab52789ea6054be8f21d12dc7248a03d01113037bad7abb45ecfc4d316181"
+    },
+    {
+      "path": ".github/agents/frontend-tester.agent.md",
+      "kind": "adapter",
+      "module": "team",
+      "requires": [
+        "ui"
+      ],
+      "bytes": 1082,
+      "sha256": "a0e58f6ef5db680164b081f7e2f29892af40c61e79cb533c0f785f312e58396b"
+    },
+    {
+      "path": ".github/agents/frontend.agent.md",
+      "kind": "adapter",
+      "module": "team",
+      "requires": [
+        "ui"
+      ],
+      "bytes": 926,
+      "sha256": "a95ba7f6e1824a4efa5eddd5dcc49d32f115d18aefcdea5d5531085157d490e9"
+    },
+    {
+      "path": ".github/agents/integration-tester.agent.md",
+      "kind": "adapter",
+      "module": "team",
+      "bytes": 1008,
+      "sha256": "ca1f5d3b435da95ed763d2c953ad756fe4ad8742912eff5c8b04fb4f2385d81f"
+    },
+    {
+      "path": ".github/agents/performance.agent.md",
+      "kind": "adapter",
+      "module": "team",
+      "requires": [
+        "production-ops"
+      ],
+      "bytes": 993,
+      "sha256": "dfcd3e4baa49c32e5931dc9c4387c83bf38738befd87ef67976b512376f9abaf"
+    },
+    {
+      "path": ".github/agents/security.agent.md",
+      "kind": "adapter",
+      "module": "team",
+      "requires": [
+        "operations"
+      ],
+      "bytes": 980,
+      "sha256": "0b820451aee97730294845e2dc366af81434bafbd23e22012cbfaab52d7f29e1"
+    },
+    {
+      "path": ".github/agents/ux-designer.agent.md",
+      "kind": "adapter",
+      "module": "team",
+      "requires": [
+        "ui"
+      ],
+      "bytes": 913,
+      "sha256": "7d33a876c5561e3d01ca7fbae94ac47e2f281f328d1cd5b0ec8fc8dd74a57a45"
     }
   ]
 }

@@ -6,6 +6,8 @@
 # history, listed the home folder, and read the CLI's own history of earlier sessions). Into SB_HOME go, once per run:
 #   - each CLI's sign-in file, copied (SB_SIGN_IN, relative to home; by default Claude Code's and Codex's), so the CLI
 #     can authenticate without seeing the rest of its config folder, its sessions or the maintainer's settings;
+#   - unless SB_TRUST=0, a .codex/config.toml that only trusts the fixture, so Codex loads the project's .codex/ layer
+#     (rules and agents) as it does in a real, trusted project; Copilot is trusted through COPILOT_ALLOW_ALL in run.py;
 #   - a .gitconfig with a scenario identity, so agents commit as "Scenario Agent", not as the maintainer, and with no
 #     credential helper, so no git command reaches the maintainer's real remotes.
 # The CLIs therefore run at their own defaults: user-level settings, plugins, skills, rules and MCP servers in the real
@@ -39,6 +41,10 @@ for f in ${SB_SIGN_IN-.claude/.credentials.json .codex/auth.json}; do
     cp -p "$H/$f" "$home/$f"
   fi
 done
+if [ "${SB_TRUST:-1}" = 1 ] && [ ! -e "$home/.codex/config.toml" ]; then
+  mkdir -p "$home/.codex"
+  printf '[projects."%s"]\ntrust_level = "trusted"\n' "$fix" > "$home/.codex/config.toml"
+fi
 if [ ! -e "$home/.gitconfig" ]; then
   printf '[user]\n\tname = Scenario Agent\n\temail = agent@example.invalid\n[init]\n\tdefaultBranch = main\n' > "$home/.gitconfig"
 fi

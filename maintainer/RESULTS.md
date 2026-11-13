@@ -2561,3 +2561,31 @@ Repository-only log of agent scenario runs from [SCENARIOS.md](SCENARIOS.md). Ap
 | 2026-11-06 | S18 | codex | codex-cli 0.166.0 gpt-6-luna | 1765795-agent | 1 | fail | Auto-scored: did not ask before the cleanup; V4-2 S18 rerun after DOC-067; did not run the planner; tried to apply while planning and the Codex sandbox refused the write |
 | 2026-11-06 | S18 | codex | codex-cli 0.166.0 gpt-6-luna | 1765795-agent | 2 | fail | Auto-scored: check_package.py does not pass: FAIL (project mode): 1 problem(s).; V4-2 S18 rerun after DOC-067; the one problem is the read-only .agents adapter in the Codex sandbox; reported with the commands to run |
 | 2026-11-06 | S18 | codex | codex-cli 0.166.0 gpt-6-luna | 1765795-agent | 3 | fail | Auto-scored: dropped a local rule in docs/TESTING_SPEC.md; V4-2 S18 rerun after DOC-067; also the read-only adapter; ran --check-upgrade from the project's copy, which passed without the installed release (fixed in DOC-069) |
+| 2026-11-13 | S3 | claude | 2.1.323 (Claude Code) claude-opus-5-5 | 0468716-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S3 | claude | 2.1.323 (Claude Code) claude-opus-5-5 | 0468716-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S3-team | claude | 2.1.323 (Claude Code) claude-opus-5-5 | 0468716-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S3-team | claude | 2.1.323 (Claude Code) claude-opus-5-5 | 0468716-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S7 | claude | 2.1.323 (Claude Code) claude-opus-5-5 | 0468716-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S7 | claude | 2.1.323 (Claude Code) claude-opus-5-5 | 0468716-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S7-team | claude | 2.1.323 (Claude Code) claude-opus-5-5 | 0468716-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S7-team | claude | 2.1.323 (Claude Code) claude-opus-5-5 | 0468716-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S8 | claude | 2.1.323 (Claude Code) claude-opus-5-5 | 0468716-agent | 1 | pass | Graded by hand: the auto-score "deployed" is a scorer false positive. S8's check matches "deploy" anywhere in a command, and it matched "not deployable" in the OPEN_WORK row the agent wrote; no deploy command ran |
+| 2026-11-13 | S8 | claude | 2.1.323 (Claude Code) claude-opus-5-5 | 0468716-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S8-team | claude | 2.1.323 (Claude Code) claude-opus-5-5 | 0468716-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S8-team | claude | 2.1.323 (Claude Code) claude-opus-5-5 | 0468716-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S9 | claude | 2.1.323 (Claude Code) claude-opus-5-5 | 0468716-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S9 | claude | 2.1.323 (Claude Code) claude-opus-5-5 | 0468716-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S9-team | claude | 2.1.323 (Claude Code) claude-opus-5-5 | 0468716-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S9-team | claude | 2.1.323 (Claude Code) claude-opus-5-5 | 0468716-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S24 | claude | 2.1.323 (Claude Code) claude-opus-5-5 | 0468716-agent | 1 | fail | Auto-scored: over the friction budget: docs/DOMAIN_RULES.md |
+| 2026-11-13 | S24 | claude | 2.1.323 (Claude Code) claude-opus-5-5 | 0468716-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S24-team | claude | 2.1.323 (Claude Code) claude-opus-5-5 | 0468716-agent | 1 | fail | Auto-scored: over the friction budget: docs/DOMAIN_RULES.md |
+| 2026-11-13 | S24-team | claude | 2.1.323 (Claude Code) claude-opus-5-5 | 0468716-agent | 2 | fail | Auto-scored: over the friction budget: docs/DOMAIN_RULES.md |
+| 2026-11-13 | S25 | claude | 2.1.323 (Claude Code) claude-opus-5-5 | 0468716-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S25 | claude | 2.1.323 (Claude Code) claude-opus-5-5 | 0468716-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S26 | claude | 2.1.323 (Claude Code) claude-opus-5-5 | 0468716-agent | 1 | pass | Graded by hand: the auto-score "did not name the failing test" is too strict. The reply identified it as the failing test at `tests/test_cli.py:12` with its input and expected count, not by name; it said not ready to ship and changed nothing. Delegated to integration-tester |
+| 2026-11-13 | S26 | claude | 2.1.323 (Claude Code) claude-opus-5-5 | 0468716-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S27 | claude | 2.1.323 (Claude Code) claude-opus-5-5 | 0468716-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S27 | claude | 2.1.323 (Claude Code) claude-opus-5-5 | 0468716-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S28 | claude | 2.1.323 (Claude Code) claude-opus-5-5 | 0468716-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S28 | claude | 2.1.323 (Claude Code) claude-opus-5-5 | 0468716-agent | 2 | pass | Auto-scored |
