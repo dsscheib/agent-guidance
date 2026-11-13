@@ -387,6 +387,30 @@ def observed_settings(agent, first_out, home, session):
     return {}
 
 
+def codex_spawns(agent, home, session):
+    """Codex's subagent spawns in one run, read from its session record before the run's home is deleted: its print
+    mode's JSON shows only the wait for a subagent, not which agent it started. Each is the spawn's agent type, task
+    name and argument names (the message itself is stored encrypted); None for other CLIs or without a session record."""
+    if cli_name(agent) != 'codex' or not session:
+        return None
+    files = sorted((home / '.codex' / 'sessions').rglob(f'rollout-*{session}.jsonl'))
+    if not files:
+        return None
+    spawns = []
+    for f in files:
+        for e in json_lines(f.read_text(errors='replace')):
+            p = e.get('payload') if isinstance(e.get('payload'), dict) else {}
+            if p.get('type') == 'function_call' and p.get('name') == 'spawn_agent':
+                try:
+                    args = json.loads(p.get('arguments') or '{}')
+                except ValueError:
+                    args = {}
+                args = args if isinstance(args, dict) else {}
+                spawns.append({'agent_type': args.get('agent_type') or args.get('agent') or args.get('role') or 'default',
+                               'task_name': str(args.get('task_name') or '')[:200], 'keys': sorted(args)})
+    return spawns
+
+
 def run_one(opts, agent, s, n):
     sid, label = s['id'], opts.label or agent
     fx = opts.out / 'fx' / label / f'{sid}-r{n}'
@@ -479,7 +503,8 @@ def run_one(opts, agent, s, n):
               'installed': not opts.no_install, 'scenario': sid, 'run': n, 'session': session, 'start': start, 'steps': steps,
               'fixture': str(fx), 'catalog': str(opts.catalog) if opts.catalog else None, 'evidence': evidence(fx),
               'settings': {'effort': opts.effort, 'trusted': not opts.untrusted, 'mcp': 'off' if cli_name(agent) == 'claude' else 'none configured',
-                           'observed': observed_settings(agent, first_out, home, session)}}
+                           'observed': observed_settings(agent, first_out, home, session)},
+              'spawns': codex_spawns(agent, home, session)}
         (logdir / 'evidence.json').write_text(json.dumps(ev, indent=1))
     finally:
         shutil.rmtree(home, ignore_errors=True)
