@@ -19,6 +19,7 @@ skipped because they only make sense with guidance.
 """
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+import shlex
 import argparse, json, os, re, shutil, subprocess, sys, threading, time
 
 sys.dont_write_bytecode = True
@@ -400,7 +401,7 @@ def run_one(opts, agent, s, n):
     home = opts.out / 'homes' / label / f'{sid}-r{n}'
     shutil.rmtree(home, ignore_errors=True)
     env = {**os.environ, 'SB_HOME': str(home), 'SB_LOGDIR': str(logdir), 'SB_GUIDANCE': str(opts.shown),
-           'SB_HIDE': ' '.join(map(str, opts.hide))}
+           'SB_HIDE': ' '.join(map(str, opts.hide)), 'SB_TRUST': '0' if opts.untrusted else '1'}
     try:
         if opts.dry_run:
             # No agent: from inside the sandbox, each hidden folder may show only the folders leading to this run's own
@@ -413,9 +414,13 @@ def run_one(opts, agent, s, n):
             # The home folder is the run's own (finding 54): no history, keys or earlier CLI sessions, and the
             # scenario git identity with no credential helper.
             private = ('.zsh_history', '.bash_history', '.ssh', '.gnupg', '.local/share/keyrings', '.claude/projects',
-                       '.claude/history.jsonl', '.claude.json', '.codex/sessions', '.codex/config.toml', '.copilot/session-state',
+                       '.claude/history.jsonl', '.claude.json', '.codex/sessions', '.copilot/session-state',
                        '.gemini/antigravity-cli/conversations', '.config/gh', '.config/rclone')
             checks.append('for f in ' + ' '.join(private) + '; do [ -e "$HOME/$f" ] && echo "VISIBLE in home: $f"; done')
+            # The only Codex configuration is the trust of this fixture (or none, with --untrusted).
+            trust = '' if opts.untrusted else f'[projects."{fx.resolve()}"]\ntrust_level = "trusted"\n'
+            checks.append(f'[ "$(cat "$HOME/.codex/config.toml" 2>/dev/null)" = "$(printf {shlex.quote(trust)})" ] '
+                          '|| echo "Codex configuration is not only the fixture trust"')
             checks.append('[ "$(git config user.email)" = agent@example.invalid ] || echo "git identity is not the scenario identity"')
             checks.append('[ -z "$(git config --get-regexp "^credential" 2>/dev/null)" ] || echo "a git credential helper is set"')
             script = '; '.join(checks + ['touch .sandbox-probe && rm .sandbox-probe || echo "fixture not writable"'])
@@ -463,7 +468,7 @@ def run_one(opts, agent, s, n):
         ev = {'agent': label, 'agent_cli': agent, 'cli_version': cli_version(agent), 'date': time.strftime('%Y-%m-%d'), 'guidance': str(opts.shown), 'guidance_commit': git(opts.shown, 'rev-parse', 'HEAD'), 'guidance_snapshot': str(opts.guidance),
               'installed': not opts.no_install, 'scenario': sid, 'run': n, 'session': session, 'start': start, 'steps': steps,
               'fixture': str(fx), 'catalog': str(opts.catalog) if opts.catalog else None, 'evidence': evidence(fx),
-              'settings': {'effort': opts.effort, 'mcp': 'off' if cli_name(agent) == 'claude' else 'none configured',
+              'settings': {'effort': opts.effort, 'trusted': not opts.untrusted, 'mcp': 'off' if cli_name(agent) == 'claude' else 'none configured',
                            'observed': observed_settings(agent, first_out, home, session)}}
         (logdir / 'evidence.json').write_text(json.dumps(ev, indent=1))
     finally:
@@ -481,6 +486,8 @@ def main():
     ap.add_argument('--effort', choices=EFFORTS, default=DEFAULT_EFFORT,
                     help=f'reasoning effort passed to every CLI and recorded in the evidence (default {DEFAULT_EFFORT}); '
                          'an Antigravity model ID that names an effort must name this one')
+    ap.add_argument('--untrusted', action='store_true',
+                    help='do not trust the fixture in Codex, as runs before the trust change did; default trusted, as a real project is')
     src = ap.add_mutually_exclusive_group()
     src.add_argument('--guidance', type=Path, help='existing committed guidance snapshot to test')
     src.add_argument('--no-install', action='store_true', help='no-guidance baseline')

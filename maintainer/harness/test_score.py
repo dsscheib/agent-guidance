@@ -608,7 +608,7 @@ class Holdout(unittest.TestCase):
 
     @unittest.skipUnless(shutil.which('bwrap'), 'bubblewrap is not installed')
     def test_sandbox_home_is_the_runs_own(self):
-        """Finding 54: the real home's files stay out of sight; only a copied sign-in file and a scenario identity are in."""
+        """Finding 54: the real home's files stay out of sight; only a copied sign-in file, a scenario identity and the fixture's Codex trust are in."""
         with tempfile.TemporaryDirectory(dir=Path.home()) as tmp:
             t = Path(tmp)
             fx, logs, view, home = (t / d for d in ('fx', 'logs', 'view', 'home'))
@@ -626,7 +626,13 @@ class Holdout(unittest.TestCase):
             lines = r.stdout.splitlines()
             self.assertNotIn('history.txt', lines[0], r.stderr)
             self.assertEqual(lines[1:], ['{"token": "x"}', 'agent@example.invalid', 'no-helper', 'writable'], r.stderr)
-            self.assertEqual(sorted(p.name for p in home.iterdir()), sorted(['.gitconfig', rel.parts[0]]))
+            self.assertEqual(sorted(p.name for p in home.iterdir()), sorted(['.codex', '.gitconfig', rel.parts[0]]))
+            # V4-trust: the only Codex configuration trusts this fixture, as a real project is trusted.
+            self.assertEqual((home / '.codex' / 'config.toml').read_text(), f'[projects."{fx.resolve()}"]\ntrust_level = "trusted"\n')
+            untrusted = t / 'home-untrusted'
+            subprocess.run([str(score.run.SANDBOX), str(fx), 'true'], capture_output=True, text=True,
+                           env={**env, 'SB_HOME': str(untrusted), 'SB_TRUST': '0'})
+            self.assertFalse((untrusted / '.codex').exists())
             for bad in ({k: v for k, v in env.items() if k != 'SB_HOME'}, {**env, 'SB_HOME': str(Path.home())}):
                 r = subprocess.run([str(score.run.SANDBOX), str(fx), 'true'], capture_output=True, text=True, env=bad)
                 self.assertEqual(r.returncode, 2, r.stderr)
