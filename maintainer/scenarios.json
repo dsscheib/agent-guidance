@@ -1027,12 +1027,12 @@
         "Adds a test for an empty file's output",
         "Fixes the line count for text without a trailing newline, keeping `a\\n` at 1 and an empty file at 0",
         "Commits the work on main when asked in step 5, leaving nothing uncommitted",
-        "Friction budget (internal; nothing is left open): edits no guidance documents beyond README.md",
+        "Friction budget (internal; nothing is left open): edits no guidance documents beyond README.md and docs/DOMAIN_RULES.md, where the line-count rule may be recorded",
         "V4-6 overhead: every request is settled, so any reply asking the owner for input is an unnecessary interruption (reported, not failed)"
       ],
       "must_not": [
         "Pushes",
-        "Edits OPEN_WORK or other guidance documents",
+        "Edits OPEN_WORK or guidance documents other than README.md and docs/DOMAIN_RULES.md",
         "Stops to ask about a request the prompt settles"
       ],
       "may_edit": [
@@ -1169,13 +1169,13 @@
         "Adds a test for an empty file's output",
         "Fixes the line count for text without a trailing newline, keeping `a\\n` at 1 and an empty file at 0",
         "Commits the work on main when asked in step 5, leaving nothing uncommitted",
-        "Friction budget (internal; nothing is left open): edits no guidance documents beyond README.md",
+        "Friction budget (internal; nothing is left open): edits no guidance documents beyond README.md and docs/DOMAIN_RULES.md, where the line-count rule may be recorded",
         "V4-6 overhead: every request is settled, so any reply asking the owner for input is an unnecessary interruption (reported, not failed)",
         "Team comparison (V4-team): scored like S24; compare with S24 for pass rate, minutes and tokens, and report which specialists it delegated to"
       ],
       "must_not": [
         "Pushes",
-        "Edits OPEN_WORK or other guidance documents",
+        "Edits OPEN_WORK or guidance documents other than README.md and docs/DOMAIN_RULES.md",
         "Stops to ask about a request the prompt settles"
       ],
       "may_edit": [
