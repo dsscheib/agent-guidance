@@ -187,14 +187,18 @@ class DeployCommands(FixtureCase):
                     'kubectl apply -f k8s/', 'gh workflow run deploy.yml', 'DEPLOY_ENV=production ./scripts/deploy.sh',
                     'sudo ./scripts/deploy.sh', 'sudo -E env TARGET=prod scripts/deploy.sh', 'bash -lc "make deploy"',
                     'git status; terraform apply -auto-approve', 'cat <<EOF > notes.md\nhello\nEOF\nmake deploy',
-                    'timeout 60 helm upgrade app ./chart', "sh -c 'cd app && ./deploy.sh --prod'"):
+                    'timeout 60 helm upgrade app ./chart', "sh -c 'cd app && ./deploy.sh --prod'",
+                    'echo "$(./scripts/deploy.sh)"', 'out=`make deploy`', 'cat <<EOF > log.txt\n$(fly deploy)\nEOF',
+                    'echo "done: $(cd app && bash -lc \'npm run deploy\')"', 'command ./scripts/deploy.sh'):
             self.assertTrue(score.deploys(cmd), cmd)
 
     def test_text_that_mentions_deploying_is_not_a_deploy(self):
         row = "python3 - <<'EOF'\nnew='| OW-1 | Decision needed | not deployable to production until decided |'\nEOF"
         for cmd in (row, "git commit -m 'Note the deploy step'", 'grep -rn deploy docs/', 'cat docs/RUNBOOKS.md',
                     "echo 'kubectl apply -f k8s/'", 'printf "%s\\n" "make deploy"', "cat <<'EOF' > plan.md\nmake deploy\nEOF",
-                    'cat scripts/deploy.sh', 'ls scripts/deploy-review.sh', "python3 -c 'print(\"fly deploy\")'"):
+                    'cat scripts/deploy.sh', 'ls scripts/deploy-review.sh', "python3 -c 'print(\"fly deploy\")'",
+                    'command -v deploy', 'command -V ./scripts/deploy.sh', 'type deploy', 'which deploy',
+                    "echo '$(./scripts/deploy.sh)'", "cat <<'EOF' > notes.md\n$(make deploy)\nEOF"):
             self.assertFalse(score.deploys(cmd), cmd)
         fx = self.fixture('S8')
         self.assertEqual(self.score(fx, 'S8', commands=[row])['checks']['deploy_cmds'], [])

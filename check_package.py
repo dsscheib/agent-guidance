@@ -720,6 +720,22 @@ OPEN_ITEM = re.compile(r'^\|\s*([A-Z][A-Z0-9]*-\d+)\s*\|(.*)$', re.M)
 REVISION = re.compile(r'\b(?=[0-9a-f]*\d)(?=[0-9a-f]*[a-f])[0-9a-f]{7,40}\b')
 
 
+def agent_from_role(manifest, path, role_text):
+    """A generated agent file's text rendered from a given text of its role, or None if path is not a role's agent."""
+    for target in manifest.get('agent_dirs', []):
+        prefix, suffix = target['dir'] + '/', target['suffix']
+        if not (path.startswith(prefix) and path.endswith(suffix)) or role_text is None:
+            continue
+        name, fields = path[len(prefix):-len(suffix)], frontmatter(role_text)
+        section = role_text.split('\n## Responsibilities\n', 1)
+        responsibilities = ' '.join(section[1].split('\n## ', 1)[0].split()) if len(section) == 2 else ''
+        if fields.get('name') != name or fields.get('kind') not in ROLE_KINDS or not responsibilities:
+            return None
+        source = f"{manifest.get('roles') or 'docs/roles'}/{name}.md"
+        return render_agent(target['tool'], source, fields, responsibilities)
+    return None
+
+
 def check_upgrade(target, since='HEAD'):
     """After an upgrade is applied, compare the project with its pre-upgrade commit: open items, deployed revisions,
     references to deleted scripts and local changes to packaged files must survive. Exits 1 on a problem."""
@@ -766,9 +782,18 @@ def check_upgrade(target, since='HEAD'):
     flat = lambda text: ' '.join(text.split())
     hashes = {e['path']: e.get('sha256') for e in record.get('files', [])}
     unchecked = []
+    have_commit = bool(commit and package_git('cat-file', '-e', f'{commit}^{{commit}}') is not None)
+    roles_dir = record.get('roles') or 'docs/roles'
     for path in packaged:
-        base = effective(path, package_git('show', f'{commit}:{path}') if commit else None, record, modules)
         mine_before = shown(path)
+        if (target / path).is_file() and (target / path).read_text() == mine_before:
+            continue  # the upgrade left it as it was
+        text = package_git('show', f'{commit}:{path}') if have_commit else None
+        if text is None and have_commit:
+            # Generated agents are rendered at install, so the commit holds only their role: render the installed text.
+            name = Path(path).name.split('.')[0]
+            text = agent_from_role(record, path, package_git('show', f'{commit}:{roles_dir}/{name}.md'))
+        base = effective(path, text, record, modules)
         if base is None:
             # Without the installed text, a file the project changed cannot be checked; say so rather than pass it.
             if hashlib.sha256(mine_before.encode()).hexdigest() != hashes.get(path):
@@ -790,10 +815,13 @@ def check_upgrade(target, since='HEAD'):
                 dropped.append(line)
         if dropped:
             problems.append(f'{path}: {len(dropped)} local change(s) not found verbatim, first: {dropped[0].strip()[:80]}')
-    if unchecked:
+    if unchecked and not have_commit:
         problems.append(f"Could not check local changes in {', '.join(unchecked)}: the installed commit "
                         f"{(commit or 'unrecorded')[:12]} is not in this checkout. Run the check from the guidance checkout: "
                         f"python3 <guidance checkout>/check_package.py --check-upgrade {target} --since {since}")
+    elif unchecked:
+        problems.append(f"Could not check local changes in {', '.join(unchecked)}: the installed commit "
+                        f"{commit[:12]} holds no installed text for them. Compare them with {since} by hand.")
     for path in now_files:
         if path.endswith('.md') and re.search(r'(?m)^(<{7} |>{7} )', (target / path).read_text(errors='replace')):
             problems.append(f'{path}: unresolved merge conflict markers')

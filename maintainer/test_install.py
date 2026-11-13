@@ -708,6 +708,41 @@ def case_team(tmp):
     expect(not (plain / 'docs/roles').exists() and not (plain / '.claude/agents').exists(), 'a tier without the team feature installed roles')
 
 
+def case_team_upgrade_check(tmp):
+    """--check-upgrade on a team project: generated agents have no installed text in git, so their baseline is rendered
+    from the installed role. A kept model pin passes, a lost one is reported, and an unchanged project passes."""
+    git = ['git', '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', '-c', 'user.name=t', '-c', 'user.email=t@example.com']
+    run = lambda cmd: subprocess.run(cmd, cwd=target, capture_output=True, text=True)
+    target = tmp / 'team-pins'
+    target.mkdir()
+    if install(target, '--tier', 'prototype', '--features', 'team', '--tools', 'claude,codex').returncode:
+        return
+    sync = [sys.executable, '-B', 'check_package.py', '--sync-adapters']
+    commit = lambda msg: [run(git + ['add', '-A']), run(git + ['commit', '-q', '-m', msg])]
+    run(git + ['init', '-q', '-b', 'main'])
+    commit('installed')
+    role = target / 'docs/roles/backend.md'
+    role.write_text(role.read_text().replace('claude-model: sonnet', 'claude-model: opus\nmodel-source: https://vendor.example/models (checked 2026-11-13)'))
+    run(sync)
+    commit('pin the backend model')
+    pinned = run(['git', 'rev-parse', 'HEAD']).stdout.strip()
+    checker = [sys.executable, '-B', str(root / 'check_package.py'), '--check-upgrade', str(target), '--since', pinned]
+    r = run(checker)
+    expect(r.returncode == 0, 'upgrade check fails on an unchanged pinned project:\n    ' + (r.stdout + r.stderr)[-400:])
+    # An upgrade that rewrites the role and its agents but keeps the pin.
+    role.write_text(role.read_text().replace('description: ', 'description: Upgraded wording. ', 1))
+    run(sync)
+    r = run(checker)
+    expect(r.returncode == 0, 'upgrade check fails when the pin was kept:\n    ' + (r.stdout + r.stderr)[-400:])
+    # An upgrade that drops the pin from the role and so from its agents.
+    role.write_text(role.read_text().replace('claude-model: opus', 'claude-model: sonnet'))
+    run(sync)
+    r = run(checker)
+    out = r.stdout + r.stderr
+    expect(r.returncode and '.claude/agents/backend.md: 1 local change' in out and 'Could not check' not in out,
+           'upgrade check does not report the lost pin in the generated agent:\n    ' + out[-400:])
+
+
 def table():
     sizes = {e['path']: e.get('bytes', 0) for e in manifest['files']}
     print('| Tier | Modules | Files | KB | Agent-facing prose KB |')
@@ -727,12 +762,12 @@ def main():
         return
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
-        for case in (case_tiers, case_policy, case_generated_tables, case_enterprise, case_guardrails, case_proposed_exclusion, case_dependency_files, case_rename_scope, case_documentation_mode, case_copilot_stop, case_upgrade, case_plan_upgrade, case_tools, case_team, case_recorded_exclusions, case_gate_timeouts, case_default, case_missing_module, case_broken_link):
+        for case in (case_tiers, case_policy, case_generated_tables, case_enterprise, case_guardrails, case_proposed_exclusion, case_dependency_files, case_rename_scope, case_documentation_mode, case_copilot_stop, case_upgrade, case_plan_upgrade, case_tools, case_team, case_team_upgrade_check, case_recorded_exclusions, case_gate_timeouts, case_default, case_missing_module, case_broken_link):
             case(tmp)
     if problems:
         print('\n'.join(problems))
         sys.exit(1)
-    print('Install tests OK: tiers, design policy, generated tables, enterprise rows, guardrails by tier, proposed exclusions, dependency files, rename scope, documentation mode, Copilot stop hook, features, upgrade, upgrade plan and check, tools, team, recorded exclusions, gate timeouts, tier required (dry run, --all, rerun), missing module and broken link.')
+    print('Install tests OK: tiers, design policy, generated tables, enterprise rows, guardrails by tier, proposed exclusions, dependency files, rename scope, documentation mode, Copilot stop hook, features, upgrade, upgrade plan and check, tools, team, team upgrade check, recorded exclusions, gate timeouts, tier required (dry run, --all, rerun), missing module and broken link.')
 
 
 if __name__ == '__main__':

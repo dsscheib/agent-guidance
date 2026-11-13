@@ -606,8 +606,8 @@
     {
       "path": "check_package.py",
       "kind": "tooling",
-      "bytes": 78627,
-      "sha256": "cc9321dda6cd671b3c20bbf9d46d27760abce175dc79ef1995216edc5c58e25f",
+      "bytes": 80447,
+      "sha256": "b26a77dd4a571ff96f016865949de1e3aea2e201f0137cb5f366936c6fb21c44",
       "module": "core"
     },
     {

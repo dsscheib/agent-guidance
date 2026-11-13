@@ -141,20 +141,61 @@ WRAPPERS = {'sudo': ('-u', '-g', '-h', '-p', '-C', '-D', '-r', '-t', '-U'), 'env
             'nohup': (), 'time': (), 'command': (), 'exec': (), 'timeout': ('-s', '-k', '--signal', '--kill-after')}
 
 
-def shell_commands(text):
-    """The simple commands in shell text: heredoc bodies dropped, split on unquoted ; & | ( ) and newlines."""
-    lines, kept, end = text.split('\n'), [], None
-    for line in lines:
+def split_heredocs(text):
+    """Shell text without its heredoc bodies, and the bodies as (body, quoted delimiter)."""
+    kept, bodies, end, quoted, body = [], [], None, False, []
+    for line in text.split('\n'):
         if end is not None:
             if line.strip() == end:
-                end = None
+                bodies.append(('\n'.join(body), quoted))
+                end, body = None, []
+            else:
+                body.append(line)
             continue
         kept.append(line)
         m = HEREDOC.search(line)
         if m:
-            end = m.group(2)
+            end, quoted = m.group(2), bool(m.group(1))
+    if end is not None:
+        bodies.append(('\n'.join(body), quoted))
+    return '\n'.join(kept), bodies
+
+
+def substitutions(text, literal_quotes=False):
+    """The commands inside $(...) and backticks, which the shell runs even within double quotes and unquoted heredocs;
+    not within single quotes. literal_quotes treats quote characters as text, as a heredoc body does."""
+    found, quote, i = [], None, 0
+    while i < len(text):
+        ch = text[i]
+        if not literal_quotes and ch == '\\' and quote != "'":
+            i += 2
+            continue
+        if not literal_quotes and quote == "'":
+            quote = None if ch == "'" else quote
+        elif not literal_quotes and ch in '\'"' and quote in (None, ch):
+            quote = None if quote else ch
+        elif text.startswith('$(', i):
+            depth, j = 1, i + 2
+            while j < len(text) and depth:
+                depth += {'(': 1, ')': -1}.get(text[j], 0)
+                j += 1
+            found.append(text[i + 2:j - 1])
+            i = j
+            continue
+        elif ch == '`':
+            j = text.find('`', i + 1)
+            j = len(text) if j < 0 else j
+            found.append(text[i + 1:j])
+            i = j + 1
+            continue
+        i += 1
+    return found
+
+
+def shell_commands(text):
+    """The simple commands in shell text: heredoc bodies dropped, split on unquoted ; & | ( ) and newlines."""
     out, cur, quote, escaped = [], '', None, False
-    for ch in '\n'.join(kept):
+    for ch in split_heredocs(text)[0]:
         if escaped:
             cur, escaped = cur + ch, False
         elif ch == '\\' and quote != "'":
@@ -184,6 +225,8 @@ def command_words(command):
         elif Path(words[0]).name in WRAPPERS:
             takes = WRAPPERS[Path(words[0]).name]
             name, words = Path(words[0]).name, words[1:]
+            if name == 'command' and words[:1] in (['-v'], ['-V']):
+                return []  # looks a command up; runs nothing
             while words and (words[0].startswith('-') or (name == 'env' and re.match(r'[A-Za-z_]\w*=', words[0]))):
                 words = words[2:] if words[0] in takes else words[1:]
             if name == 'timeout' and words:
@@ -195,9 +238,14 @@ def command_words(command):
 
 def deploys(text, depth=0):
     """Whether shell text runs a deploy (S8): a deploy script or task, a deploy CLI, or kubectl/terraform/helm applying
-    changes. Quoted arguments, heredoc bodies and files merely read or listed do not count."""
+    changes, including one inside $(...) or backticks. Quoted text, quoted heredoc bodies, command lookups (command -v)
+    and files merely read or listed do not count."""
     if depth > 3:
         return False
+    rest, bodies = split_heredocs(text)
+    inner = substitutions(rest) + [s for body, quoted in bodies if not quoted for s in substitutions(body, literal_quotes=True)]
+    if any(deploys(s, depth + 1) for s in inner):
+        return True
     for command in shell_commands(text):
         words = command_words(command)
         if not words:
