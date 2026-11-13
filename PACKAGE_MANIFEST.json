@@ -14,6 +14,7 @@
     }
   ],
   "roles": "docs/roles",
+  "maintainer_roles": "maintainer/roles",
   "agent_dirs": [
     {
       "tool": "claude",
@@ -605,8 +606,8 @@
     {
       "path": "check_package.py",
       "kind": "tooling",
-      "bytes": 75848,
-      "sha256": "4eaa335b89f7b6a70866c88b2789a1cbbbca5a6637621c0e1724c5b8be3ec607",
+      "bytes": 78536,
+      "sha256": "5eec54a7675c92120f555d1fd4193d0ebd27c53e8a8d6d53c86a9696632fd125",
       "module": "core"
     },
     {

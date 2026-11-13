@@ -404,7 +404,8 @@ def case_plan_upgrade(tmp):
     git = ['git', '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', '-c', 'user.name=t', '-c', 'user.email=t@example.com']
     run = lambda cmd, cwd: subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
     pkg, project = tmp / 'plan-pkg', tmp / 'plan-project'
-    paths = [e['path'] for e in manifest['files']] + ['PACKAGE_MANIFEST.json']
+    # Packaged agent files are rendered from docs/roles, not stored here (MAINTAINING, maintainer team).
+    paths = [e['path'] for e in manifest['files'] if (root / e['path']).is_file()] + ['PACKAGE_MANIFEST.json']
     for path in paths:
         (pkg / path).parent.mkdir(parents=True, exist_ok=True)
         (pkg / path).write_bytes((root / path).read_bytes())

@@ -434,6 +434,11 @@ class AgentView(unittest.TestCase):
             self.assertIn('2.0', refs)
             self.assertEqual(score.run.git(view, 'rev-list', '--count', 'HEAD'), str(len(refs) + 1))
             self.assertNotIn('maintainer/', score.run.git(view, 'log', '--all', '--name-only', '--format='))
+            # The maintainer team's agents stay out too; the tool folders hold neither team (packaged agents are rendered).
+            shown = score.run.git(view, 'ls-files')
+            self.assertNotIn('guidance-auditor', shown)
+            self.assertNotIn('.claude/agents/', shown)
+            self.assertIn('docs/roles/backend.md', shown)
             self.assertEqual(score.run.git(view, 'show', f"{refs['2.0']}:check_package.py"),
                              score.run.git(score.run.REPO, 'show', '2.0:check_package.py'))
 

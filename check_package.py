@@ -88,8 +88,9 @@ def in_modules(entry, modules):
     return entry.get('module', 'core') in modules and all(m in modules for m in entry.get('requires', []))
 
 
-def expected_adapters(manifest, errors, tools=None):
-    """Map of adapter path -> generated SKILL.md content for every procedure."""
+def expected_adapters(manifest, errors, tools=None, template=False):
+    """Map of adapter path -> generated content: a SKILL.md for every procedure, and an agent file for every active
+    role (the packaged roles, or in the template repository the maintainer team)."""
     expected = {}
     source_dir = root / manifest['procedures']
     for source in sorted(source_dir.glob('*.md')):
@@ -107,7 +108,7 @@ def expected_adapters(manifest, errors, tools=None):
                 f'# {name}\n\n'
                 f'Read `{rel(source)}` from the repository root and follow it exactly. '
                 'That file is the authoritative procedure; this wrapper only makes it discoverable as a skill.\n')
-    agents = expected_agents(manifest, errors, tools)
+    agents = expected_agents(manifest, errors, tools, active_roles(manifest, template))
     foreign = foreign_agents(agents)
     for path in foreign:
         errors.append(f'{path} exists but was not generated from docs/roles; rename the role or move that file')
@@ -170,10 +171,11 @@ def render_agent(tool, source, fields, responsibilities):
     return '---\n' + '\n'.join(head) + f'\n---\n<!-- {marker} -->\n\n' + body
 
 
-def roles(manifest, errors):
-    """Role name -> (source path, frontmatter fields, responsibilities) for every role file in this checkout."""
+def roles(manifest, errors, directory=None):
+    """Role name -> (source path, frontmatter fields, responsibilities) for every role file in a roles folder:
+    the packaged docs/roles by default."""
     found = {}
-    directory = manifest.get('roles')
+    directory = directory or manifest.get('roles')
     if not directory:
         return found
     for source in sorted((root / directory).glob('*.md')):
@@ -195,10 +197,10 @@ def roles(manifest, errors):
     return found
 
 
-def expected_agents(manifest, errors, tools=None):
-    """Map of generated agent path -> (content, role name) for every role and tool."""
+def expected_agents(manifest, errors, tools=None, directory=None):
+    """Map of generated agent path -> (content, role name) for every role in a roles folder and every tool."""
     expected = {}
-    for name, (source, fields, responsibilities) in roles(manifest, errors).items():
+    for name, (source, fields, responsibilities) in roles(manifest, errors, directory).items():
         for target in manifest.get('agent_dirs', []):
             path = f"{target['dir']}/{name}{target['suffix']}"
             if tools is not None and not for_tools(manifest, path, tools):
@@ -216,6 +218,37 @@ def generated_agents(manifest, tools=None):
             if (tools is None or for_tools(manifest, path, tools)) and AGENT_MARKER in p.read_text(errors='replace'):
                 found.add(path)
     return found
+
+
+def active_roles(manifest, template):
+    """The roles folder whose agents this checkout's tool folders hold. The template repository holds the maintainer
+    team (maintainer/roles); its packaged agents are rendered from docs/roles when installed (MAINTAINING.md)."""
+    team = manifest.get('maintainer_roles')
+    return team if template and team and (root / team).is_dir() else manifest.get('roles')
+
+
+_PACKAGED = {}
+
+
+def packaged_agents(manifest):
+    """Packaged agent path -> content, rendered from docs/roles; installs and upgrade plans use these, not the disk."""
+    key = id(manifest)
+    if key not in _PACKAGED:
+        _PACKAGED[key] = {path: content for path, (content, _) in expected_agents(manifest, []).items()}
+    return _PACKAGED[key]
+
+
+def packaged_text(manifest, path):
+    """A packaged file's text as installed."""
+    agents = packaged_agents(manifest)
+    return agents[path] if path in agents else (root / path).read_text()
+
+
+def packaged_sha(manifest, path):
+    agents = packaged_agents(manifest)
+    if path in agents:
+        return hashlib.sha256(agents[path].encode()).hexdigest()
+    return sha256(root / path) if (root / path).is_file() else None
 
 
 def foreign_agents(expected):
@@ -239,7 +272,7 @@ def sync_adapters(manifest, errors, template=True):
         (root / 'AGENTS.md').write_text(agents)
         print('Regenerated the AGENTS.md routing and procedure tables')
     tools = checkout_tools(manifest, template)
-    expected = expected_adapters(manifest, errors, tools)
+    expected = expected_adapters(manifest, errors, tools, template)
     for path in existing_adapters(manifest, tools) - expected.keys():
         (root / path).unlink()
         print('Removed orphaned adapter: ' + path)
@@ -266,9 +299,13 @@ def update_manifest(manifest, errors):
             entry['requires'] = source['requires']
         else:
             entry.pop('requires', None)
+    rendered = packaged_agents(manifest)
     for entry in entries:
         path = root / entry['path']
-        if path.is_file():
+        if entry['path'] in rendered:
+            data = rendered[entry['path']].encode()
+            entry['bytes'], entry['sha256'] = len(data), hashlib.sha256(data).hexdigest()
+        elif path.is_file():
             entry['bytes'], entry['sha256'] = path.stat().st_size, sha256(path)
         else:
             errors.append('Manifest entry has no file: ' + entry['path'])
@@ -449,7 +486,10 @@ def install(manifest, target, force, tier=None, features=(), everything=False, d
             skipped.append(path)
             continue
         dest.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(root / path, dest)
+        if path in packaged_agents(manifest):
+            dest.write_text(packaged_text(manifest, path))
+        else:
+            shutil.copy2(root / path, dest)
         if path in GUARDRAIL_FILES:  # only the rules of the installed modules
             dest.write_text(effective(path, (root / path).read_text(), manifest, set(modules)))
         copied.append(path)
@@ -593,7 +633,7 @@ def plan_upgrade(manifest, target, patch=None):
         kind = entry.get('kind', '')
         file = target / path
         mine = file.read_text() if file.is_file() else None
-        new = effective(path, (root / path).read_text(), manifest, modules) if path in wanted else None
+        new = effective(path, packaged_text(manifest, path), manifest, modules) if path in wanted else None
         old = base_text(path) if path in baseline else None
         if old is None and path in baseline and mine is not None and not have_base:
             # No baseline text: hashes still say whether either side changed.
@@ -843,8 +883,8 @@ def check_modules(manifest, errors):
                 errors.append(f'{path}: adapter module {module!r} differs from its procedure {procedure} ({modules_of.get(procedure)!r})')
 
 
-def check_adapters(manifest, errors, tools=None):
-    expected = expected_adapters(manifest, errors, tools)
+def check_adapters(manifest, errors, tools=None, template=False):
+    expected = expected_adapters(manifest, errors, tools, template)
     for path in existing_adapters(manifest, tools) - expected.keys():
         errors.append(f'Orphaned adapter {path}; run --sync-adapters')
     for path, content in expected.items():
@@ -1222,7 +1262,7 @@ def main():
     repo_only = () if (root / 'maintainer').is_dir() else tuple(manifest.get('repo_only', []))
     linked_elsewhere = check_links([f for f in files if not rel(f).startswith(exempt)], errors, uninstalled, repo_only)
     check_shims(files, errors, tuple(manifest.get('shim_exempt', [])), tools is None or 'claude' in tools)
-    check_adapters(manifest, errors, tools)
+    check_adapters(manifest, errors, tools, template)
     agents = generate_agents(root / 'AGENTS.md', manifest, modules_in_checkout(manifest, template))
     if agents is not None and agents != (root / 'AGENTS.md').read_text():
         errors.append('AGENTS.md routing or procedure table does not match the installed modules; run check_package.py --sync-adapters')
@@ -1240,13 +1280,23 @@ def main():
     listed = {e['path']: e for e in manifest['files']}
     if template:
         check_modules(manifest, errors)
+        team = active_roles(manifest, template)
+        if team != manifest.get('roles'):
+            clash = roles(manifest, [], team).keys() & roles(manifest, []).keys()
+            if clash:
+                errors.append(f"{team}: maintainer roles {', '.join(sorted(clash))} share a name with a packaged role")
+        maintainer_agents = set(expected_agents(manifest, [], None, team)) if team != manifest.get('roles') else set()
         for path, entry in listed.items():
+            if path in packaged_agents(manifest) and path not in maintainer_agents:
+                if packaged_sha(manifest, path) != entry.get('sha256'):
+                    errors.append(f'Changed packaged agent {path}; review its role, then run --update-manifest')
+                continue
             if not (root / path).is_file() or sha256(root / path) != entry.get('sha256'):
                 errors.append(f'Missing or changed packaged file {path}; review, then run --update-manifest')
             if entry['kind'] == 'register' and (root / path).is_file() and DATED.search(prose((root / path).read_text())):
                 errors.append(f'{path}: template registers must stay empty; move history to MAINTAINING.md')
         for path in walk(include_repo_only=False, manifest=manifest):
-            if rel(path) not in listed and path != manifest_path:
+            if rel(path) not in listed and path != manifest_path and rel(path) not in maintainer_agents:
                 errors.append(f'Unlisted file {rel(path)}; add it to the manifest or to repo_only')
         tests = root / 'maintainer' / 'test_install.py'
         if tests.is_file():
@@ -1314,7 +1364,7 @@ def main():
         print('\n'.join(errors))
         print(f'FAIL ({label} mode): {len(errors)} problem(s).')
         sys.exit(1)
-    present = sum(1 for p in listed if (root / p).is_file())
+    present = sum(1 for p in listed if (root / p).is_file() or (template and p in packaged_agents(manifest)))
     count = f'{len(listed)} packaged files' if present == len(listed) else f'{present} of {len(listed)} packaged files installed'
     print(f'PASS ({label} mode): {count}; links, adapters, shims and document budget consistent.')
     print('\n'.join(notes + [f'Placeholders: {code_total} before implementation, {release_total} before release. '
