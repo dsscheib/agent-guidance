@@ -466,7 +466,7 @@ class UpgradeReview(FixtureCase):
 
 
 class AgentView(unittest.TestCase):
-    """The guidance shown to agents keeps maintainer/ out of every commit, and carries each release a scenario installs
+    """The guidance shown to agents keeps maintainer/ and MAINTAINING.md out of every commit, and carries each release a scenario installs
     as an ancestor, so the upgrade planner can read the installed baseline (V4-2)."""
 
     def test_release_ancestor_without_maintainer(self):
@@ -475,7 +475,10 @@ class AgentView(unittest.TestCase):
             refs = json.loads(score.run.baselines(view))
             self.assertIn('2.0', refs)
             self.assertEqual(score.run.git(view, 'rev-list', '--count', 'HEAD'), str(len(refs) + 1))
-            self.assertNotIn('maintainer/', score.run.git(view, 'log', '--all', '--name-only', '--format='))
+            every = score.run.git(view, 'log', '--all', '--name-only', '--format=').split()
+            self.assertNotIn('maintainer/', ' '.join(every))
+            # The maintenance log records scoring criteria (S26's test name, S28's checks), so it stays out too.
+            self.assertNotIn('MAINTAINING.md', every)
             # The maintainer team's agents stay out too; the tool folders hold neither team (packaged agents are rendered).
             shown = score.run.git(view, 'ls-files')
             self.assertNotIn('guidance-auditor', shown)

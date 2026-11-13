@@ -38,6 +38,7 @@ With the `team` feature, `--sync-adapters` generates one agent file per role in 
 | Antigravity | `view_file, grep_search, replace_file_content, run_command` | `view_file, grep_search, run_command` | `view_file, grep_search` | `inherit` |
 | Codex | No per-agent tool list | No per-agent tool list | `[features] shell_tool = false` | The parent session's model |
 
+- **Model pins** are frontmatter keys in the role file: `claude-model`, `codex-model` (with `codex-effort` for reasoning effort), `copilot-model` and `antigravity-model`. A role without a tool's key gets the model in the table's last column.
 - **Enforcement is best-effort and differs by tool.** Claude Code, Copilot CLI and Antigravity restrict the listed tools. Codex has no documented way to stop an agent editing files, and `sandbox_mode` in an agent file does not override the parent session, so on Codex the no-edit limit of inspectors and reviewers rests on their instructions. None of these limits protects credentials reachable through other tools.
 - **Copilot CLI** silently ignores tool names it does not recognize, so only its documented aliases are used. `strict-tools-list: true` keeps it from adding default tools, and `include-custom-instructions: true` gives the specialist the repository's instructions. A `copilot-model` pin also sets `model-policy: required`, so a missing model fails instead of falling back.
 - **Antigravity** may hang a subagent whose `tools` list names an unknown tool, so only the tool names in its documentation are used. `model` accepts `inherit`, `flash` or `pro`.

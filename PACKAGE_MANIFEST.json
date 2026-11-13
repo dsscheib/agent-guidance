@@ -360,8 +360,8 @@
     {
       "path": "docs/AGENT_TOOLS.md",
       "kind": "policy",
-      "bytes": 16982,
-      "sha256": "a4fe5518976bf96d628bda700ef412356bc0b212be6a0cfc90f45fcfeeb04e35",
+      "bytes": 17224,
+      "sha256": "a70c60719870e6a45fd33c0b4ee76387f0d96ea48318187e6449916716c39110",
       "module": "core"
     },
     {
@@ -606,8 +606,8 @@
     {
       "path": "check_package.py",
       "kind": "tooling",
-      "bytes": 78621,
-      "sha256": "de5c36c7399c1ac970c4c7817504ed361e8f2ce5a8aace9ed28579225eef8d0f",
+      "bytes": 78627,
+      "sha256": "cc9321dda6cd671b3c20bbf9d46d27760abce175dc79ef1995216edc5c58e25f",
       "module": "core"
     },
     {
@@ -691,8 +691,8 @@
       "path": "docs/AGENT_TEAM.md",
       "kind": "policy",
       "module": "team",
-      "bytes": 4552,
-      "sha256": "b08a953e15a15e1bd70f28ba0aa70e3d988b4215893c4c748562366dfcef5ff1"
+      "bytes": 4485,
+      "sha256": "9766fe2571030f8e152ddbc4f52fd23e85153aeb41dfe0fd8f932bdd6eb0c543"
     },
     {
       "path": "docs/roles/auditor-advisor.md",

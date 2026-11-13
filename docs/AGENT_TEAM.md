@@ -40,5 +40,5 @@ A role is installed when the project has the `team` feature and the module it re
 
 ## Changing the team
 - **Change a role** by editing its file in `docs/roles/`, then run `python3 check_package.py --sync-adapters`. The checker fails while the generated agent files are stale. Never edit the generated files.
-- **Pin a model** with frontmatter keys in the role file: `claude-model`, `codex-model`, `codex-effort`, `copilot-model` or `antigravity-model`. Without a key the specialist uses the tool's default, usually the delegating agent's model. Model names are time-sensitive vendor claims; record each pin's source in [SOURCES](SOURCES.md).
+- **Pin a model** with a per-tool key in the role file's frontmatter; [AGENT_TOOLS](AGENT_TOOLS.md#specialist-agents) lists the keys and each tool's model without a pin. Model names are time-sensitive vendor claims; record each pin's source in [SOURCES](SOURCES.md).
 - **Add a role** by adding `docs/roles/<name>.md` with `name`, `description`, `title` and `kind` in its frontmatter, then sync. **Remove a role** by deleting its file and syncing; the generated files go with it. Adding or removing a role is an owner decision; record it in PROJECT_PROFILE.md's Excluded guidance row when a packaged role is dropped.
