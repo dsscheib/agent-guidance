@@ -635,8 +635,9 @@ def plan_upgrade(manifest, target, patch=None):
         mine = file.read_text() if file.is_file() else None
         new = effective(path, packaged_text(manifest, path), manifest, modules) if path in wanted else None
         old = base_text(path) if path in baseline else None
-        if old is None and path in baseline and mine is not None and not have_base:
-            # No baseline text: hashes still say whether either side changed.
+        if old is None and path in baseline and mine is not None:
+            # No baseline text (no recorded commit, or a generated agent the commit does not hold): the recorded hash
+            # still says whether the project changed the file.
             same_base = sha256(file) == baseline[path].get('sha256')
             old = mine if same_base else None
         upstream = new != old if path in baseline else True

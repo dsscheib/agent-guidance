@@ -5,7 +5,7 @@
   test_install.py --table  print what each tier installs, for review
 """
 from pathlib import Path
-import hashlib, json, os, subprocess, sys, tempfile
+import hashlib, importlib.util, json, os, subprocess, sys, tempfile
 
 root = Path(__file__).resolve().parent.parent
 manifest = json.loads((root / 'PACKAGE_MANIFEST.json').read_text())
@@ -409,10 +409,11 @@ def case_plan_upgrade(tmp):
     for path in paths:
         (pkg / path).parent.mkdir(parents=True, exist_ok=True)
         (pkg / path).write_bytes((root / path).read_bytes())
-    # The older release: three policy lines differ and RELEASE_NOTES does not exist yet.
+    # The older release: three policy lines and the backend role differ, and RELEASE_NOTES does not exist yet.
     old = {'docs/TESTING_SPEC.md': ('2. **Missing tooling is a gap.**', '2. **Missing tooling is a gap (old wording).**'),
            'docs/CHANGE_WORKFLOW.md': ('## Completion\n', '## Completion (old)\n'),
-           'docs/RUNBOOKS.md': ('\n## ', '\n## Old heading\n\n## ')}
+           'docs/RUNBOOKS.md': ('\n## ', '\n## Old heading\n\n## '),
+           'docs/roles/backend.md': ('description: Implements', 'description: Old wording. Implements')}
     for path, (new, before) in old.items():
         text = (pkg / path).read_text()
         expect(new in text, f'plan test: {path} lacks {new!r}')
@@ -420,14 +421,20 @@ def case_plan_upgrade(tmp):
     (pkg / 'docs/RELEASE_NOTES.md').unlink()
     record = json.loads((pkg / 'PACKAGE_MANIFEST.json').read_text())
     record['files'] = [e for e in record['files'] if e['path'] != 'docs/RELEASE_NOTES.md']
+    spec = importlib.util.spec_from_file_location('old_checker', pkg / 'check_package.py')
+    old_checker = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(old_checker)
+    old_agents = old_checker.packaged_agents(record)
     for e in record['files']:
         if e['path'] in old:
             e['sha256'] = hashlib.sha256((pkg / e['path']).read_bytes()).hexdigest()
+        elif e['path'] in old_agents:
+            e['sha256'] = old_checker.packaged_sha(record, e['path'])
     (pkg / 'PACKAGE_MANIFEST.json').write_text(json.dumps(record, indent=2) + '\n')
     for cmd in (git + ['init', '-q', '-b', 'main'], git + ['add', '-A'], git + ['commit', '-q', '-m', 'old']):
         run(cmd, pkg)
     project.mkdir()
-    r = run([sys.executable, '-B', str(pkg / 'check_package.py'), '--install', str(project), '--all'], pkg)
+    r = run([sys.executable, '-B', str(pkg / 'check_package.py'), '--install', str(project), '--all', '--features', 'team'], pkg)
     expect(r.returncode == 0, 'plan test: old install failed: ' + r.stdout[-300:])
     spec, flow = project / 'docs/TESTING_SPEC.md', project / 'docs/CHANGE_WORKFLOW.md'
     spec.write_text(spec.read_text().replace('(old wording).**', '(old wording).** Record the blocker ID in OPEN_WORK.'))
@@ -452,10 +459,14 @@ def case_plan_upgrade(tmp):
     expect(r.returncode == 0, 'plan test: --plan-upgrade failed: ' + out[-400:])
     expect(not run(['git', 'status', '--porcelain'], project).stdout, 'plan test: planning changed the project')
     expect('docs/OPEN_WORK.md' not in out, 'plan test: a register upstream did not change is listed')
+    # Generated agents are rendered, so the old commit holds no text for them; the recorded hashes show they are untouched.
+    unread = [l.strip() for l in out.splitlines() if 'no baseline text' in l]
+    expect(not unread, 'plan test: untouched files sent to hand review for lack of baseline text:\n    ' + '\n    '.join(unread[:5]))
     expect('Apply nothing' in out and 'git apply' not in out, 'plan test: the plan does not say to stop before applying')
     expect(f"{pkg / 'check_package.py'} --check-upgrade" in out, "plan test: the plan does not name this checkout's checker for the check")
     for label, path in (('Replace', 'docs/RUNBOOKS.md'), ('Add', 'docs/RELEASE_NOTES.md'), ('Merge', 'docs/CHANGE_WORKFLOW.md'),
-                        ('Conflict', 'docs/TESTING_SPEC.md')):
+                        ('Conflict', 'docs/TESTING_SPEC.md'), ('Replace', '.claude/agents/backend.md'),
+                        ('Replace', '.codex/agents/backend.toml')):
         expect(path in plan_section(out, label), f'plan test: {path} not under {label}:\n    ' + out[:900])
     applied = run(['git', 'apply', str(patch)], project)
     expect(applied.returncode == 0, 'plan test: the patch does not apply: ' + applied.stderr[:300])
