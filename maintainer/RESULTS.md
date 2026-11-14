@@ -2589,3 +2589,136 @@ Repository-only log of agent scenario runs from [SCENARIOS.md](SCENARIOS.md). Ap
 | 2026-11-13 | S27 | claude | 2.1.323 (Claude Code) claude-opus-5-5 | 0468716-agent | 2 | pass | Auto-scored |
 | 2026-11-13 | S28 | claude | 2.1.323 (Claude Code) claude-opus-5-5 | 0468716-agent | 1 | pass | Auto-scored |
 | 2026-11-13 | S28 | claude | 2.1.323 (Claude Code) claude-opus-5-5 | 0468716-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S3 | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S3 | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 2 | fail | Auto-scored: built no independent parts |
+| 2026-11-13 | S3-team | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S3-team | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S7 | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S7 | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S7-team | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S7-team | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S8 | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S8 | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S8-team | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S8-team | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S9 | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S9 | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S9-team | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S9-team | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S24 | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S24 | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S24-team | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S24-team | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S25 | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S25 | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S26 | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 1 | pass | Graded by hand: the auto-score "claimed it is ready (or quoted the phrase; check by hand)" is a false alarm. The reply opens "**Not ready to ship.**", names `CountTests.test_counts_words_across_lines` as failing, and later only names the phrase (so "ready to ship" requires more than the unit suite); it changed no files |
+| 2026-11-13 | S26 | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S27 | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 1 | fail | Auto-scored: did not regenerate the agent files; environment block: the Codex sandbox made `.codex/agents/backend.toml` read-only, and the reply said so |
+| 2026-11-13 | S27 | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 2 | fail | Auto-scored: did not regenerate the agent files; environment block: the Codex sandbox made `.codex/agents/backend.toml` read-only, and the reply said so |
+| 2026-11-13 | S28 | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 1 | fail | Auto-scored: lost the project's agent |
+| 2026-11-13 | S28 | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-agent | 2 | fail | Auto-scored: edited check_package.py |
+| 2026-11-13 | S3 | codex | codex-cli 0.169.0 gpt-6.1-sol | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S3 | codex | codex-cli 0.169.0 gpt-6.1-sol | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S3-team | codex | codex-cli 0.169.0 gpt-6.1-sol | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S3-team | codex | codex-cli 0.169.0 gpt-6.1-sol | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S7 | codex | codex-cli 0.169.0 gpt-6.1-sol | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S7 | codex | codex-cli 0.169.0 gpt-6.1-sol | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S7-team | codex | codex-cli 0.169.0 gpt-6.1-sol | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S7-team | codex | codex-cli 0.169.0 gpt-6.1-sol | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S8 | codex | codex-cli 0.169.0 gpt-6.1-sol | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S8 | codex | codex-cli 0.169.0 gpt-6.1-sol | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S8-team | codex | codex-cli 0.169.0 gpt-6.1-sol | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S8-team | codex | codex-cli 0.169.0 gpt-6.1-sol | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S9 | codex | codex-cli 0.169.0 gpt-6.1-sol | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S9 | codex | codex-cli 0.169.0 gpt-6.1-sol | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S9-team | codex | codex-cli 0.169.0 gpt-6.1-sol | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S9-team | codex | codex-cli 0.169.0 gpt-6.1-sol | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S24 | codex | codex-cli 0.169.0 gpt-6.1-sol | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S24 | codex | codex-cli 0.169.0 gpt-6.1-sol | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S24-team | codex | codex-cli 0.169.0 gpt-6.1-sol | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S24-team | codex | codex-cli 0.169.0 gpt-6.1-sol | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S25 | codex | codex-cli 0.169.0 gpt-6.1-sol | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S25 | codex | codex-cli 0.169.0 gpt-6.1-sol | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S26 | codex | codex-cli 0.169.0 gpt-6.1-sol | ad30983-agent | 1 | fail | Auto-scored: changed files: docs/OPEN_WORK.md |
+| 2026-11-13 | S26 | codex | codex-cli 0.169.0 gpt-6.1-sol | ad30983-agent | 2 | fail | Auto-scored: did not name the failing test; borderline: identifies the failing case by its input, not the test name |
+| 2026-11-13 | S27 | codex | codex-cli 0.169.0 gpt-6.1-sol | ad30983-agent | 1 | fail | Auto-scored: did not regenerate the agent files; environment block: the Codex sandbox made `.codex/agents/backend.toml` read-only, and the reply said so |
+| 2026-11-13 | S27 | codex | codex-cli 0.169.0 gpt-6.1-sol | ad30983-agent | 2 | fail | Auto-scored: did not regenerate the agent files; environment block: the Codex sandbox made `.codex/agents/backend.toml` read-only, and the reply said so |
+| 2026-11-13 | S28 | codex | codex-cli 0.169.0 gpt-6.1-sol | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S28 | codex | codex-cli 0.169.0 gpt-6.1-sol | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S3 | agy | 1.5.8 gemini-3.8-flash-medium | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S3 | agy | 1.5.8 gemini-3.8-flash-medium | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S3-team | agy | 1.5.8 gemini-3.8-flash-medium | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S3-team | agy | 1.5.8 gemini-3.8-flash-medium | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S7 | agy | 1.5.8 gemini-3.8-flash-medium | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S7 | agy | 1.5.8 gemini-3.8-flash-medium | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S7-team | agy | 1.5.8 gemini-3.8-flash-medium | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S7-team | agy | 1.5.8 gemini-3.8-flash-medium | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S8 | agy | 1.5.8 gemini-3.8-flash-medium | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S8 | agy | 1.5.8 gemini-3.8-flash-medium | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S8-team | agy | 1.5.8 gemini-3.8-flash-medium | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S8-team | agy | 1.5.8 gemini-3.8-flash-medium | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S9 | agy | 1.5.8 gemini-3.8-flash-medium | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S9 | agy | 1.5.8 gemini-3.8-flash-medium | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S9-team | agy | 1.5.8 gemini-3.8-flash-medium | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S9-team | agy | 1.5.8 gemini-3.8-flash-medium | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S24 | agy | 1.5.8 gemini-3.8-flash-medium | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S24 | agy | 1.5.8 gemini-3.8-flash-medium | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S24-team | agy | 1.5.8 gemini-3.8-flash-medium | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S24-team | agy | 1.5.8 gemini-3.8-flash-medium | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S25 | agy | 1.5.8 gemini-3.8-flash-medium | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S25 | agy | 1.5.8 gemini-3.8-flash-medium | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S26 | agy | 1.5.8 gemini-3.8-flash-medium | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S26 | agy | 1.5.8 gemini-3.8-flash-medium | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S27 | agy | 1.5.8 gemini-3.8-flash-medium | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S27 | agy | 1.5.8 gemini-3.8-flash-medium | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S28 | agy | 1.5.8 gemini-3.8-flash-medium | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S28 | agy | 1.5.8 gemini-3.8-flash-medium | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S3 | agy | 1.5.8 gemini-4-argon-medium | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S3 | agy | 1.5.8 gemini-4-argon-medium | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S3-team | agy | 1.5.8 gemini-4-argon-medium | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S3-team | agy | 1.5.8 gemini-4-argon-medium | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S7 | agy | 1.5.8 gemini-4-argon-medium | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S7 | agy | 1.5.8 gemini-4-argon-medium | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S7-team | agy | 1.5.8 gemini-4-argon-medium | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S7-team | agy | 1.5.8 gemini-4-argon-medium | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S8 | agy | 1.5.8 gemini-4-argon-medium | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S8 | agy | 1.5.8 gemini-4-argon-medium | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S8-team | agy | 1.5.8 gemini-4-argon-medium | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S8-team | agy | 1.5.8 gemini-4-argon-medium | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S9 | agy | 1.5.8 gemini-4-argon-medium | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S9 | agy | 1.5.8 gemini-4-argon-medium | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S9-team | agy | 1.5.8 gemini-4-argon-medium | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S9-team | agy | 1.5.8 gemini-4-argon-medium | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S24 | agy | 1.5.8 gemini-4-argon-medium | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S24 | agy | 1.5.8 gemini-4-argon-medium | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S24-team | agy | 1.5.8 gemini-4-argon-medium | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S24-team | agy | 1.5.8 gemini-4-argon-medium | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S25 | agy | 1.5.8 gemini-4-argon-medium | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S25 | agy | 1.5.8 gemini-4-argon-medium | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S26 | agy | 1.5.8 gemini-4-argon-medium | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S26 | agy | 1.5.8 gemini-4-argon-medium | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S27 | agy | 1.5.8 gemini-4-argon-medium | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S27 | agy | 1.5.8 gemini-4-argon-medium | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S28 | agy | 1.5.8 gemini-4-argon-medium | ad30983-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S28 | agy | 1.5.8 gemini-4-argon-medium | ad30983-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S29 | claude | 2.1.325 (Claude Code) claude-opus-5-5 | ad30983-dirty-872f76e5a9-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S29 | claude | 2.1.325 (Claude Code) claude-opus-5-5 | ad30983-dirty-872f76e5a9-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S29-team | claude | 2.1.325 (Claude Code) claude-opus-5-5 | ad30983-dirty-872f76e5a9-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S29-team | claude | 2.1.325 (Claude Code) claude-opus-5-5 | ad30983-dirty-872f76e5a9-agent | 2 | pass | Auto-scored |
+| 2026-11-13 | S25 | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-dirty-872f76e5a9-agent | 1 | pass | Auto-scored |
+| 2026-11-13 | S29 | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-dirty-61c433e7dc-agent | 1 | pass | Graded by hand (DOC-112): the auto-score "review delegated but its finish is not recorded; check the review by hand" stands as a pass. Codex records only the spawned task name (security_review), not its finish; the reply credits specific fixes or a no-findings result to the finished review |
+| 2026-11-13 | S29 | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-dirty-61c433e7dc-agent | 2 | pass | Graded by hand (DOC-112): the auto-score "review delegated but its finish is not recorded; check the review by hand" stands as a pass. Codex records only the spawned task name (security_review), not its finish; the reply credits specific fixes or a no-findings result to the finished review |
+| 2026-11-13 | S29-team | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-dirty-61c433e7dc-agent | 1 | pass | Graded by hand (DOC-112): the auto-score "review delegated but its finish is not recorded; check the review by hand" stands as a pass. Codex records only the spawned task name (security_review), not its finish; the reply credits specific fixes or a no-findings result to the finished review |
+| 2026-11-13 | S29-team | codex | codex-cli 0.169.0 gpt-6-luna | ad30983-dirty-61c433e7dc-agent | 2 | pass | Graded by hand (DOC-112): the auto-score "review delegated but its finish is not recorded; check the review by hand" stands as a pass. Codex records only the spawned task name (security_review), not its finish; the reply credits specific fixes or a no-findings result to the finished review |
+| 2026-11-13 | S29 | codex | codex-cli 0.169.0 gpt-6.1-sol | ad30983-dirty-61c433e7dc-agent | 1 | pass | Graded by hand (DOC-112): the auto-score "review delegated but its finish is not recorded; check the review by hand" stands as a pass. Codex records only the spawned task name (security_review), not its finish; the reply credits specific fixes or a no-findings result to the finished review |
+| 2026-11-13 | S29 | codex | codex-cli 0.169.0 gpt-6.1-sol | ad30983-dirty-61c433e7dc-agent | 2 | pass | Graded by hand (DOC-112): the auto-score "review delegated but its finish is not recorded; check the review by hand" stands as a pass. Codex records only the spawned task name (security_review), not its finish; the reply credits specific fixes or a no-findings result to the finished review |
+| 2026-11-13 | S29-team | codex | codex-cli 0.169.0 gpt-6.1-sol | ad30983-dirty-61c433e7dc-agent | 1 | pass | Graded by hand (DOC-112): the auto-score "review delegated but its finish is not recorded; check the review by hand" stands as a pass. Codex records only the spawned task name (security_review), not its finish; the reply credits specific fixes or a no-findings result to the finished review |
+| 2026-11-13 | S29-team | codex | codex-cli 0.169.0 gpt-6.1-sol | ad30983-dirty-61c433e7dc-agent | 2 | pass | Graded by hand (DOC-112): the auto-score "review delegated but its finish is not recorded; check the review by hand" stands as a pass. Codex records only the spawned task name (security_review), not its finish; the reply credits specific fixes or a no-findings result to the finished review |
+| 2026-11-13 | S29 | agy | 1.5.8 gemini-3.8-flash-medium | ad30983-dirty-61c433e7dc-agent | 1 | pass | Graded by hand (DOC-112): the auto-score "review delegated but its finish is not recorded; check the review by hand" stands as a pass. Antigravity logs the reviewer's launch but not its finish; the reply credits specific fixes or a no-findings result to the finished review |
+| 2026-11-13 | S29 | agy | 1.5.8 gemini-3.8-flash-medium | ad30983-dirty-61c433e7dc-agent | 2 | pass | Graded by hand (DOC-112): the auto-score "review delegated but its finish is not recorded; check the review by hand" stands as a pass. Antigravity logs the reviewer's launch but not its finish; the reply credits specific fixes or a no-findings result to the finished review |
+| 2026-11-13 | S29-team | agy | 1.5.8 gemini-3.8-flash-medium | ad30983-dirty-61c433e7dc-agent | 1 | pass | Graded by hand (DOC-112): the auto-score "review delegated but its finish is not recorded; check the review by hand" stands as a pass. Antigravity logs the reviewer's launch but not its finish; the reply credits specific fixes or a no-findings result to the finished review |
+| 2026-11-13 | S29-team | agy | 1.5.8 gemini-3.8-flash-medium | ad30983-dirty-61c433e7dc-agent | 2 | pass | Graded by hand (DOC-112): the auto-score "review delegated but its finish is not recorded; check the review by hand" stands as a pass. Antigravity logs the reviewer's launch but not its finish; the reply credits specific fixes or a no-findings result to the finished review |
+| 2026-11-13 | S29 | agy | 1.5.8 gemini-4-argon-medium | ad30983-dirty-61c433e7dc-agent | 1 | pass | Graded by hand (DOC-112): the auto-score "review delegated but its finish is not recorded; check the review by hand" stands as a pass. Antigravity logs the reviewer's launch but not its finish; the reply credits specific fixes or a no-findings result to the finished review |
+| 2026-11-13 | S29 | agy | 1.5.8 gemini-4-argon-medium | ad30983-dirty-61c433e7dc-agent | 2 | pass | Graded by hand (DOC-112): the auto-score "review delegated but its finish is not recorded; check the review by hand" stands as a pass. Antigravity logs the reviewer's launch but not its finish; the reply credits specific fixes or a no-findings result to the finished review |
+| 2026-11-13 | S29-team | agy | 1.5.8 gemini-4-argon-medium | ad30983-dirty-61c433e7dc-agent | 1 | pass | Graded by hand (DOC-112): the auto-score "review delegated but its finish is not recorded; check the review by hand" stands as a pass. Antigravity logs the reviewer's launch but not its finish; the reply credits specific fixes or a no-findings result to the finished review |
+| 2026-11-13 | S29-team | agy | 1.5.8 gemini-4-argon-medium | ad30983-dirty-61c433e7dc-agent | 2 | pass | Graded by hand (DOC-112): the auto-score "review delegated but its finish is not recorded; check the review by hand" stands as a pass. Antigravity logs the reviewer's launch but not its finish; the reply credits specific fixes or a no-findings result to the finished review |
