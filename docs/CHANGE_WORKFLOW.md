@@ -22,6 +22,13 @@ Follow the workflow in [TESTING_SPEC.md](TESTING_SPEC.md):
 2. Add regressions.
 3. Run focused checks, then the broader required checks for the project tier.
 
+## Delegating work
+These rules apply whenever one agent hands work to another: a subagent, a specialist agent the project defines, or a second session. Every agent follows AGENTS.md; delegation adds only this. Delegate a bounded task that can be checked on its own, such as an independent review or a server-side change with its tests. Do small work yourself, and work that would cost more to coordinate than to do.
+1. **The delegating agent stays responsible.** It states the task, the files the other agent may change and the acceptance check, then reviews the result before accepting it. Delegated output is evidence to check, not a verified result, and the report to the user follows AGENTS.md rule 13. *Why: the user sees one reply, and an unchecked hand-off is how a wrong claim reaches it.*
+2. **One owner per file at a time.** Never let two agents edit the same file concurrently. Name each agent's files when work runs in parallel. *Why: concurrent edits overwrite each other silently.*
+3. **Delegated agents report in their reply, not in files.** The reply holds the summary, what was verified and how, what is assumed rather than observed, file paths with line numbers where they apply, open issues and the recommended next step. Anything unresolved goes to [OPEN_WORK](OPEN_WORK.md) through the delegating agent. *Why: a report file per task breaks the [document budget](DOCUMENTATION.md#document-budget).*
+4. **Authorization does not pass down.** A delegated agent may do only what the user authorized the delegating agent to do, within the task it was given. *Example: a user's "push when done" lets the delegating agent push after review; it does not let a subagent push.*
+
 ## Deployment and review cadence
 This section is the home of the review-cadence and committed-source rules that AGENTS.md rules 3 and 11 summarize.
 - **Build only from committed source.** Every release or review artifact identifies one commit. A dirty working tree is not a candidate. If the owner wants to deploy uncommitted work, commit it on a task branch first, or ask to.
