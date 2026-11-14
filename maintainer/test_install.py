@@ -646,7 +646,8 @@ def case_broken_link(tmp):
 
 def case_team_removed(tmp):
     """An install recorded with the team feature, which left the package in DOC-114: --plan-upgrade removes its
-    unmodified files, sends a changed one to hand review, and drops team from the recorded modules and features."""
+    unmodified files, sends a changed one to hand review, and drops team from the recorded modules and features; once
+    the patch is applied, --check-upgrade passes."""
     target = tmp / 'team-removed'
     target.mkdir()
     if install(target, '--tier', 'prototype', '--tools', 'claude').returncode:
@@ -664,6 +665,9 @@ def case_team_removed(tmp):
         record['files'].append({'path': path, 'kind': kind, 'module': 'team', 'sha256': hashlib.sha256(text.encode()).hexdigest()})
     (target / 'PACKAGE_MANIFEST.json').write_text(json.dumps(record, indent=2) + '\n')
     (target / 'docs/roles/backend.md').write_text('---\nname: backend\nclaude-model: opus\n---\n')  # changed here
+    git = ['git', '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', '-c', 'user.name=t', '-c', 'user.email=t@example.com']
+    for cmd in (['init', '-q', '-b', 'main'], ['add', '-A'], ['commit', '-q', '-m', 'team install']):
+        subprocess.run(git + cmd, cwd=target, capture_output=True, text=True)
     patch = tmp / 'team-removed.patch'
     r = subprocess.run([sys.executable, '-B', str(root / 'check_package.py'), '--plan-upgrade', str(target), '--patch', str(patch)],
                        capture_output=True, text=True)
@@ -675,6 +679,11 @@ def case_team_removed(tmp):
     added = [l for l in diff.splitlines() if l.startswith('+')]
     removed = [l for l in diff.splitlines() if l.startswith('-') and '"team"' in l]
     expect(removed and not any('"team"' in l for l in added), 'team removal: the proposed manifest still records the team feature')
+    # PR #60's audit: the applied removal failed --check-upgrade because check_package.py names AGENT_TEAM.md.
+    applied = subprocess.run(['git', 'apply', str(patch)], cwd=target, capture_output=True, text=True)
+    expect(applied.returncode == 0, 'team removal: the patch does not apply: ' + applied.stderr[:300])
+    r = subprocess.run([sys.executable, '-B', str(root / 'check_package.py'), '--check-upgrade', str(target)], capture_output=True, text=True)
+    expect(r.returncode == 0, 'team removal: --check-upgrade fails after the removal:\n    ' + (r.stdout + r.stderr)[-500:])
 
 
 def table():

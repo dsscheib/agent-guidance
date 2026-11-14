@@ -532,7 +532,8 @@ def package_git(*args):
 
 
 def project_record(target):
-    """The project's installed manifest, its recorded modules (the 2.x set when none are recorded) and source commit."""
+    """The project's installed manifest, its recorded modules (the 2.x set when none are recorded) and source commit.
+    The modules are as recorded, which may include one the package has since dropped (the team feature, DOC-114)."""
     path = target / manifest_path.name
     if not path.is_file():
         sys.exit(f'{target} has no {manifest_path.name}, so it is not a package-layout install. '
@@ -540,9 +541,6 @@ def project_record(target):
     record = json.loads(path.read_text())
     new = json.loads(manifest_path.read_text())
     modules = set(record.get('installed', {}).get('modules') or v2_modules(new['modules']))
-    # A module the package has since dropped (the team feature, DOC-114) leaves with its files: an upgrade plans their
-    # removal, or a hand review where the project changed them.
-    modules &= set(new['modules'])
     return record, modules, record.get('installed_from', {}).get('commit')
 
 
@@ -622,7 +620,11 @@ def plan_upgrade(manifest, target, patch=None):
         sys.exit(f'Upgrade target must be an existing directory other than this package: {target}')
     if patch and Path(patch).resolve().is_relative_to(target):
         sys.exit('Write the patch outside the project, so planning changes nothing in it.')
-    record, modules, base_commit = project_record(target)
+    record, installed_modules, base_commit = project_record(target)
+    # A module the package has since dropped (the team feature, DOC-114) leaves with its files: the upgrade plans their
+    # removal, or a hand review where the project changed them. The installed baseline keeps the recorded modules, so
+    # generated text such as AGENTS.md's tables renders as it was installed.
+    modules = installed_modules & set(manifest['modules'])
     old_manifest = record
     baseline = {e['path']: e for e in record.get('files', [])}
     tools = plan_tools(manifest, record)
@@ -633,7 +635,7 @@ def plan_upgrade(manifest, target, patch=None):
 
     def base_text(path):
         text = package_git('show', f'{base_commit}:{path}') if have_base else None
-        return effective(path, text, old_manifest, modules)
+        return effective(path, text, old_manifest, installed_modules)
 
     for path in sorted(baseline.keys() | wanted.keys()):
         entry = wanted.get(path) or baseline[path]
@@ -778,7 +780,10 @@ def check_upgrade(target, since='HEAD'):
     if missing:
         problems.append('Deployed revisions no longer in any document: ' + ', '.join(missing))
     deleted = sorted(set(before_files) - set(now_files))
-    code = [p for p in now_files if not p.endswith(('.md', '.json'))]
+    # A file identical to this checkout's copy is the package's own (such as check_package.py, which still renders roles
+    # installed before DOC-114), not project code that depends on a deleted file.
+    code = [p for p in now_files if not p.endswith(('.md', '.json'))
+            and not ((root / p).is_file() and (root / p).read_bytes() == (target / p).read_bytes())]
     for gone in deleted:
         name = Path(gone).name
         users = [p for p in code if name in (target / p).read_text(errors='replace')]
