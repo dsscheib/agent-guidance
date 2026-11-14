@@ -37,7 +37,7 @@ Which installed document owns each subject. Read "before" first, update "after" 
 | Delegating work to a specialist agent, or changing the team | [AGENT_TEAM](docs/AGENT_TEAM.md) | The role file in `docs/roles/`, then `python3 check_package.py --sync-adapters` |
 | Documentation process and status vocabulary | [DOCUMENTATION](docs/DOCUMENTATION.md) | DOCUMENTATION |
 
-Go web stack: [profile](profiles/SERVER_RENDERED_WEB_GO.md). Rust web stack: [profile](profiles/SERVER_RENDERED_WEB_RUST.md). Production operations: [profile](profiles/PRODUCTION_OPERATIONS.md).
+Go web stack: [profile](profiles/SERVER_RENDERED_WEB_GO.md). Rust web stack: [profile](profiles/SERVER_RENDERED_WEB_RUST.md). Embedded firmware and hardware: [profile](profiles/EMBEDDED_FIRMWARE.md). Production operations: [profile](profiles/PRODUCTION_OPERATIONS.md).
 <!-- end generated: routing -->
 
 ## Rules
