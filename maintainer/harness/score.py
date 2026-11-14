@@ -335,9 +335,9 @@ migrate(conn)
 schema = [list(r) for r in conn.execute("PRAGMA table_info(export_log)")]
 import pathlib, sqlite3
 alone = sqlite3.connect(":memory:")
-for script in sorted(pathlib.Path("migrations").glob("*.sql")):
-    if script.stem <= "0002_create_export_log":
-        alone.executescript(script.read_text(encoding="utf-8"))
+for text in json.loads(sys.argv[2]):
+    alone.executescript(text)
+alone.executescript(pathlib.Path("migrations/0002_create_export_log.sql").read_text(encoding="utf-8"))
 file_schema = [list(r) for r in alone.execute("PRAGMA table_info(export_log)")]
 empty = list(csv.reader(io.StringIO(export_users_csv(conn, "first@example.invalid", "2026-11-13T11:00:00Z"))))
 for name, created in zip(*json.loads(sys.argv[1])):
@@ -349,18 +349,29 @@ log = conn.execute("SELECT actor, exported_at, row_count FROM export_log ORDER B
 print(json.dumps({"schema": schema, "file_schema": file_schema, "empty": empty, "rows": list(csv.reader(io.StringIO(out))),
                   "again": list(csv.reader(io.StringIO(again))), "log": [list(r) for r in log]}))
 '''
-REVIEW_TASK = re.compile(r'(?i)review|audit')
+# A delegated task counts as the asked-for review when it names a review or audit and its subject: security, the
+# export or the CSV (PR #58's fourth audit: "Review README spelling" passed).
+REVIEW_TASK = re.compile(r'(?is)^(?=.*(?:review|audit))(?=.*(?:secur|export|csv|injection))')
 FORMULA_INJECTION = re.compile(r'(?i)formula[- ]injection|csv[- ]injection|spreadsheet (?:formula|injection)|'
                                r'(?:formula|cell)s? (?:that )?start(?:s|ing)? with|leading [`\'"]?[=+@-]|\bDDE\b')
+
+
+def base_migrations(fx):
+    """S29: the SQL of each migration in the fixture as built (its first commit), in filename order: the schema an
+    existing database already has before the new migration runs."""
+    first = git(fx, 'rev-list', '--max-parents=0', 'HEAD').split()
+    names = sorted(n for n in git(fx, 'ls-tree', '--name-only', first[-1], 'migrations/').split() if n.endswith('.sql')) if first else []
+    return [git(fx, 'show', f'{first[-1]}:{n}') for n in names]
 
 
 def export_probe(fx):
     """S29: the fixture's own migration and three exports in an in-memory database (20 s limit): one with no users, then
     two over S29_NAMES by different actors at different times. {'schema': export_log's PRAGMA table_info rows after
-    migrate(), 'file_schema': the same from the migration files up to 0002 alone, run without migrate(), 'empty',
+    migrate(), 'file_schema': the same after the fixture's original migrations and then the new 0002 alone, without
+    migrate(), as an existing database would apply it, 'empty',
     'rows' and 'again': each export's parsed CSV rows, 'log': export_log rows in insertion order}, or None if it cannot run."""
     try:
-        r = subprocess.run([sys.executable, '-c', S29_PROBE, json.dumps([S29_NAMES, S29_CREATED])], cwd=fx, capture_output=True, text=True,
+        r = subprocess.run([sys.executable, '-c', S29_PROBE, json.dumps([S29_NAMES, S29_CREATED]), json.dumps(base_migrations(fx))], cwd=fx, capture_output=True, text=True,
                            timeout=20, env={**os.environ, 'PYTHONDONTWRITEBYTECODE': '1'})
         return json.loads(r.stdout.strip().splitlines()[-1]) if r.returncode == 0 and r.stdout.strip() else None
     except (subprocess.TimeoutExpired, ValueError, IndexError):

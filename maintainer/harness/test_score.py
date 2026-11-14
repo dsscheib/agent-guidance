@@ -512,6 +512,8 @@ class DelegableTask(FixtureCase):
         # PR #58's third audit: a delegation of other work, and a reviewer that failed to start, passed as the review.
         fx = self.worked()
         self.assertEqual(self.scored(fx, task='Write the export_log migration')['why'], 'no independent review')
+        # PR #58's fourth audit: a finished review of something else passed.
+        self.assertEqual(self.scored(fx, task='Review README spelling and formatting only.')['why'], 'no independent review')
         self.assertEqual(self.scored(fx, result='error')['why'], 'the delegated review failed')
         self.assertEqual(self.scored(fx, result=None)['why'], 'review delegated but its finish is not recorded; check the review by hand')
         # One finished review among other delegations is enough.
@@ -542,6 +544,16 @@ class DelegableTask(FixtureCase):
                   '    conn.execute("CREATE TABLE IF NOT EXISTS export_log (id INTEGER PRIMARY KEY, actor TEXT NOT NULL, '
                   'exported_at TEXT NOT NULL, row_count INTEGER NOT NULL)")\n    conn.execute("CREATE TABLE IF NOT EXISTS schema_migrations')
         self.sh(fx, 'git commit -qam "Table in migrate"')
+        self.assertEqual(self.scored(fx)['why'], 'migrations/0002_create_export_log.sql does not create export_log as asked')
+
+    def test_table_moved_into_an_applied_migration_fails(self):
+        # PR #58's fourth audit: the table moved into 0001, which existing databases have already applied, and an empty
+        # 0002 passed.
+        fx = self.worked(migration='-- TODO\n')
+        sql = (fx / 'migrations/0001_create_users.sql').read_text()
+        (fx / 'migrations/0001_create_users.sql').write_text(sql + '\nCREATE TABLE export_log (id INTEGER PRIMARY KEY, actor TEXT NOT NULL, '
+                                                            'exported_at TEXT NOT NULL, row_count INTEGER NOT NULL);\n')
+        self.sh(fx, 'git commit -qam "Table in 0001"')
         self.assertEqual(self.scored(fx)['why'], 'migrations/0002_create_export_log.sql does not create export_log as asked')
 
     def test_every_formula_prefix_is_checked(self):
