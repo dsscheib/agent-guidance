@@ -57,6 +57,7 @@
     "data": "Feature: import, export and file formats",
     "stack-go": "Feature: server-rendered web profile for Go",
     "stack-rust": "Feature: server-rendered web profile for Rust",
+    "embedded": "Feature: embedded firmware and hardware profile",
     "team": "Feature: specialist agent team, delegation policy and role definitions"
   },
   "tiers": {
@@ -96,6 +97,9 @@
     ],
     "stack-rust": [
       "stack-rust"
+    ],
+    "embedded": [
+      "embedded"
     ],
     "team": [
       "team"
@@ -229,6 +233,10 @@
         "row": "Rust web stack: [profile](profiles/SERVER_RENDERED_WEB_RUST.md)."
       },
       {
+        "module": "embedded",
+        "row": "Embedded firmware and hardware: [profile](profiles/EMBEDDED_FIRMWARE.md)."
+      },
+      {
         "module": "production-ops",
         "row": "Production operations: [profile](profiles/PRODUCTION_OPERATIONS.md)."
       }
@@ -304,8 +312,8 @@
     {
       "path": "AGENTS.md",
       "kind": "entry",
-      "bytes": 10514,
-      "sha256": "dd5d347ef8d91a2f0be622a95c52360d2122b91fe5c00bfce782c61824581966",
+      "bytes": 10588,
+      "sha256": "b41a6b67f167f5e49d3bf63465c50a927af19b429d7e81fb16f2324b51041468",
       "module": "core"
     },
     {
@@ -318,8 +326,8 @@
     {
       "path": "README.md",
       "kind": "entry",
-      "bytes": 9982,
-      "sha256": "d94e592c9afc74555cc1f9c8d9d2bc9e245b8a560252354e15e9dc9d7c0cd1f1",
+      "bytes": 10099,
+      "sha256": "6aa5e7883a69ca17be366ff6bc52bc6a3637c26c9066c7c960a476b8df9b5e7e",
       "module": "core"
     },
     {
@@ -583,6 +591,13 @@
       "module": "core"
     },
     {
+      "path": "profiles/EMBEDDED_FIRMWARE.md",
+      "kind": "profile",
+      "bytes": 4290,
+      "sha256": "a2acba619f3b2fd3052b5664f54def071ef5b7b30ff8718e7cabaae874f675d3",
+      "module": "embedded"
+    },
+    {
       "path": "profiles/PRODUCTION_OPERATIONS.md",
       "kind": "profile",
       "bytes": 5849,
@@ -606,8 +621,8 @@
     {
       "path": "check_package.py",
       "kind": "tooling",
-      "bytes": 80447,
-      "sha256": "b26a77dd4a571ff96f016865949de1e3aea2e201f0137cb5f366936c6fb21c44",
+      "bytes": 80457,
+      "sha256": "3d78efe2f76056b56654fc4eb9d8d04f9581a0a4614251062d9ec128cf870964",
       "module": "core"
     },
     {

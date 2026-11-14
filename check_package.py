@@ -1234,7 +1234,7 @@ def main():
     parser.add_argument('--force', action='store_true', help='with --install, overwrite existing files')
     parser.add_argument('--tier', choices=['prototype', 'internal', 'production', 'enterprise'],
                         help='with --install, install the core plus the modules this tier requires')
-    parser.add_argument('--features', default='', help='with --install, comma-separated features to add: ui, data, stack-go, stack-rust, team')
+    parser.add_argument('--features', default='', help='with --install, comma-separated features to add: ui, data, stack-go, stack-rust, embedded, team')
     parser.add_argument('--tools', default='', help='with --install, comma-separated agent tools the project uses: claude, codex, antigravity, copilot (default all); only their adapters and guardrails are installed and checked')
     parser.add_argument('--all', action='store_true', help='with --install, the 2.x set instead of a tier: every module except Enterprise and team')
     parser.add_argument('--dry-run', action='store_true', help='with --install, list the modules and files it would copy and write nothing')
