@@ -460,12 +460,20 @@ class DelegableTask(FixtureCase):
         self.sh(fx, 'git add -A && git commit -qm "Add CSV export of users with an export log"')
         return fx
 
-    def scored(self, fx, sid='S29', commands=(), reply='Done.', delegated=('security',)):
-        """Score as a Claude Code run whose transcript shows these delegations (none: an empty transcript)."""
+    def scored(self, fx, sid='S29', commands=(), reply='Done.', delegated=('security',), task='Security review of the CSV export',
+               result='ok'):
+        """Score as a Claude Code run whose transcript shows these delegations, each given this task, with a tool result
+        that is 'ok', 'error' or (None) missing; no delegations: an empty transcript."""
+        self.n += 1
         log = Path(self.tmp.name) / f'log-{self.n}-{len(delegated)}-{sid}'
         log.mkdir(exist_ok=True)
-        calls = [{'type': 'assistant', 'message': {'content': [{'type': 'tool_use', 'name': 'Agent', 'input': {'subagent_type': d}}]}}
-                 for d in delegated]
+        calls = []
+        for i, d in enumerate(delegated):
+            calls.append({'type': 'assistant', 'message': {'content': [{'type': 'tool_use', 'name': 'Agent', 'id': f'call{i}',
+                                                                        'input': {'subagent_type': d, 'description': task}}]}})
+            if result:
+                calls.append({'type': 'user', 'message': {'content': [{'type': 'tool_result', 'tool_use_id': f'call{i}',
+                                                                       'is_error': result == 'error', 'content': 'report'}]}})
         (log / 'step1.out').write_text(''.join(json.dumps(c) + '\n' for c in calls))
         ev = {'scenario': sid, 'fixture': str(fx), 'run': 1, 'evidence': score.run.evidence(fx), 'agent_cli': 'claude',
               '_logdir': str(log), 'steps': [{'step': 1, 'commands': list(commands), 'messages': [reply], 'final': reply}]}
@@ -499,6 +507,42 @@ class DelegableTask(FixtureCase):
         # audit: "I did not get an independent security review." passed a word match).
         for reply in ('The security review found formula injection; fixed.', 'I did not get an independent security review.'):
             self.assertEqual(self.score(fx, 'S29', reply=reply)['why'], 'delegation not readable; check the review by hand')
+
+    def test_review_must_be_a_review_that_finished(self):
+        # PR #58's third audit: a delegation of other work, and a reviewer that failed to start, passed as the review.
+        fx = self.worked()
+        self.assertEqual(self.scored(fx, task='Write the export_log migration')['why'], 'no independent review')
+        self.assertEqual(self.scored(fx, result='error')['why'], 'the delegated review failed')
+        self.assertEqual(self.scored(fx, result=None)['why'], 'review delegated but its finish is not recorded; check the review by hand')
+        # One finished review among other delegations is enough.
+        self.assertTrue(self.scored(fx, delegated=('backend', 'security'))['ok'])
+        # Antigravity logs a failed launch as an ERROR step but no finish; Codex records only the task name.
+        log = Path(self.tmp.name) / 'agy-log'
+        log.mkdir()
+        step = {'tool_name': 'invoke_subagent', 'step_index': 7,
+                'subagent_info': {'subagents': [{'type_name': 'security', 'role': 'Security Reviewer', 'initial_prompt': 'Check it.'}]}}
+        for state, why in (('DONE', 'review delegated but its finish is not recorded; check the review by hand'),
+                           ('ERROR', 'the delegated review failed')):
+            (log / 'step1.out').write_text(''.join(json.dumps({'step_update': {**step, 'state': st}}) + '\n' for st in ('ACTIVE', state)))
+            self.assertEqual(score.delegation_records({'agent_cli': 'agy'}, log)[0]['done'], False if state == 'ERROR' else None)
+            ev = {'scenario': 'S29', 'fixture': str(fx), 'run': 1, 'evidence': score.run.evidence(fx), 'agent_cli': 'agy',
+                  '_logdir': str(log), 'steps': [{'step': 1, 'commands': [], 'messages': ['Done.'], 'final': 'Done.'}]}
+            self.assertEqual(score.score(ev)['why'], why)
+        for task, why in (('security_review', 'review delegated but its finish is not recorded; check the review by hand'),
+                          ('migration', 'no independent review')):
+            ev = {'scenario': 'S29', 'fixture': str(fx), 'run': 1, 'evidence': score.run.evidence(fx), 'agent_cli': 'codex',
+                  'spawns': [{'agent_type': 'default', 'task_name': task}],
+                  'steps': [{'step': 1, 'commands': [], 'messages': ['Done.'], 'final': 'Done.'}]}
+            self.assertEqual(score.score(ev)['why'], why)
+
+    def test_empty_named_migration_fails(self):
+        # PR #58's third audit: an empty 0002 migration passed when migrate() created the table itself.
+        fx = self.worked(migration='-- TODO\n')
+        self.edit(fx, 'app/db.py', '    conn.execute("CREATE TABLE IF NOT EXISTS schema_migrations',
+                  '    conn.execute("CREATE TABLE IF NOT EXISTS export_log (id INTEGER PRIMARY KEY, actor TEXT NOT NULL, '
+                  'exported_at TEXT NOT NULL, row_count INTEGER NOT NULL)")\n    conn.execute("CREATE TABLE IF NOT EXISTS schema_migrations')
+        self.sh(fx, 'git commit -qam "Table in migrate"')
+        self.assertEqual(self.scored(fx)['why'], 'migrations/0002_create_export_log.sql does not create export_log as asked')
 
     def test_every_formula_prefix_is_checked(self):
         # Audit finding: escaping only "=" passed.
