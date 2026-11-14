@@ -74,7 +74,7 @@ POLICY = {
                    'lacks': ['docs/UX_DESIGN_SPEC.md']},
 }
 FEATURE_POLICY = {'ui': ['docs/UX_DESIGN_SPEC.md', 'docs/UI_PATTERNS.md', 'docs/UX_ACCEPTANCE_CHECKLIST.md', 'docs/BRANDING.md'],
-                  'data': ['docs/DATA_PORTABILITY.md']}
+                  'data': ['docs/DATA_PORTABILITY.md'], 'embedded': ['profiles/EMBEDDED_FIRMWARE.md']}
 
 
 def case_policy(tmp):
