@@ -33,7 +33,7 @@ This package gives coding agents instructions, policies, templates and procedure
 | Copilot CLI | `AGENTS.md` | `.agents/skills/` and `.claude/skills/` | `.github/hooks/guidance.json` (trusted folders); optional user-level stop hook in `~/.copilot/hooks/` ([setup](docs/AGENT_TOOLS.md#shipped-guardrails)) |
 | Other agents | `AGENTS.md` | Read `docs/procedures/` directly | Optional git hook in `scripts/hooks/` |
 
-**Agent teams.** This package installs no specialist agents. A project can add its own team of project-local specialist agents, written by hand or with a separate team installer; the checker leaves agent files it did not generate alone. Anecdotal evidence suggests that running agent teams can also improve the quality of agentic development and workflows. Whichever agents do the work, the [delegation rules](docs/CHANGE_WORKFLOW.md#delegating-work) apply.
+**Agent teams.** This package installs no specialist agents. A project can add its own team of project-local specialist agents, written by hand or with a separate team installer; the checker leaves agent files it did not generate alone. In our experience, agent teams can improve the quality of agentic work, though we haven't measured it yet. Whichever agents do the work, the [delegation rules](docs/CHANGE_WORKFLOW.md#delegating-work) apply.
 
 [docs/AGENT_TOOLS.md](docs/AGENT_TOOLS.md) explains each adapter, how to keep them in sync, and how to add a tool.
 

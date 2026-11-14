@@ -321,8 +321,8 @@
     {
       "path": "README.md",
       "kind": "entry",
-      "bytes": 10087,
-      "sha256": "0b7f3ca8ab26270d620de8315843e656d31a32c7a794fd0db104f5175ce074ec",
+      "bytes": 10074,
+      "sha256": "213dcaab398985c5a0d0e751d8812792a7a0993fb49a93c7ceba74a679ff0727",
       "module": "core"
     },
     {
