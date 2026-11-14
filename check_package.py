@@ -213,13 +213,17 @@ def expected_agents(manifest, errors, tools=None, directory=None):
     return expected
 
 
-def generated_agents(manifest, tools=None):
-    """Agent files this package generated: only files carrying the marker, so a project's own agents are never touched."""
-    found = set()
+def generated_agents(manifest, tools=None, template=False):
+    """Agent files this checkout generates and may rewrite or remove: only files whose marker names a role in the active
+    roles folder, so a project's own agents are never touched. A project has no active roles, so agents an older
+    release generated from docs/roles (the team feature, DOC-114) are the project's own, kept or deleted by hand."""
+    found, roles_dir = set(), active_roles(manifest, template)
+    if not roles_dir:
+        return found
     for target in manifest.get('agent_dirs', []):
         for p in (root / target['dir']).glob('*' + target['suffix']):
             path = rel(p)
-            if (tools is None or for_tools(manifest, path, tools)) and AGENT_MARKER in p.read_text(errors='replace'):
+            if (tools is None or for_tools(manifest, path, tools)) and f'{AGENT_MARKER}{roles_dir}/' in p.read_text(errors='replace'):
                 found.add(path)
     return found
 
@@ -260,9 +264,9 @@ def foreign_agents(expected):
     return [p for p in expected if (root / p).is_file() and AGENT_MARKER not in (root / p).read_text(errors='replace')]
 
 
-def existing_adapters(manifest, tools=None):
+def existing_adapters(manifest, tools=None, template=False):
     return {rel(p) for adapter in manifest['adapters'] for p in (root / adapter['dir']).glob('*/SKILL.md')
-            if tools is None or for_tools(manifest, adapter['dir'] + '/', tools)} | generated_agents(manifest, tools)
+            if tools is None or for_tools(manifest, adapter['dir'] + '/', tools)} | generated_agents(manifest, tools, template)
 
 
 def checkout_tools(manifest, template):
@@ -277,7 +281,7 @@ def sync_adapters(manifest, errors, template=True):
         print('Regenerated the AGENTS.md routing and procedure tables')
     tools = checkout_tools(manifest, template)
     expected = expected_adapters(manifest, errors, tools, template)
-    for path in existing_adapters(manifest, tools) - expected.keys():
+    for path in existing_adapters(manifest, tools, template) - expected.keys():
         (root / path).unlink()
         print('Removed orphaned adapter: ' + path)
     for path, content in expected.items():
@@ -748,6 +752,11 @@ def agent_from_role(manifest, path, role_text):
     return None
 
 
+# Deleted files a packaged file still names on purpose: check_package.py renders agents for roles installed before
+# DOC-114, whose text names docs/AGENT_TEAM.md, so --check-upgrade can compare them. Every other reference is checked.
+LEGACY_REFERENCES = {'check_package.py': ('docs/AGENT_TEAM.md',)}
+
+
 def check_upgrade(target, since='HEAD'):
     """After an upgrade is applied, compare the project with its pre-upgrade commit: open items, deployed revisions,
     references to deleted scripts and local changes to packaged files must survive. Exits 1 on a problem."""
@@ -780,13 +789,10 @@ def check_upgrade(target, since='HEAD'):
     if missing:
         problems.append('Deployed revisions no longer in any document: ' + ', '.join(missing))
     deleted = sorted(set(before_files) - set(now_files))
-    # A file identical to this checkout's copy is the package's own (such as check_package.py, which still renders roles
-    # installed before DOC-114), not project code that depends on a deleted file.
-    code = [p for p in now_files if not p.endswith(('.md', '.json'))
-            and not ((root / p).is_file() and (root / p).read_bytes() == (target / p).read_bytes())]
+    code = [p for p in now_files if not p.endswith(('.md', '.json'))]
     for gone in deleted:
         name = Path(gone).name
-        users = [p for p in code if name in (target / p).read_text(errors='replace')]
+        users = [p for p in code if name in (target / p).read_text(errors='replace') and gone not in LEGACY_REFERENCES.get(p, ())]
         if users:
             problems.append(f'{gone} was deleted but {", ".join(users)} still names it')
     record = json.loads(shown(manifest_path.name) or '{}')
@@ -929,7 +935,7 @@ def check_modules(manifest, errors):
 
 def check_adapters(manifest, errors, tools=None, template=False):
     expected = expected_adapters(manifest, errors, tools, template)
-    for path in existing_adapters(manifest, tools) - expected.keys():
+    for path in existing_adapters(manifest, tools, template) - expected.keys():
         errors.append(f'Orphaned adapter {path}; run --sync-adapters')
     for path, content in expected.items():
         target = root / path

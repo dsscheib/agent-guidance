@@ -363,8 +363,8 @@
     {
       "path": "docs/AGENT_TOOLS.md",
       "kind": "policy",
-      "bytes": 13833,
-      "sha256": "bcfe38c8a9011f50f277621abba17f4acd1abb30c6c737ba6bc7583ae0698264",
+      "bytes": 13899,
+      "sha256": "9fd53eff4e18a003aaa7780ed908d98880275fc1e1ee169585ab2207bd7246ec",
       "module": "core"
     },
     {
@@ -616,8 +616,8 @@
     {
       "path": "check_package.py",
       "kind": "tooling",
-      "bytes": 81883,
-      "sha256": "20eacfe5defd60a413d3d65c07fb7f55698e075538c8142f573c78ebb39a4750",
+      "bytes": 82322,
+      "sha256": "c483a3f93e479047783c26bb701dde4dcfd194960690fb000600d6b309dec197",
       "module": "core"
     },
     {
