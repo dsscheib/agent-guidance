@@ -34,7 +34,7 @@ Which installed document owns each subject. Read "before" first, update "after" 
 | Future scope | [ROADMAP](docs/ROADMAP.md) | ROADMAP (planning only; it authorizes nothing) |
 | A release or review deployment | [CHANGE_WORKFLOW](docs/CHANGE_WORKFLOW.md#deployment-and-review-cadence), [RUNBOOKS](docs/RUNBOOKS.md) | [RELEASE_NOTES](docs/RELEASE_NOTES.md): one short entry |
 | Anything unresolved: decisions, gaps, defects, blockers | [OPEN_WORK](docs/OPEN_WORK.md) | OPEN_WORK |
-| Delegating work to a specialist agent, or changing the team | [AGENT_TEAM](docs/AGENT_TEAM.md) | The role file in `docs/roles/`, then `python3 check_package.py --sync-adapters` |
+| Delegating work to another agent | [CHANGE_WORKFLOW](docs/CHANGE_WORKFLOW.md#delegating-work) | Nothing beyond the delegated change |
 | Documentation process and status vocabulary | [DOCUMENTATION](docs/DOCUMENTATION.md) | DOCUMENTATION |
 
 Go web stack: [profile](profiles/SERVER_RENDERED_WEB_GO.md). Rust web stack: [profile](profiles/SERVER_RENDERED_WEB_RUST.md). Embedded firmware and hardware: [profile](profiles/EMBEDDED_FIRMWARE.md). Production operations: [profile](profiles/PRODUCTION_OPERATIONS.md).

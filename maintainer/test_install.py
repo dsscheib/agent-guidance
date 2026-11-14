@@ -5,7 +5,7 @@
   test_install.py --table  print what each tier installs, for review
 """
 from pathlib import Path
-import hashlib, importlib.util, json, os, subprocess, sys, tempfile
+import hashlib, json, os, subprocess, sys, tempfile
 
 root = Path(__file__).resolve().parent.parent
 manifest = json.loads((root / 'PACKAGE_MANIFEST.json').read_text())
@@ -404,16 +404,14 @@ def case_plan_upgrade(tmp):
     git = ['git', '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', '-c', 'user.name=t', '-c', 'user.email=t@example.com']
     run = lambda cmd, cwd: subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
     pkg, project = tmp / 'plan-pkg', tmp / 'plan-project'
-    # Packaged agent files are rendered from docs/roles, not stored here (MAINTAINING, maintainer team).
     paths = [e['path'] for e in manifest['files'] if (root / e['path']).is_file()] + ['PACKAGE_MANIFEST.json']
     for path in paths:
         (pkg / path).parent.mkdir(parents=True, exist_ok=True)
         (pkg / path).write_bytes((root / path).read_bytes())
-    # The older release: three policy lines and the backend role differ, and RELEASE_NOTES does not exist yet.
+    # The older release: three policy lines differ, and RELEASE_NOTES does not exist yet.
     old = {'docs/TESTING_SPEC.md': ('2. **Missing tooling is a gap.**', '2. **Missing tooling is a gap (old wording).**'),
            'docs/CHANGE_WORKFLOW.md': ('## Completion\n', '## Completion (old)\n'),
-           'docs/RUNBOOKS.md': ('\n## ', '\n## Old heading\n\n## '),
-           'docs/roles/backend.md': ('description: Implements', 'description: Old wording. Implements')}
+           'docs/RUNBOOKS.md': ('\n## ', '\n## Old heading\n\n## ')}
     for path, (new, before) in old.items():
         text = (pkg / path).read_text()
         expect(new in text, f'plan test: {path} lacks {new!r}')
@@ -421,20 +419,14 @@ def case_plan_upgrade(tmp):
     (pkg / 'docs/RELEASE_NOTES.md').unlink()
     record = json.loads((pkg / 'PACKAGE_MANIFEST.json').read_text())
     record['files'] = [e for e in record['files'] if e['path'] != 'docs/RELEASE_NOTES.md']
-    spec = importlib.util.spec_from_file_location('old_checker', pkg / 'check_package.py')
-    old_checker = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(old_checker)
-    old_agents = old_checker.packaged_agents(record)
     for e in record['files']:
         if e['path'] in old:
             e['sha256'] = hashlib.sha256((pkg / e['path']).read_bytes()).hexdigest()
-        elif e['path'] in old_agents:
-            e['sha256'] = old_checker.packaged_sha(record, e['path'])
     (pkg / 'PACKAGE_MANIFEST.json').write_text(json.dumps(record, indent=2) + '\n')
     for cmd in (git + ['init', '-q', '-b', 'main'], git + ['add', '-A'], git + ['commit', '-q', '-m', 'old']):
         run(cmd, pkg)
     project.mkdir()
-    r = run([sys.executable, '-B', str(pkg / 'check_package.py'), '--install', str(project), '--all', '--features', 'team'], pkg)
+    r = run([sys.executable, '-B', str(pkg / 'check_package.py'), '--install', str(project), '--all'], pkg)
     expect(r.returncode == 0, 'plan test: old install failed: ' + r.stdout[-300:])
     spec, flow = project / 'docs/TESTING_SPEC.md', project / 'docs/CHANGE_WORKFLOW.md'
     spec.write_text(spec.read_text().replace('(old wording).**', '(old wording).** Record the blocker ID in OPEN_WORK.'))
@@ -459,14 +451,12 @@ def case_plan_upgrade(tmp):
     expect(r.returncode == 0, 'plan test: --plan-upgrade failed: ' + out[-400:])
     expect(not run(['git', 'status', '--porcelain'], project).stdout, 'plan test: planning changed the project')
     expect('docs/OPEN_WORK.md' not in out, 'plan test: a register upstream did not change is listed')
-    # Generated agents are rendered, so the old commit holds no text for them; the recorded hashes show they are untouched.
     unread = [l.strip() for l in out.splitlines() if 'no baseline text' in l]
     expect(not unread, 'plan test: untouched files sent to hand review for lack of baseline text:\n    ' + '\n    '.join(unread[:5]))
     expect('Apply nothing' in out and 'git apply' not in out, 'plan test: the plan does not say to stop before applying')
     expect(f"{pkg / 'check_package.py'} --check-upgrade" in out, "plan test: the plan does not name this checkout's checker for the check")
     for label, path in (('Replace', 'docs/RUNBOOKS.md'), ('Add', 'docs/RELEASE_NOTES.md'), ('Merge', 'docs/CHANGE_WORKFLOW.md'),
-                        ('Conflict', 'docs/TESTING_SPEC.md'), ('Replace', '.claude/agents/backend.md'),
-                        ('Replace', '.codex/agents/backend.toml')):
+                        ('Conflict', 'docs/TESTING_SPEC.md')):
         expect(path in plan_section(out, label), f'plan test: {path} not under {label}:\n    ' + out[:900])
     applied = run(['git', 'apply', str(patch)], project)
     expect(applied.returncode == 0, 'plan test: the patch does not apply: ' + applied.stderr[:300])
@@ -596,7 +586,7 @@ def raw_install(target, *args):
 
 def case_default(tmp):
     """A fresh install without a tier copies nothing and explains the choice; --all is the 2.x set (every module
-    except enterprise and team); --dry-run writes nothing; a rerun without a tier keeps the project's modules."""
+    except enterprise); --dry-run writes nothing; a rerun without a tier keeps the project's modules."""
     target = tmp / 'default'
     target.mkdir()
     r = raw_install(target)
@@ -617,7 +607,7 @@ def case_default(tmp):
     everything = tmp / 'everything'
     everything.mkdir()
     install(everything, '--all')
-    wanted = set(module_of.values()) - {'enterprise', 'team'}
+    wanted = set(module_of.values()) - {'enterprise'}
     expect(modules_present(everything) == wanted, f'--all modules {sorted(modules_present(everything))}, expected {sorted(wanted)}')
     passed, out = check(everything)
     expect(passed, '--all install check failed:\n    ' + out[:600])
@@ -654,93 +644,37 @@ def case_broken_link(tmp):
     expect(not passed and 'MISSING.md' in out, 'a broken link passed the project check')
 
 
-def case_team(tmp):
-    """The team feature installs the roles its tier and features allow, generates each tool's agent files from them,
-    and never touches a project's own agents (AGENT_TEAM)."""
-    target = tmp / 'team'
+def case_team_removed(tmp):
+    """An install recorded with the team feature, which left the package in DOC-114: --plan-upgrade removes its
+    unmodified files, sends a changed one to hand review, and drops team from the recorded modules and features."""
+    target = tmp / 'team-removed'
     target.mkdir()
-    if install(target, '--tier', 'prototype', '--features', 'team', '--tools', 'claude,codex').returncode:
+    if install(target, '--tier', 'prototype', '--tools', 'claude').returncode:
         return
-    names = lambda d, suffix: sorted(f.name[:-len(suffix)] for f in (target / d).glob('*' + suffix)) if (target / d).is_dir() else []
-    core = ['auditor-advisor', 'backend', 'documentation', 'integration-tester']
-    expect(names('docs/roles', '.md') == core, f"prototype + team installed roles {names('docs/roles', '.md')}, expected {core}")
-    expect(names('.claude/agents', '.md') == core and names('.codex/agents', '.toml') == core,
-           f"agent files do not match the roles: {names('.claude/agents', '.md')}, {names('.codex/agents', '.toml')}")
-    expect(not (target / '.agents/agents').exists() and not (target / '.github/agents').exists(),
-           'a claude and codex install copied Antigravity or Copilot agent files')
-    passed, out = check(target)
-    expect(passed, 'team project check failed:\n    ' + out[:600])
-    own = target / '.claude/agents/my-helper.md'
-    own.write_text('---\nname: my-helper\ndescription: The project\'s own agent\n---\nHelp.\n')
-    role = target / 'docs/roles/backend.md'
-    role.write_text(role.read_text().replace('claude-model: sonnet', 'claude-model: opus'))
-    passed, out = check(target)
-    expect(not passed and '.claude/agents/backend.md' in out, 'an edited role did not make its agent file stale:\n    ' + out[:400])
-    subprocess.run([sys.executable, '-B', 'check_package.py', '--sync-adapters'], cwd=target, capture_output=True, text=True)
-    passed, out = check(target)
-    expect(passed and 'model: opus' in (target / '.claude/agents/backend.md').read_text(), 'sync did not regenerate the edited role:\n    ' + out[:400])
-    expect(own.is_file(), "sync removed the project's own agent")
-    (target / '.claude/agents/documentation.md').write_text('---\nname: documentation\ndescription: Hand-written\n---\n')
-    subprocess.run([sys.executable, '-B', 'check_package.py', '--sync-adapters'], cwd=target, capture_output=True, text=True)
-    passed, out = check(target)
-    expect('Hand-written' in (target / '.claude/agents/documentation.md').read_text() and not passed and 'not generated' in out,
-           'sync overwrote a hand-written agent at a role path, or the check did not report it:\n    ' + out[:400])
-    (target / '.claude/agents/documentation.md').unlink()
-    subprocess.run([sys.executable, '-B', 'check_package.py', '--sync-adapters'], cwd=target, capture_output=True, text=True)
-    install(target, '--features', 'ui')
-    expect({'frontend', 'frontend-tester', 'ux-designer'} <= set(names('.codex/agents', '.toml')), 'adding ui did not add the UI roles')
-    expect('database' not in names('docs/roles', '.md'), 'a role whose module is not installed was copied')
-    passed, out = check(target)
-    expect(passed, 'project check failed after adding ui:\n    ' + out[:600])
-    plan = subprocess.run([sys.executable, '-B', str(root / 'check_package.py'), '--plan-upgrade', str(target)], capture_output=True, text=True)
-    expect('database' not in plan.stdout, 'the upgrade plan proposes a role whose module is not installed:\n    ' + plan.stdout[:600])
-    for tool, present, absent in (('antigravity', '.agents/agents', None), ('codex', '.codex/agents', '.agents/agents')):
-        other = tmp / f'team-{tool}'
-        other.mkdir()
-        install(other, '--tier', 'prototype', '--features', 'team', '--tools', tool)
-        expect((other / present).is_dir(), f'a {tool}-only team install lacks {present}')
-        expect(absent is None or not (other / absent).exists(), f'a {tool}-only team install copied {absent}')
-        passed, out = check(other)
-        expect(passed, f'{tool}-only team project check failed:\n    ' + out[:600])
-    plain = tmp / 'team-absent'
-    plain.mkdir()
-    install(plain, '--tier', 'production')
-    expect(not (plain / 'docs/roles').exists() and not (plain / '.claude/agents').exists(), 'a tier without the team feature installed roles')
-
-
-def case_team_upgrade_check(tmp):
-    """--check-upgrade on a team project: generated agents have no installed text in git, so their baseline is rendered
-    from the installed role. A kept model pin passes, a lost one is reported, and an unchanged project passes."""
-    git = ['git', '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', '-c', 'user.name=t', '-c', 'user.email=t@example.com']
-    run = lambda cmd: subprocess.run(cmd, cwd=target, capture_output=True, text=True)
-    target = tmp / 'team-pins'
-    target.mkdir()
-    if install(target, '--tier', 'prototype', '--features', 'team', '--tools', 'claude,codex').returncode:
-        return
-    sync = [sys.executable, '-B', 'check_package.py', '--sync-adapters']
-    commit = lambda msg: [run(git + ['add', '-A']), run(git + ['commit', '-q', '-m', msg])]
-    run(git + ['init', '-q', '-b', 'main'])
-    commit('installed')
-    role = target / 'docs/roles/backend.md'
-    role.write_text(role.read_text().replace('claude-model: sonnet', 'claude-model: opus\nmodel-source: https://vendor.example/models (checked 2026-11-13)'))
-    run(sync)
-    commit('pin the backend model')
-    pinned = run(['git', 'rev-parse', 'HEAD']).stdout.strip()
-    checker = [sys.executable, '-B', str(root / 'check_package.py'), '--check-upgrade', str(target), '--since', pinned]
-    r = run(checker)
-    expect(r.returncode == 0, 'upgrade check fails on an unchanged pinned project:\n    ' + (r.stdout + r.stderr)[-400:])
-    # An upgrade that rewrites the role and its agents but keeps the pin.
-    role.write_text(role.read_text().replace('description: ', 'description: Upgraded wording. ', 1))
-    run(sync)
-    r = run(checker)
-    expect(r.returncode == 0, 'upgrade check fails when the pin was kept:\n    ' + (r.stdout + r.stderr)[-400:])
-    # An upgrade that drops the pin from the role and so from its agents.
-    role.write_text(role.read_text().replace('claude-model: opus', 'claude-model: sonnet'))
-    run(sync)
-    r = run(checker)
+    record = json.loads((target / 'PACKAGE_MANIFEST.json').read_text())
+    record['installed_from'] = {'commit': '0' * 40}  # a release this checkout does not hold: hashes decide
+    record['installed'] = dict(record['installed'], modules=sorted(record['installed']['modules'] + ['team']), features=['team'])
+    files = {'docs/AGENT_TEAM.md': ('policy', '# Specialist agent team\n'),
+             '.claude/agents/backend.md': ('adapter', '---\nname: "backend"\n---\n<!-- Generated by check_package.py --sync-adapters '
+                                                      'from docs/roles/backend.md. Edit that file, then regenerate. -->\n'),
+             'docs/roles/backend.md': ('template', '---\nname: backend\n---\n')}
+    for path, (kind, text) in files.items():
+        (target / path).parent.mkdir(parents=True, exist_ok=True)
+        (target / path).write_text(text)
+        record['files'].append({'path': path, 'kind': kind, 'module': 'team', 'sha256': hashlib.sha256(text.encode()).hexdigest()})
+    (target / 'PACKAGE_MANIFEST.json').write_text(json.dumps(record, indent=2) + '\n')
+    (target / 'docs/roles/backend.md').write_text('---\nname: backend\nclaude-model: opus\n---\n')  # changed here
+    patch = tmp / 'team-removed.patch'
+    r = subprocess.run([sys.executable, '-B', str(root / 'check_package.py'), '--plan-upgrade', str(target), '--patch', str(patch)],
+                       capture_output=True, text=True)
     out = r.stdout + r.stderr
-    expect(r.returncode and '.claude/agents/backend.md: 1 local change' in out and 'Could not check' not in out,
-           'upgrade check does not report the lost pin in the generated agent:\n    ' + out[-400:])
+    expect(r.returncode == 0, 'team removal: --plan-upgrade failed: ' + out[-400:])
+    for label, path in (('Remove', 'docs/AGENT_TEAM.md'), ('Remove', '.claude/agents/backend.md'), ('Review', 'docs/roles/backend.md')):
+        expect(path in plan_section(out, label), f'team removal: {path} not under {label}:\n    ' + out[:900])
+    diff = patch.read_text().split('a/PACKAGE_MANIFEST.json', 1)[-1]
+    added = [l for l in diff.splitlines() if l.startswith('+')]
+    removed = [l for l in diff.splitlines() if l.startswith('-') and '"team"' in l]
+    expect(removed and not any('"team"' in l for l in added), 'team removal: the proposed manifest still records the team feature')
 
 
 def table():
@@ -762,12 +696,12 @@ def main():
         return
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
-        for case in (case_tiers, case_policy, case_generated_tables, case_enterprise, case_guardrails, case_proposed_exclusion, case_dependency_files, case_rename_scope, case_documentation_mode, case_copilot_stop, case_upgrade, case_plan_upgrade, case_tools, case_team, case_team_upgrade_check, case_recorded_exclusions, case_gate_timeouts, case_default, case_missing_module, case_broken_link):
+        for case in (case_tiers, case_policy, case_generated_tables, case_enterprise, case_guardrails, case_proposed_exclusion, case_dependency_files, case_rename_scope, case_documentation_mode, case_copilot_stop, case_upgrade, case_plan_upgrade, case_tools, case_team_removed, case_recorded_exclusions, case_gate_timeouts, case_default, case_missing_module, case_broken_link):
             case(tmp)
     if problems:
         print('\n'.join(problems))
         sys.exit(1)
-    print('Install tests OK: tiers, design policy, generated tables, enterprise rows, guardrails by tier, proposed exclusions, dependency files, rename scope, documentation mode, Copilot stop hook, features, upgrade, upgrade plan and check, tools, team, team upgrade check, recorded exclusions, gate timeouts, tier required (dry run, --all, rerun), missing module and broken link.')
+    print('Install tests OK: tiers, design policy, generated tables, enterprise rows, guardrails by tier, proposed exclusions, dependency files, rename scope, documentation mode, Copilot stop hook, features, upgrade, upgrade plan and check, tools, team removal, recorded exclusions, gate timeouts, tier required (dry run, --all, rerun), missing module and broken link.')
 
 
 if __name__ == '__main__':
