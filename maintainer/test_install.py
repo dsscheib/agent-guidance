@@ -330,6 +330,18 @@ def case_documentation_mode(tmp):
     (target / 'node_modules' / 'pkg' / 'README.md').write_text('[missing](nowhere.md)\n')
     passed, out = check(target)
     expect(passed, 'check_package.py should skip node_modules:\n    ' + out[-400:])
+    (target / 'firmware' / 'managed_components' / 'lib').mkdir(parents=True)
+    (target / 'firmware' / 'managed_components' / 'lib' / 'README.md').write_text('[missing](nowhere.md)\n')
+    passed, out = check(target)
+    expect(not passed and 'managed_components' in out, 'a broken link in an unignored folder should still fail:\n    ' + out[-400:])
+    (target / '.gitignore').write_text('firmware/managed_components/\n')
+    passed, out = check(target)
+    expect(passed, 'check_package.py should skip git-ignored paths:\n    ' + out[-400:])
+    (target / '.claude' / 'worktrees' / 'agent').mkdir(parents=True)
+    (target / '.claude' / 'worktrees' / 'agent' / '.git').write_text('gitdir: /nowhere\n')
+    (target / '.claude' / 'worktrees' / 'agent' / 'README.md').write_text('[missing](nowhere.md)\n')
+    passed, out = check(target)
+    expect(passed, 'check_package.py should skip nested repositories and worktrees:\n    ' + out[-400:])
 
 
 def case_copilot_stop(tmp):
