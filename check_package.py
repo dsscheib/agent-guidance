@@ -40,12 +40,30 @@ def rel(path):
     return path.relative_to(root).as_posix()
 
 
+def git_ignored():
+    """Paths git ignores in this checkout (directories end with /), or an empty set without git.
+    Ignored files are downloads and build output, such as an SDK's managed components, not the project's documents."""
+    try:
+        result = subprocess.run(['git', '-C', str(root), 'ls-files', '--others', '--ignored', '--exclude-standard',
+                                 '--directory', '-z'], capture_output=True, text=True)
+    except OSError:
+        return set()
+    return set(filter(None, result.stdout.split('\0'))) if result.returncode == 0 else set()
+
+
 def walk(include_repo_only, manifest):
+    """Project files, skipping SKIP_DIRS, git-ignored paths and nested repositories or worktrees
+    (a directory below the root with its own .git), whose files belong to another checkout."""
     repo_only = tuple(manifest.get('repo_only', []))
-    for path in sorted(root.rglob('*')):
-        parts = path.relative_to(root).parts
-        if not path.is_file() or SKIP_DIRS.intersection(parts):
-            continue
+    ignored = git_ignored()
+    found = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        here = Path(dirpath)
+        base = '' if here == root else rel(here) + '/'
+        dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS and base + d + '/' not in ignored
+                       and not (here / d / '.git').exists()]
+        found += [here / f for f in filenames if base + f not in ignored and (here / f).is_file()]
+    for path in sorted(found):
         if not include_repo_only and rel(path).startswith(repo_only):
             continue
         yield path
