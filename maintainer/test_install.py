@@ -373,6 +373,8 @@ def case_copilot_stop(tmp):
     (target / 'docs' / 'OPEN_WORK.md').write_text((target / 'docs' / 'OPEN_WORK.md').read_text() + '\n- Refund window undecided.\n')
     out = run('Implemented refunds; the window remains undecided.')
     expect('"block"' in out and 'docs/OPEN_WORK.md' in out, 'a register change with no question should block: ' + out)
+    expect('finish without adding a question' in json.loads(out)['reason'],
+           'the reminder must allow finishing when no decision needs the owner: ' + out)
     expect(run('Implemented refunds. How long should the refund window be?') == '', 'a reply that asks should pass')
     expect(run('Implemented refunds; the window remains undecided.', active=True) == '', 'a forced turn should never block again')
     expect('"block"' in run('The window remains undecided.', late=True), 'a reply that reaches the transcript late should still be read')
