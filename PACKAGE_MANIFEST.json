@@ -307,8 +307,8 @@
     {
       "path": "AGENTS.md",
       "kind": "entry",
-      "bytes": 10543,
-      "sha256": "06380815a69797961b82e2d713f28e82dd535959c40820288a3961deeb37ce9c",
+      "bytes": 10754,
+      "sha256": "68583d99a7301d3cf4bbeb1017025d534d5ba3d29e3b965e1b01a4889a0299b8",
       "module": "core"
     },
     {
@@ -356,15 +356,15 @@
     {
       "path": ".github/hooks/guidance_stop.py",
       "kind": "guardrail",
-      "bytes": 3873,
-      "sha256": "170930e085946a429dd5ab2a930b95c5478bae718fb9845107024a7de77b59e6",
+      "bytes": 3603,
+      "sha256": "08a0dd46c686723023e5cf5ef297078f4cae37c5cf595e84bc7986fa0336e8fa",
       "module": "core"
     },
     {
       "path": "docs/AGENT_TOOLS.md",
       "kind": "policy",
-      "bytes": 13899,
-      "sha256": "9fd53eff4e18a003aaa7780ed908d98880275fc1e1ee169585ab2207bd7246ec",
+      "bytes": 13834,
+      "sha256": "5d26fed1ede942a39b2f387306f4cdb3a3c7dc87b8c6410b6dcff2b4311d34be",
       "module": "core"
     },
     {
