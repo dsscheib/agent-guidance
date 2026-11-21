@@ -97,7 +97,15 @@ def build(scenario, target):
                 if result.returncode:
                     raise SystemExit(f"{' '.join(cmd)} failed: {result.stderr}")
             installer = old / ('manage.py' if (old / 'manage.py').is_file() else 'check_package.py')
-            result = run([sys.executable, str(installer), '--install', str(target)], old)
+            extra = []
+            if not scenario.get('install_ref') and '--tier' in installer.read_text():
+                if scenario.get('tier'):
+                    extra += ['--tier', scenario['tier']]
+                elif '--all' in installer.read_text():
+                    extra += ['--all']
+                if scenario.get('features'):
+                    extra += ['--features', ','.join(scenario['features'])]
+            result = run([sys.executable, str(installer), '--install', str(target), *extra], old)
             if result.returncode:
                 raise SystemExit(result.stdout + result.stderr)
         # The harness shows agents the release as a commit without maintainer/; record that commit, as an install

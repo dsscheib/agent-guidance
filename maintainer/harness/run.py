@@ -582,8 +582,9 @@ def main():
     if opts.no_install:
         ids = [i for i in ids if i not in NO_INSTALL_SKIP]
     if opts.old_guidance:
-        # Tier variants test 3.0 features, and S18 upgrades a 2.x project, so neither means anything under 2.x guidance.
-        ids = [i for i in ids if not all_s[i].get('variant_of') and i not in OLD_GUIDANCE_SKIP]
+        old_installer = opts.shown / ('manage.py' if (opts.shown / 'manage.py').is_file() else 'check_package.py')
+        has_tiers = old_installer.is_file() and '--tier' in old_installer.read_text()
+        ids = [i for i in ids if (has_tiers or not all_s[i].get('variant_of')) and i not in OLD_GUIDANCE_SKIP]
     unknown = [i for i in ids if i not in all_s]
     if unknown:
         ap.error('unknown scenarios: ' + ', '.join(unknown))
