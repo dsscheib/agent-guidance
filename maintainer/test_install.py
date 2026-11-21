@@ -1,34 +1,33 @@
 #!/usr/bin/env python3
-"""Tier-aware install tests (repository-only). check_package.py runs this in template mode.
-
-  test_install.py          run every case; exit 1 on any failure
-  test_install.py --table  print what each tier installs, for review
-"""
+"""Tier-aware install, verifier, selective-skill, agent-team interop, and upgrade tests (v4.0)."""
 from pathlib import Path
-import hashlib, json, os, subprocess, sys, tempfile
+import json, shutil, subprocess, sys, tempfile
 
 root = Path(__file__).resolve().parent.parent
 manifest = json.loads((root / 'PACKAGE_MANIFEST.json').read_text())
-module_of = {e['path']: e['module'] for e in manifest['files']}
+module_of = {e['path']: e.get('module') for e in manifest['files']}
+AGENT_TEAM_BOOTSTRAP = Path('/home/dsscheib/github/agent-team/bootstrap.py')
 problems = []
 
 
+def run_manage(cwd, *args):
+    return subprocess.run([sys.executable, '-B', str(root / 'manage.py'), *args], cwd=cwd, capture_output=True, text=True)
+
+
 def install(target, *args):
-    r = subprocess.run([sys.executable, '-B', str(root / 'check_package.py'), '--install', str(target), *args],
-                       capture_output=True, text=True)
+    r = run_manage(root, '--install', str(target), *args)
     if r.returncode:
-        problems.append(f"install {' '.join(args) or '(no tier)'} failed: {(r.stdout + r.stderr).strip()[-300:]}")
+        problems.append(f"install {' '.join(args) or '(no tier)'} failed: {(r.stdout + r.stderr).strip()[-400:]}")
     return r
 
 
-def check(target):
-    """Project-mode check of an installed copy; returns (passed, output)."""
-    r = subprocess.run([sys.executable, '-B', 'check_package.py'], cwd=target, capture_output=True, text=True)
+def check(target, *args):
+    r = subprocess.run([sys.executable, '-B', 'scripts/verify.py', *args], cwd=target, capture_output=True, text=True)
     return r.returncode == 0, (r.stdout + r.stderr).strip()
 
 
-def modules_present(target):
-    return {m for p, m in module_of.items() if (target / p).is_file()}
+def verify(target, *args):
+    return subprocess.run([sys.executable, '-B', 'scripts/verify.py', '--verify', *args], cwd=target, capture_output=True, text=True)
 
 
 def expect(cond, message):
@@ -36,694 +35,426 @@ def expect(cond, message):
         problems.append(message)
 
 
-def case_tiers(tmp):
-    """Each tier installs exactly its modules, plus features, and passes the project check."""
-    for tier, features in (('prototype', ''), ('internal', ''), ('production', 'ui'), ('enterprise', 'ui,data'),
-                           ('prototype', 'ui')):
-        target = tmp / f'{tier}-{features or "none"}'
-        target.mkdir()
-        install(target, '--tier', tier, '--features', features)
-        wanted = set(manifest['tiers'][tier]) | {m for f in filter(None, features.split(',')) for m in manifest['features'][f]}
-        files_expected = {m for m in wanted if any(mod == m for mod in module_of.values())}
-        expect(modules_present(target) == files_expected,
-               f'{tier}+{features or "no features"}: installed modules {sorted(modules_present(target))}, expected {sorted(files_expected)}')
-        record = json.loads((target / 'PACKAGE_MANIFEST.json').read_text()).get('installed', {})
-        expect(record.get('tier') == tier and set(record.get('modules', [])) == wanted,
-               f'{tier}: installed record {record} does not match')
-        passed, out = check(target)
-        expect(passed, f'{tier}+{features or "no features"}: project check failed:\n    ' + out.replace('\n', '\n    ')[:600])
-
-
-# The approved design (maintainer/RESTRUCTURE_DESIGN.md), stated independently of the manifest so that a
-# misassigned module fails here instead of silently changing what a tier installs.
-POLICY = {
-    'prototype': {'has': ['AGENTS.md', 'PROJECT_PROFILE.md', 'docs/OPEN_WORK.md', 'docs/TESTING_SPEC.md', 'check_package.py',
-                          'docs/procedures/final-audit.md'],
-                  'lacks': ['DESIGN_DOC.md', 'docs/RUNBOOKS.md', 'docs/RELEASE_NOTES.md', 'docs/VERIFICATION_MATRIX.md',
-                            'docs/PRODUCTION_READINESS.md', 'docs/UX_DESIGN_SPEC.md', 'profiles/PRODUCTION_OPERATIONS.md']},
-    'internal': {'has': ['DESIGN_DOC.md', 'docs/DOMAIN_RULES.md', 'docs/RUNBOOKS.md', 'docs/RELEASE_NOTES.md',
-                         'docs/SECURITY_PRODUCTION_SPEC.md'],
-                 'lacks': ['docs/VERIFICATION_MATRIX.md', 'docs/PRODUCTION_READINESS.md', 'docs/procedures/release-readiness.md',
-                           'docs/procedures/release-review.md',
-                           'profiles/PRODUCTION_OPERATIONS.md', 'docs/UX_DESIGN_SPEC.md']},
-    'production': {'has': ['docs/VERIFICATION_MATRIX.md', 'docs/PRODUCTION_READINESS.md', 'docs/procedures/release-readiness.md',
-                           'docs/procedures/release-review.md', '.claude/skills/release-review/SKILL.md',
-                           'profiles/PRODUCTION_OPERATIONS.md', 'docs/RUNBOOKS.md'],
-                   'lacks': ['docs/UX_DESIGN_SPEC.md', 'docs/DATA_PORTABILITY.md', 'docs/ENTERPRISE.md', '.github/pull_request_template.md']},
-    'enterprise': {'has': ['docs/ENTERPRISE.md', '.github/pull_request_template.md', 'docs/VERIFICATION_MATRIX.md'],
-                   'lacks': ['docs/UX_DESIGN_SPEC.md']},
-}
-FEATURE_POLICY = {'ui': ['docs/UX_DESIGN_SPEC.md', 'docs/UI_PATTERNS.md', 'docs/UX_ACCEPTANCE_CHECKLIST.md', 'docs/BRANDING.md'],
-                  'data': ['docs/DATA_PORTABILITY.md'], 'embedded': ['profiles/EMBEDDED_FIRMWARE.md']}
-
-
-def case_policy(tmp):
-    """Each tier and feature installs what the approved design says, checked by file name."""
-    for tier, rules in POLICY.items():
-        target = tmp / f'policy-{tier}'
-        target.mkdir()
-        install(target, '--tier', tier)
-        for f in rules['has']:
-            expect((target / f).is_file(), f'{tier} should install {f}')
-        for f in rules['lacks']:
-            expect(not (target / f).exists(), f'{tier} should not install {f}')
-    for feature, files in FEATURE_POLICY.items():
-        target = tmp / f'feature-{feature}'
-        target.mkdir()
-        install(target, '--tier', 'prototype', '--features', feature)
-        for f in files:
-            expect((target / f).is_file(), f'feature {feature} should install {f}')
-
-
-def routing_rows(target):
-    text = (target / 'AGENTS.md').read_text()
-    return text[text.index('<!-- generated: routing'):text.index('<!-- end generated: procedures -->')]
-
-
-def case_generated_tables(tmp):
-    """AGENTS.md lists only installed documents; upgrades add rows; a stale table fails and --sync-adapters repairs it."""
-    target = tmp / 'tables'
-    target.mkdir()
-    install(target, '--tier', 'prototype')
-    rows = routing_rows(target)
-    for doc in ('VERIFICATION_MATRIX', 'RUNBOOKS', 'UX_DESIGN_SPEC', 'DESIGN_DOC', 'release-readiness', 'PRODUCTION_OPERATIONS'):
-        expect(doc not in rows, f'prototype AGENTS.md mentions {doc}, which it does not install')
-    for doc in ('TESTING_SPEC', 'PROJECT_PROFILE', 'OPEN_WORK', 'final-audit', 'check_package.py --verify'):
-        expect(doc in rows, f'prototype AGENTS.md is missing {doc}')
-    install(target, '--tier', 'internal', '--features', 'ui')
-    rows = routing_rows(target)
-    for doc in ('DESIGN_DOC', 'RUNBOOKS', 'RELEASE_NOTES', 'UX_DESIGN_SPEC'):
-        expect(doc in rows, f'internal+ui AGENTS.md is missing {doc} after the upgrade')
-    expect('VERIFICATION_MATRIX' not in rows, 'internal AGENTS.md mentions VERIFICATION_MATRIX')
-    install(target, '--tier', 'production')
-    rows = routing_rows(target)
-    expect('VERIFICATION_MATRIX' in rows and 'release-readiness' in rows, 'production AGENTS.md lacks the release rows')
-    agents = target / 'AGENTS.md'
-    agents.write_text(agents.read_text().replace('<!-- end generated: routing -->', '| Hand-added row | x | y |\n<!-- end generated: routing -->'))
-    passed, out = check(target)
-    expect(not passed and 'does not match the installed modules' in out, 'a hand-edited routing table was not flagged')
-    subprocess.run([sys.executable, '-B', 'check_package.py', '--sync-adapters'], cwd=target, capture_output=True, text=True)
-    passed, out = check(target)
-    expect(passed and 'Hand-added row' not in agents.read_text(), '--sync-adapters did not repair the routing table:\n    ' + out[:400])
-
-
-def case_enterprise(tmp):
-    """Enterprise adds its gate rows once, keeps an owner's filled-in command, lists its routing rows and reports."""
-    target = tmp / 'enterprise-rows'
-    target.mkdir()
-    install(target, '--tier', 'production')
-    profile = target / 'PROJECT_PROFILE.md'
-    expect('| Dependency audit |' not in profile.read_text(), 'production should not get the enterprise gate rows')
-    install(target, '--tier', 'enterprise')
-    text = profile.read_text()
-    for gate in ('| Dependency audit |', '| Software bill of materials (SBOM) |', '| License check |'):
-        expect(text.count(gate) == 1, f'enterprise install should add {gate} once')
-    profile.write_text(text.replace('| Dependency audit | {{DEPENDENCY_AUDIT_COMMAND}} |', '| Dependency audit | `pip-audit` |'))
-    install(target, '--tier', 'enterprise')
-    text = profile.read_text()
-    expect(text.count('| Dependency audit |') == 1 and '`pip-audit`' in text, 'reinstalling duplicated or overwrote the dependency audit row')
-    rows = routing_rows(target)
-    expect('ENTERPRISE' in rows, 'enterprise AGENTS.md lacks the ENTERPRISE routing rows')
-    passed, out = check(target)
-    expect(passed and 'Enterprise:' in out, 'enterprise project check failed or reported nothing:\n    ' + out[:600])
-
-
-GUARDRAILS = ('.claude/settings.json', '.codex/rules/guidance.rules', '.github/hooks/guidance_guardrail.py')
-
-
-def guardrail_state(target):
-    """What each tool's guardrail does with a push, a merge, a release, a review and a hard reset."""
-    hook = target / '.github/hooks/guidance_guardrail.py'
-    copilot = {}
-    for command in ('git push origin main', 'gh pr merge 3', 'gh release create v1', 'gh pr review 3', 'git reset --hard'):
-        payload = json.dumps({'toolName': 'bash', 'toolArgs': json.dumps({'command': command})})
-        r = subprocess.run([sys.executable, '-B', str(hook)], input=payload, capture_output=True, text=True)
-        copilot[command] = json.loads(r.stdout).get('permissionDecision') if r.stdout.strip() else None
-    claude = json.loads((target / '.claude/settings.json').read_text())['permissions']['ask']
-    codex = (target / '.codex/rules/guidance.rules').read_text()
-    return copilot, claude, codex
-
-
-def case_guardrails(tmp):
-    """Push asks in no tier; review and hard reset in every tier; merge and release only with Enterprise, including
-    after an upgrade to it. Removing an Enterprise rule fails the check, and an upgrade plan leaves fresh guardrails alone."""
-    for tier in ('internal', 'enterprise'):
-        target = tmp / f'guardrails-{tier}'
-        target.mkdir()
-        install(target, '--tier', tier)
-        enterprise = tier == 'enterprise'
-        copilot, claude, codex = guardrail_state(target)
-        want = {'git push origin main': None, 'gh pr merge 3': 'ask' if enterprise else None,
-                'gh release create v1': 'ask' if enterprise else None, 'gh pr review 3': 'ask', 'git reset --hard': 'ask'}
-        expect(copilot == want, f'{tier}: Copilot guardrail decisions {copilot}, expected {want}')
-        for rule, wanted in (('Bash(git push:*)', False), ('Bash(gh pr merge:*)', enterprise),
-                             ('Bash(gh release create:*)', enterprise), ('Bash(gh pr review:*)', True)):
-            expect((rule in claude) == wanted, f'{tier}: .claude/settings.json {"lacks" if wanted else "has"} {rule}')
-        for words, wanted in (('"git", "push"', False), ('"gh", "pr", "merge"', enterprise),
-                              ('"gh", "release", "create"', enterprise), ('"gh", "pr", "review"', True)):
-            expect((f'pattern = [{words}]' in codex) == wanted, f'{tier}: .codex/rules/guidance.rules {"lacks" if wanted else "has"} {words}')
-        passed, out = check(target)
-        expect(passed, f'{tier}: project check failed:\n    ' + out[:500])
-    internal = tmp / 'guardrails-internal'
-    plan = subprocess.run([sys.executable, '-B', str(root / 'check_package.py'), '--plan-upgrade', str(internal)],
-                          capture_output=True, text=True)
-    proposed = {p for label in ('Replace', 'Merge', 'Conflict', 'Review', 'Add', 'Remove') for p in plan_section(plan.stdout, label)}
-    expect(not proposed & set(GUARDRAILS), f'the upgrade plan of a fresh internal install changes guardrails: {sorted(proposed & set(GUARDRAILS))}')
-    install(internal, '--tier', 'enterprise')
-    copilot, claude, codex = guardrail_state(internal)
-    expect(copilot['gh pr merge 3'] == 'ask' and 'Bash(gh release create:*)' in claude and '"gh", "pr", "merge"' in codex,
-           'an upgrade to enterprise did not add the merge and release guardrails')
-    passed, out = check(internal)
-    expect(passed, 'internal project upgraded to enterprise fails the check:\n    ' + out[:500])
-    settings = tmp / 'guardrails-enterprise' / '.claude/settings.json'
-    data = json.loads(settings.read_text())
-    data['permissions']['ask'].remove('Bash(gh pr merge:*)')
-    settings.write_text(json.dumps(data, indent=2) + '\n')
-    passed, out = check(tmp / 'guardrails-enterprise')
-    expect(not passed and 'lacks the enterprise guardrail that asks before you merge a pull request' in out,
-           'removing an Enterprise guardrail was not flagged:\n    ' + out[:500])
-
-
-def verify_output(target, *args):
-    r = subprocess.run([sys.executable, '-B', 'check_package.py', '--verify', *args], cwd=target, capture_output=True, text=True)
-    return (r.stdout + r.stderr).strip()
-
-
-def case_proposed_exclusion(tmp):
-    """A proposed exclusion is a gap until the owner confirms it; a confirmed one is excluded."""
-    target = tmp / 'proposed-exclusion'
-    target.mkdir()
-    install(target, '--tier', 'prototype')
-    profile = target / 'PROJECT_PROFILE.md'
-    text = profile.read_text()
-    row = next(l for l in text.splitlines() if l.startswith('| Browser / accessibility smoke |'))
-    proposed = row.replace(row.split('|')[2], ' Proposed: Not applicable: no user interface ', 1)
-    profile.write_text(text.replace(row, proposed))
-    out = verify_output(target)
-    expect('gap       Browser / accessibility smoke' in out, 'a proposed exclusion should be a gap:\n    ' + out[-400:])
-    profile.write_text(text.replace(row, proposed.replace('Proposed: ', '')))
-    out = verify_output(target)
-    expect('excluded  Browser / accessibility smoke' in out, 'a confirmed exclusion should be excluded:\n    ' + out[-400:])
-
-
-def case_dependency_files(tmp):
-    """A dependency-audit gap names the project's dependency files, without their contents; a configured audit does not."""
-    target = tmp / 'dependency-files'
-    target.mkdir()
-    install(target, '--tier', 'enterprise')
-    (target / 'requirements.txt').write_text('requests==2.19.0\n')
-    (target / 'web').mkdir()
-    (target / 'web' / 'package.json').write_text('{}\n')
-    (target / 'node_modules' / 'x').mkdir(parents=True)
-    (target / 'node_modules' / 'x' / 'package.json').write_text('{}\n')
-    out = verify_output(target, 'release')
-    line = next((l for l in out.splitlines() if l.startswith('Dependency files:')), '')
-    expect('requirements.txt' in line and 'web/package.json' in line,
-           'a dependency-audit gap should name requirements.txt and web/package.json:\n    ' + out[-600:])
-    expect('node_modules' not in line, 'dependency files should skip node_modules: ' + line)
-    expect('2.19.0' not in out, '--verify should name dependency files, not print their contents')
-    expect('Dependency files:' not in verify_output(target), 'development gates have no dependency audit; no list expected')
-    profile = target / 'PROJECT_PROFILE.md'
-    profile.write_text(profile.read_text().replace('{{DEPENDENCY_AUDIT_COMMAND}}', '`true`'))
-    expect('Dependency files:' not in verify_output(target, 'release'), 'a configured dependency audit should not list files')
-
-
-def case_rename_scope(tmp):
-    """A rename-only code change fails --verify's change scope when it edits guidance documents beyond the rename."""
-    target = tmp / 'rename-scope'
-    target.mkdir()
-    install(target, '--tier', 'prototype')
-    code, spec, work = target / 'app.py', target / 'docs' / 'TESTING_SPEC.md', target / 'docs' / 'OPEN_WORK.md'
-    code.write_text('def count_words(text):\n    return len(text.split())\n\n\nprint(count_words("a b"))\n')
-    spec.write_text(spec.read_text() + '\nThe `count_words` helper is covered by unit tests.\n')
-    git = lambda *a: subprocess.run(['git', '-C', str(target), '-c', 'user.name=t', '-c', 'user.email=t@example.invalid', *a],
-                                    capture_output=True, text=True)
-    git('init', '-q'); git('add', '-A'); git('commit', '-q', '-m', 'base')
-    base = {f: f.read_text() for f in (code, spec, work)}
-    def attempt(name, code_text, spec_text=None, work_extra=''):
-        for f, text in base.items():
-            f.write_text(text)
-        (target / 'README.md').write_text(base_readme + '\n## Draft notes\nOwner notes, uncommitted.\n')
-        (target / 'scratch').mkdir(exist_ok=True)
-        (target / 'scratch' / 'ideas.txt').write_text('Owner notes, untracked.\n')
-        code.write_text(code_text)
-        if spec_text is not None:
-            spec.write_text(spec_text)
-        work.write_text(base[work] + work_extra)
-        return verify_output(target)
-    base_readme = (target / 'README.md').read_text()
-    renamed = base[code].replace('count_words', 'word_count')
-    out = attempt('register', renamed, work_extra='\n- Renamed count_words to word_count.\n')
-    expect('failed: Change scope' in out and 'docs/OPEN_WORK.md' in out,
-           'a rename that edits OPEN_WORK should fail the change scope:\n    ' + out[-500:])
-    out = attempt('reference', renamed, spec_text=base[spec].replace('count_words', 'word_count'))
-    expect('Change scope' not in out, 'a rename that updates a guidance reference should pass:\n    ' + out[-500:])
-    out = attempt('code only', renamed)
-    expect('Change scope' not in out, 'a plain rename should pass the change scope:\n    ' + out[-500:])
-    out = attempt('feature', base[code] + '\n\ndef count_lines(text):\n    return text.count("\\n")\n',
-                  work_extra='\n- Line counting added.\n')
-    expect('Change scope' not in out, 'a feature change may update OPEN_WORK:\n    ' + out[-500:])
-    expect('ask it in your reply as a direct question' in out, 'an OPEN_WORK edit should remind the agent to ask:\n    ' + out[-500:])
-    expect('ask it in your reply' not in attempt('code only', renamed), 'no OPEN_WORK edit, no reminder to ask')
-    out = attempt('mixed', renamed.replace('len(text.split())', 'len(text.split()) + 0'), work_extra='\n- Note.\n')
-    expect('Change scope' not in out, 'a rename mixed with a logic change is not rename-only:\n    ' + out[-500:])
-
-
-def case_documentation_mode(tmp):
-    """--verify documentation runs only the Documentation rows, and fails when the work changes anything but documentation."""
-    target = tmp / 'documentation-mode'
-    target.mkdir()
-    install(target, '--tier', 'prototype')
-    expect('documentation mode needs git' in verify_output(target, 'documentation'), 'without git, documentation mode cannot check scope')
-    git = lambda *a: subprocess.run(['git', '-C', str(target), '-c', 'user.name=t', '-c', 'user.email=t@example.invalid', *a],
-                                    capture_output=True, text=True)
-    git('init', '-q', '-b', 'main'); git('add', '-A'); git('commit', '-q', '-m', 'base')
-    (target / 'README.md').write_text((target / 'README.md').read_text() + '\nA documentation edit.\n')
-    out = verify_output(target, 'documentation')
-    expect(out.startswith('Verification: complete (documentation gates: 1 passed)'),
-           'a README edit should pass documentation mode on the Guidance integrity row alone:\n    ' + out[-400:])
-    # A guidance upgrade records itself in the manifest and the provenance file; those are guidance records, not code.
-    manifest = json.loads((target / 'PACKAGE_MANIFEST.json').read_text())
-    manifest['installed_from']['commit'] = 'f' * 40
-    (target / 'PACKAGE_MANIFEST.json').write_text(json.dumps(manifest, indent=2) + '\n')
-    (target / 'docs' / 'guidance-provenance.json').write_text('{"records": []}\n')
-    out = verify_output(target, 'documentation')
-    expect(out.startswith('Verification: complete (documentation gates: 1 passed)'),
-           'an upgrade touching only the manifest and provenance should pass documentation mode:\n    ' + out[-400:])
-    (target / 'docs' / 'guidance-provenance.json').write_text('{"records": [\n')
-    out = verify_output(target, 'documentation')
-    expect(out.startswith('Verification: failed') and 'guidance-provenance.json' in out,
-           'a provenance file that does not parse should fail the integrity gate:\n    ' + out[-400:])
-    (target / 'docs' / 'guidance-provenance.json').write_text('{"records": []}\n')
-    (target / 'docs' / 'settings.json').write_text('{}\n')
-    out = verify_output(target, 'documentation')
-    expect('failed    Change scope' in out and 'settings.json' in out, 'other JSON files are not guidance records:\n    ' + out[-400:])
-    (target / 'docs' / 'settings.json').unlink()
-    (target / 'app.py').write_text('print("hi")\n')
-    out = verify_output(target, 'documentation')
-    expect('failed    Change scope' in out and 'app.py' in out, 'untracked code should fail documentation mode:\n    ' + out[-400:])
-    git('checkout', '-q', '-b', 'task'); git('add', '-A'); git('commit', '-q', '-m', 'code')
-    out = verify_output(target, 'documentation')
-    expect('failed    Change scope' in out and 'app.py' in out, 'code committed on a task branch should fail documentation mode:\n    ' + out[-400:])
-    expect('Change scope' not in verify_output(target), 'development mode has no documentation-only scope check')
-    (target / 'node_modules' / 'pkg').mkdir(parents=True)
-    (target / 'node_modules' / 'pkg' / 'README.md').write_text('[missing](nowhere.md)\n')
-    passed, out = check(target)
-    expect(passed, 'check_package.py should skip node_modules:\n    ' + out[-400:])
-    (target / 'firmware' / 'managed_components' / 'lib').mkdir(parents=True)
-    (target / 'firmware' / 'managed_components' / 'lib' / 'README.md').write_text('[missing](nowhere.md)\n')
-    passed, out = check(target)
-    expect(not passed and 'managed_components' in out, 'a broken link in an unignored folder should still fail:\n    ' + out[-400:])
-    (target / '.gitignore').write_text('firmware/managed_components/\n')
-    passed, out = check(target)
-    expect(passed, 'check_package.py should skip git-ignored paths:\n    ' + out[-400:])
-    (target / '.claude' / 'worktrees' / 'agent').mkdir(parents=True)
-    (target / '.claude' / 'worktrees' / 'agent' / '.git').write_text('gitdir: /nowhere\n')
-    (target / '.claude' / 'worktrees' / 'agent' / 'README.md').write_text('[missing](nowhere.md)\n')
-    passed, out = check(target)
-    expect(passed, 'check_package.py should skip nested repositories and worktrees:\n    ' + out[-400:])
-
-
-def case_copilot_stop(tmp):
-    """The Copilot agentStop hook blocks once when a register changed and the final reply asks nothing."""
-    import threading, time
-    target = tmp / 'copilot-stop'
-    target.mkdir()
-    install(target, '--tier', 'prototype')
-    git = lambda *a: subprocess.run(['git', '-C', str(target), '-c', 'user.name=t', '-c', 'user.email=t@example.invalid', *a],
-                                    capture_output=True, text=True)
-    git('init', '-q'); git('add', '-A'); git('commit', '-q', '-m', 'base')
-    transcript = tmp / 'events.jsonl'
-    event = lambda kind, **data: json.dumps({'type': kind, 'data': data}) + '\n'
-    stamp = [int(time.time() * 1000)]
-    def run(reply, active=False, late=False, tools=False, same=False):
-        lines = [event('user.message', content='Implement refunds.'), event('assistant.turn_start')]
-        final = event('assistant.message', content=reply, toolRequests=[{'name': 'bash'}] if tools else [])
-        transcript.write_text(''.join(lines) + ('' if late else final))
-        if late:
-            threading.Timer(0.6, lambda: transcript.write_text(''.join(lines) + final)).start()
-        stamp[0] += 0 if same else 1  # each call is a new stop event unless it repeats the last one
-        payload = json.dumps({'sessionId': 'test-' + str(os.getpid()), 'timestamp': stamp[0],
-                              'cwd': str(target), 'transcriptPath': str(transcript), 'stopReason': 'end_turn',
-                              'stop_hook_active': active})
-        r = subprocess.run([sys.executable, '-B', str(target / '.github/hooks/guidance_stop.py')], input=payload,
-                           capture_output=True, text=True, timeout=15)
-        return r.stdout.strip()
-    expect(run('Implemented refunds.') == '', 'no register change: the stop should pass')
-    (target / 'docs' / 'OPEN_WORK.md').write_text((target / 'docs' / 'OPEN_WORK.md').read_text() + '\n- Refund window undecided.\n')
-    out = run('Implemented refunds; the window remains undecided.')
-    expect('"block"' in out and 'docs/OPEN_WORK.md' in out, 'a register change with no question should block: ' + out)
-    expect(run('Implemented refunds. How long should the refund window be?') == '', 'a reply that asks should pass')
-    expect(run('Implemented refunds; the window remains undecided.', active=True) == '', 'a forced turn should never block again')
-    expect('"block"' in run('The window remains undecided.', late=True), 'a reply that reaches the transcript late should still be read')
-    expect(run('Running the tests now.', tools=True) == '', 'with no final reply in the transcript the hook should fail open')
-    expect('"block"' in run('Still undecided.') and run('Still undecided.', same=True) == '',
-           'a second copy of the hook for the same stop (repository and user level) should stay silent')
-    (target / 'docs' / 'TODO.md').write_text('- Decide the tier.\n')
-    expect('docs/TODO.md' in run('Adopted the guidance.'), "a project's own TODO register counts too")
-
-
-def case_upgrade(tmp):
-    """Moving up a tier and adding a feature adds files and keeps the project's own edits."""
-    target = tmp / 'upgrade'
-    target.mkdir()
-    install(target, '--tier', 'prototype')
-    profile = target / 'PROJECT_PROFILE.md'
-    profile.write_text(profile.read_text() + '\nOwner edit that must survive.\n')
-    install(target, '--tier', 'internal', '--features', 'ui')
-    expect('Owner edit that must survive.' in profile.read_text(), 'upgrade overwrote an edited file')
-    expect({'design', 'operations', 'ui'} <= modules_present(target), f'upgrade did not add modules: {sorted(modules_present(target))}')
-    record = json.loads((target / 'PACKAGE_MANIFEST.json').read_text())['installed']
-    expect(record['tier'] == 'internal' and 'ui' in record['features'], f'upgrade record wrong: {record}')
-    passed, out = check(target)
-    expect(passed, 'upgraded project check failed:\n    ' + out[:600])
+def modules_present(target):
+    return {m for p, m in module_of.items() if m and (target / p).is_file()}
 
 
 def plan_section(out, label):
-    """Paths listed under one heading of the --plan-upgrade output."""
-    lines, inside = [], False
-    for line in out.splitlines():
-        if not line.startswith('  '):
-            inside = line.startswith(label)
-        elif inside:
-            lines.append(line.split(' (')[0].strip())
-    return lines
+    lines = out.splitlines()
+    for i, line in enumerate(lines):
+        if line.startswith(label):
+            rest = lines[i + 1:]
+            end = next((j for j, l in enumerate(rest) if not l.startswith('  ')), len(rest))
+            return '\n'.join(rest[:end])
+    return ''
 
 
-def case_plan_upgrade(tmp):
-    """--plan-upgrade sorts each file into replace, add, merge and conflict, writes nothing in the project, and its patch
-    applies; --check-upgrade then catches a lost local rule, a closed open item and a deleted script still in use."""
-    git = ['git', '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', '-c', 'user.name=t', '-c', 'user.email=t@example.com']
-    run = lambda cmd, cwd: subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
-    pkg, project = tmp / 'plan-pkg', tmp / 'plan-project'
-    paths = [e['path'] for e in manifest['files'] if (root / e['path']).is_file()] + ['PACKAGE_MANIFEST.json']
-    for path in paths:
-        (pkg / path).parent.mkdir(parents=True, exist_ok=True)
-        (pkg / path).write_bytes((root / path).read_bytes())
-    # The older release: three policy lines differ, and RELEASE_NOTES does not exist yet.
-    old = {'docs/TESTING_SPEC.md': ('2. **Missing tooling is a gap.**', '2. **Missing tooling is a gap (old wording).**'),
-           'docs/CHANGE_WORKFLOW.md': ('## Completion\n', '## Completion (old)\n'),
-           'docs/RUNBOOKS.md': ('\n## ', '\n## Old heading\n\n## ')}
-    for path, (new, before) in old.items():
-        text = (pkg / path).read_text()
-        expect(new in text, f'plan test: {path} lacks {new!r}')
-        (pkg / path).write_text(text.replace(new, before, 1))
-    (pkg / 'docs/RELEASE_NOTES.md').unlink()
-    record = json.loads((pkg / 'PACKAGE_MANIFEST.json').read_text())
-    record['files'] = [e for e in record['files'] if e['path'] != 'docs/RELEASE_NOTES.md']
-    for e in record['files']:
-        if e['path'] in old:
-            e['sha256'] = hashlib.sha256((pkg / e['path']).read_bytes()).hexdigest()
-    (pkg / 'PACKAGE_MANIFEST.json').write_text(json.dumps(record, indent=2) + '\n')
-    for cmd in (git + ['init', '-q', '-b', 'main'], git + ['add', '-A'], git + ['commit', '-q', '-m', 'old']):
-        run(cmd, pkg)
-    project.mkdir()
-    r = run([sys.executable, '-B', str(pkg / 'check_package.py'), '--install', str(project), '--all'], pkg)
-    expect(r.returncode == 0, 'plan test: old install failed: ' + r.stdout[-300:])
-    spec, flow = project / 'docs/TESTING_SPEC.md', project / 'docs/CHANGE_WORKFLOW.md'
-    spec.write_text(spec.read_text().replace('(old wording).**', '(old wording).** Record the blocker ID in OPEN_WORK.'))
-    flow.write_text(flow.read_text().replace('## Verification\n', '## Verification\nRun the smoke script on the review host first.\n'))
-    (project / 'docs/OPEN_WORK.md').write_text((project / 'docs/OPEN_WORK.md').read_text() + '\n| OW-7 | Open | Keep me | x | x |\n')
-    (project / 'scripts').mkdir(exist_ok=True)
-    (project / 'scripts/once.sh').write_text('true\n')
-    (project / 'Makefile').write_text('once:\n\tsh scripts/once.sh\n')
-    for cmd in (git + ['init', '-q', '-b', 'main'], git + ['add', '-A'], git + ['commit', '-q', '-m', 'project']):
-        run(cmd, project)
-    for path in paths:
-        (pkg / path).write_bytes((root / path).read_bytes())
-    for cmd in (git + ['add', '-A'], git + ['commit', '-q', '-m', 'new']):
-        run(cmd, pkg)
-
-    planner = [sys.executable, '-B', str(pkg / 'check_package.py')]
-    inside = run(planner + ['--plan-upgrade', str(project), '--patch', str(project / 'plan.patch')], pkg)
-    expect(inside.returncode and not (project / 'plan.patch').exists(), 'plan test: a patch inside the project was not refused')
-    patch = tmp / 'plan.patch'
-    r = run(planner + ['--plan-upgrade', str(project), '--patch', str(patch)], pkg)
-    out = r.stdout + r.stderr
-    expect(r.returncode == 0, 'plan test: --plan-upgrade failed: ' + out[-400:])
-    expect(not run(['git', 'status', '--porcelain'], project).stdout, 'plan test: planning changed the project')
-    expect('docs/OPEN_WORK.md' not in out, 'plan test: a register upstream did not change is listed')
-    unread = [l.strip() for l in out.splitlines() if 'no baseline text' in l]
-    expect(not unread, 'plan test: untouched files sent to hand review for lack of baseline text:\n    ' + '\n    '.join(unread[:5]))
-    expect('Apply nothing' in out and 'git apply' not in out, 'plan test: the plan does not say to stop before applying')
-    expect(f"{pkg / 'check_package.py'} --check-upgrade" in out, "plan test: the plan does not name this checkout's checker for the check")
-    for label, path in (('Replace', 'docs/RUNBOOKS.md'), ('Add', 'docs/RELEASE_NOTES.md'), ('Merge', 'docs/CHANGE_WORKFLOW.md'),
-                        ('Conflict', 'docs/TESTING_SPEC.md')):
-        expect(path in plan_section(out, label), f'plan test: {path} not under {label}:\n    ' + out[:900])
-    applied = run(['git', 'apply', str(patch)], project)
-    expect(applied.returncode == 0, 'plan test: the patch does not apply: ' + applied.stderr[:300])
-    text = flow.read_text()
-    expect('Run the smoke script' in text and '## Completion\n' in text, 'plan test: the merge lost a side of CHANGE_WORKFLOW.md')
-    expect(json.loads((project / 'PACKAGE_MANIFEST.json').read_text()).get('installed_from', {}).get('commit')
-           == run(['git', 'rev-parse', 'HEAD'], pkg).stdout.strip(), 'plan test: the patch does not record the new commit')
-
-    checker = planner + ['--check-upgrade', str(project)]
-    # The conflict merged by hand, keeping the local rule in new words.
-    spec.write_text((root / 'docs/TESTING_SPEC.md').read_text().replace('**Missing tooling is a gap.**',
-                                                                       '**Missing tooling is a gap.** Record the blocker ID in OPEN_WORK.'))
-    r = run(checker, pkg)
-    expect(r.returncode == 0, 'plan test: --check-upgrade failed on a clean upgrade: ' + (r.stdout + r.stderr)[-400:])
-    own = run([sys.executable, '-B', str(project / 'check_package.py'), '--check-upgrade', '.'], project)
-    expect(own.returncode and 'Could not check local changes' in own.stdout,
-           "plan test: the project's own copy passed --check-upgrade without the installed release:\n    " + (own.stdout + own.stderr)[-400:])
-    flow.write_text(flow.read_text().replace('Run the smoke script on the review host first.\n', ''))
-    work = project / 'docs/OPEN_WORK.md'
-    work.write_text(work.read_text().replace('| OW-7 | Open |', '| OW-7 | Closed |'))
-    (project / 'scripts/once.sh').unlink()
-    r = run(checker, pkg)
-    out = r.stdout + r.stderr
-    for found, what in (('CHANGE_WORKFLOW.md' in out, 'the dropped local rule'), ('OW-7' in out, 'the closed open item'),
-                        ('Makefile' in out, 'the deleted script still in use')):
-        expect(r.returncode and found, f'plan test: --check-upgrade missed {what}:\n    ' + out[-500:])
+def init_git(target, msg='init'):
+    git = ['git', '-c', 'user.name=t', '-c', 'user.email=t@e', '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null']
+    for cmd in (['init', '-q', '-b', 'main'], ['add', '-A'], ['commit', '-q', '-m', msg]):
+        r = subprocess.run(git + cmd, cwd=target, capture_output=True, text=True)
+        if r.returncode:
+            problems.append(f'git {cmd[0]} failed in {target}: {r.stderr}')
+    return git
 
 
-def case_tools(tmp):
-    """--tools installs and checks only the adapters and guardrails of the tools a project uses (V4-8)."""
-    target = tmp / 'tools'
-    target.mkdir()
-    if install(target, '--tier', 'prototype', '--tools', 'claude').returncode:
-        return  # the failed install is already a problem
-    present = lambda prefix: [p for p in module_of if p.startswith(prefix) and (target / p).is_file()]
-    expect(not present('.agents/') and not present('.codex/') and not present('.github/hooks/'),
-           f"claude-only install copied other tools' files: {present('.agents/') + present('.codex/') + present('.github/hooks/')}")
-    expect(present('.claude/') and (target / 'CLAUDE.md').is_file(), 'claude-only install lacks the Claude Code files')
-    record = json.loads((target / 'PACKAGE_MANIFEST.json').read_text())['installed']
-    expect(record.get('tools') == ['claude'], f'tools not recorded: {record}')
-    passed, out = check(target)
-    expect(passed, 'claude-only project check failed:\n    ' + out[:600])
-    skill = target / '.claude/skills/final-audit/SKILL.md'
-    skill.unlink()
-    passed, out = check(target)
-    expect(not passed and 'final-audit' in out, 'removing an adopted tool adapter did not fail the check')
-    subprocess.run([sys.executable, '-B', 'check_package.py', '--sync-adapters'], cwd=target, capture_output=True, text=True)
-    expect(skill.is_file() and not (target / '.agents').exists(), 'sync did not restore only the adopted tool adapters')
-    plan = subprocess.run([sys.executable, '-B', str(root / 'check_package.py'), '--plan-upgrade', str(target)], capture_output=True, text=True)
-    expect('.agents/' not in plan.stdout and '.codex/' not in plan.stdout, "the plan proposes other tools' files:\n    " + plan.stdout[:600])
-    install(target, '--tools', 'codex')
-    record = json.loads((target / 'PACKAGE_MANIFEST.json').read_text())['installed']
-    expect(record.get('tools') == ['claude', 'codex'] and present('.agents/') and present('.codex/'),
-           f'adding a tool did not add its files: {record}')
-    passed, out = check(target)
-    expect(passed, 'project check failed after adding a tool:\n    ' + out[:600])
-    everything = tmp / 'tools-all'
-    everything.mkdir()
-    install(everything, '--tier', 'prototype')
-    record = json.loads((everything / 'PACKAGE_MANIFEST.json').read_text())['installed']
-    expect(record.get('tools') == sorted(manifest['tools']), f'an install without --tools should get every tool: {record}')
-    r = raw_install(tmp, '--tier', 'prototype', '--tools', 'vim')
-    expect(r.returncode and 'Unknown tool' in r.stdout + r.stderr, 'an unknown tool was accepted')
+POLICY = {
+    'prototype': {
+        'has': ['AGENTS.md', 'CLAUDE.md', 'PROJECT_PROFILE.md', 'docs/OPEN_WORK.md', 'scripts/verify.py', '.guidance.json', 'README.md'],
+        'lacks': ['DESIGN_DOC.md', 'docs/RUNBOOKS.md', 'docs/RELEASE_NOTES.md', 'docs/PRODUCTION_READINESS.md',
+                  'docs/VERIFICATION_MATRIX.md', 'docs/ENTERPRISE.md', 'docs/UI.md',
+                  'docs/procedures/release-review.md', 'docs/procedures/release-readiness.md', 'docs/procedures/ui-design.md',
+                  '.agents/skills/release-review/SKILL.md', '.agents/skills/bootstrap-project/SKILL.md'],
+    },
+    'internal': {
+        'has': ['DESIGN_DOC.md', 'docs/decisions/ADR_TEMPLATE.md', 'docs/RUNBOOKS.md', 'docs/RELEASE_NOTES.md'],
+        'lacks': ['docs/PRODUCTION_READINESS.md', 'docs/VERIFICATION_MATRIX.md', 'docs/ENTERPRISE.md', 'docs/UI.md',
+                  'docs/procedures/release-review.md', '.agents/skills/release-review/SKILL.md'],
+    },
+    'production': {
+        'has': ['DESIGN_DOC.md', 'docs/RUNBOOKS.md', 'docs/VERIFICATION_MATRIX.md', 'docs/PRODUCTION_READINESS.md',
+                'docs/procedures/release-review.md', 'docs/procedures/release-readiness.md',
+                '.agents/skills/release-review/SKILL.md', '.claude/skills/release-review/SKILL.md',
+                '.agents/skills/release-readiness/SKILL.md', '.claude/skills/release-readiness/SKILL.md'],
+        'lacks': ['docs/ENTERPRISE.md', '.github/pull_request_template.md', 'docs/UI.md', 'docs/procedures/ui-design.md'],
+    },
+    'enterprise': {
+        'has': ['docs/ENTERPRISE.md', '.github/pull_request_template.md', 'docs/procedures/release-review.md',
+                'docs/procedures/release-readiness.md'],
+        'lacks': ['docs/procedures/bootstrap-project.md', 'docs/procedures/final-audit.md', 'docs/procedures/upgrade-guidance.md',
+                  'check_package.py', 'PACKAGE_MANIFEST.json', 'docs/DOMAIN_RULES.md', 'docs/TESTING_SPEC.md', 'docs/CHANGE_WORKFLOW.md'],
+    },
+}
 
 
-def case_recorded_exclusions(tmp):
-    """Absent files named in backticks in the profile's Excluded guidance row are not reported, links to them are
-    accepted, unrecorded absences are still listed, and a required module stays required (V4-9)."""
-    target = tmp / 'exclusions'
-    target.mkdir()
-    if install(target, '--tier', 'production').returncode:
-        return
-    profile = target / 'PROJECT_PROFILE.md'
-    for path in ('docs/ROADMAP.md', 'docs/REQUIREMENTS_REVIEW.md', 'docs/VERIFICATION_REVIEW.md',
-                 '.github/hooks/guidance.json', '.github/hooks/guidance_guardrail.py', '.github/hooks/guidance_stop.py'):
-        (target / path).unlink()
-    passed, out = check(target)
-    expect(not passed and 'docs/ROADMAP.md' in out, 'a linked file removed without a recorded exclusion should fail the link check')
-    text = profile.read_text()
-    expect('{{EXCLUDED_GUIDES_OR_NONE}}' in text, 'exclusions test: the profile lacks the Excluded guidance placeholder')
-    profile.write_text(text.replace('{{EXCLUDED_GUIDES_OR_NONE}}', 'Owner decision: no roadmap (`docs/ROADMAP.md`), '
-                                    'no requirements review (`docs/REQUIREMENTS_REVIEW.md`) and no Copilot (`.github/hooks/`)'))
-    passed, out = check(target)
-    expect(passed, 'recorded exclusions still fail the check:\n    ' + out[:600])
-    expect('5 packaged files absent as recorded' in out, 'recorded exclusions not counted:\n    ' + out[:600])
-    unrecorded = [l for l in out.splitlines() if 'not recorded as excluded' in l]
-    expect(len(unrecorded) == 1 and unrecorded[0].endswith('docs/VERIFICATION_REVIEW.md'),
-           f'only the unrecorded absence should be listed: {unrecorded}')
-    design = [p for p, m in module_of.items() if m == 'design' and (target / p).is_file()]
-    for path in design:
-        (target / path).unlink()
-    profile.write_text(profile.read_text().replace('(`docs/ROADMAP.md`)', '(' + ', '.join(f'`{p}`' for p in design + ['docs/ROADMAP.md']) + ')'))
-    passed, out = check(target)
-    expect(not passed and 'requires the design module' in out, 'a required module recorded as excluded should still fail:\n    ' + out[:600])
+def case_tiers(tmp):
+    for tier, features in (('prototype', ''), ('internal', ''), ('internal', 'release-review'),
+                           ('production', 'ui'), ('enterprise', 'ui,ui-design'), ('prototype', 'embedded'),
+                           ('internal', 'stack-go'), ('internal', 'stack-rust')):
+        target = tmp / f't-{tier}-{features or "none"}'
+        target.mkdir()
+        install(target, '--tier', tier, '--features', features)
+        wanted = set(manifest['tiers'][tier]) | {m for f in filter(None, features.split(',')) for m in manifest['features'][f]}
+        expect(modules_present(target) == wanted, f'{tier}+{features}: modules {sorted(modules_present(target))} != {sorted(wanted)}')
+        rec = json.loads((target / '.guidance.json').read_text()).get('installed', {})
+        expect(rec.get('tier') == tier and set(rec.get('modules', [])) == wanted, f'{tier}+{features}: .guidance.json mismatch: {rec}')
+        passed, out = check(target)
+        expect(passed, f'{tier}+{features}: scripts/verify.py failed:\n    ' + out.replace('\n', '\n    ')[:600])
+        expect(not (target / 'PACKAGE_MANIFEST.json').exists() and not (target / 'check_package.py').exists(),
+               f'{tier}: legacy check_package.py or PACKAGE_MANIFEST.json leaked into project')
 
 
-def case_gate_timeouts(tmp):
-    """A gate's own limit in its Gate cell replaces --timeout for that gate only, and a timeout names its limit (V4-10)."""
-    target = tmp / 'gate-timeouts'
-    target.mkdir()
-    if install(target, '--tier', 'prototype').returncode:
-        return
-    profile = target / 'PROJECT_PROFILE.md'
-    text = profile.read_text()
-    sleep = lambda n: f'`python3 -c "import time; time.sleep({n})"`'
-    rows = {'| Format |': (sleep(2), 'Development, timeout 10s'), '| Build / generate |': (sleep(3), 'Development, timeout 1s'),
-            '| Unit / integration tests |': (sleep(2), 'Development')}
-    for start, (command, gate) in rows.items():
-        row = next(l for l in text.splitlines() if l.startswith(start))
-        cells = row.split('|')
-        cells[2], cells[3] = f' {command} ', f' {gate} '
-        text = text.replace(row, '|'.join(cells))
-    profile.write_text(text)
-    out = verify_output(target, '--timeout', '1')
-    line = lambda name: next((l for l in out.splitlines() if name in l and l.startswith('  ')), '')
-    expect(line('Format:').strip().startswith('passed'), 'a slow gate with its own longer limit should pass:\n    ' + out[-700:])
-    expect(line('Build / generate:').strip().startswith('failed') and "timed out after 1s (this gate's own limit)" in out,
-           'a gate past its own limit should fail as timed out with that limit:\n    ' + out[-700:])
-    expect(line('Unit / integration tests:').strip().startswith('failed') and 'timed out after 1s (the --timeout default' in out,
-           'a gate without its own limit should keep the --timeout value:\n    ' + out[-700:])
+def case_policy(tmp):
+    for tier, spec in POLICY.items():
+        target = tmp / f'policy-{tier}'
+        target.mkdir()
+        install(target, '--tier', tier)
+        for p in spec['has']:
+            expect((target / p).is_file(), f'policy {tier}: missing {p}')
+        for p in spec['lacks']:
+            expect(not (target / p).exists(), f'policy {tier}: unexpected {p}')
+        profile = (target / 'PROJECT_PROFILE.md').read_text()
+        has_rel_sec = '## Release qualification profile' in profile
+        expect(has_rel_sec == (tier in ('production', 'enterprise')),
+               f'policy {tier}: Release qualification profile presence={has_rel_sec}')
+        expect('<!-- module:' not in profile, f'policy {tier}: raw module markers left in PROJECT_PROFILE.md')
 
 
-def raw_install(target, *args):
-    return subprocess.run([sys.executable, '-B', str(root / 'check_package.py'), '--install', str(target), *args],
-                          capture_output=True, text=True)
+def case_selective_skills_and_sync(tmp):
+    proto = tmp / 'sel-proto'
+    proto.mkdir()
+    install(proto, '--tier', 'prototype')
+    expect(not (proto / '.agents' / 'skills').exists(), 'prototype should install no skills')
+    expect('## On-demand skills' not in (proto / 'AGENTS.md').read_text(), 'prototype AGENTS.md should omit On-demand skills')
+
+    internal_rr = tmp / 'sel-int-rr'
+    internal_rr.mkdir()
+    install(internal_rr, '--tier', 'internal', '--features', 'release-review')
+    for tool_dir in ('.agents/skills', '.claude/skills'):
+        expect((internal_rr / tool_dir / 'release-review/SKILL.md').is_file(), f'missing {tool_dir}/release-review/SKILL.md')
+        expect(not (internal_rr / tool_dir / 'release-readiness/SKILL.md').exists(), 'internal+release-review should not include release-readiness')
+        expect(not (internal_rr / tool_dir / 'ui-design/SKILL.md').exists(), 'internal+release-review should not include ui-design')
+    expect((internal_rr / '.agents/skills/release-review/SKILL.md').read_text()
+           == (internal_rr / '.claude/skills/release-review/SKILL.md').read_text(), 'skill copies must match byte-for-byte')
+    expect('## On-demand skills' in (internal_rr / 'AGENTS.md').read_text(), 'internal+release-review should show On-demand skills')
+
+    ui = tmp / 'sel-ui-design'
+    ui.mkdir()
+    install(ui, '--tier', 'internal', '--features', 'ui-design')
+    expect((ui / 'docs/UI.md').is_file() and (ui / 'docs/procedures/ui-design.md').is_file(), 'ui-design did not install UI.md + ui-design.md')
+    expect((ui / '.agents/skills/ui-design/SKILL.md').is_file(), 'missing .agents/skills/ui-design/SKILL.md')
+    # Hand-corrupt AGENTS.md and SKILL.md, fail scripts/verify.py, repair with manage.py --sync DIR.
+    (ui / 'AGENTS.md').write_text((ui / 'AGENTS.md').read_text() + '\n## Team note\nKeep handlers pure.\n')
+    (ui / '.agents/skills/ui-design/SKILL.md').unlink()
+    ok, _ = check(ui)
+    expect(not ok, 'scripts/verify.py should fail when skill wrapper is missing')
+    r = run_manage(root, '--sync', str(ui))
+    expect(r.returncode == 0, 'manage.py --sync DIR failed: ' + r.stderr)
+    ok, out = check(ui)
+    expect(ok, 'scripts/verify.py failed after manage.py --sync DIR: ' + out)
+    expect('## Team note\nKeep handlers pure.' in (ui / 'AGENTS.md').read_text(), '--sync DIR dropped custom AGENTS.md section')
 
 
-def case_default(tmp):
-    """A fresh install without a tier copies nothing and explains the choice; --all is the 2.x set (every module
-    except enterprise); --dry-run writes nothing; a rerun without a tier keeps the project's modules."""
-    target = tmp / 'default'
-    target.mkdir()
-    r = raw_install(target)
-    expect(r.returncode != 0 and 'Choose a tier; nothing was installed.' in r.stdout + r.stderr and '--all' in r.stdout + r.stderr,
-           'an install without a tier did not stop and explain: ' + (r.stdout + r.stderr)[-300:])
-    expect(not any(target.iterdir()), 'an install without a tier copied files: ' + ', '.join(p.name for p in target.iterdir()))
-    r = raw_install(target, '--all', '--tier', 'internal')
-    expect(r.returncode != 0 and not any(target.iterdir()), '--all with --tier was accepted')
-
-    preview = tmp / 'preview'
-    preview.mkdir()
-    r = raw_install(preview, '--tier', 'internal', '--features', 'ui', '--dry-run')
-    out = r.stdout + r.stderr
-    expect(r.returncode == 0 and 'Would copy' in out and 'AGENTS.md' in out and 'docs/UX_DESIGN_SPEC.md' in out
-           and 'docs/ENTERPRISE.md' not in out, '--dry-run did not list the files it would copy: ' + out[-300:])
-    expect(not any(preview.iterdir()), '--dry-run wrote files')
-
-    everything = tmp / 'everything'
-    everything.mkdir()
-    install(everything, '--all')
-    wanted = set(module_of.values()) - {'enterprise'}
-    expect(modules_present(everything) == wanted, f'--all modules {sorted(modules_present(everything))}, expected {sorted(wanted)}')
-    passed, out = check(everything)
-    expect(passed, '--all install check failed:\n    ' + out[:600])
-
-    small = tmp / 'rerun'
-    small.mkdir()
-    install(small, '--tier', 'prototype')
-    before = modules_present(small)
-    install(small)
-    expect(modules_present(small) == before == {'core'}, f'a rerun without a tier changed the modules: {sorted(modules_present(small))}')
-    install(small, '--features', 'ui')
-    expect(modules_present(small) == {'core', 'ui'}, f'a rerun adding ui gave {sorted(modules_present(small))}')
-
-
-def case_missing_module(tmp):
-    """Deleting every file of a required module fails the project check."""
-    target = tmp / 'missing'
-    target.mkdir()
-    install(target, '--tier', 'internal')
-    for p, m in module_of.items():
-        if m == 'design':
-            (target / p).unlink(missing_ok=True)
-    passed, out = check(target)
-    expect(not passed and 'requires the design module' in out, 'removing the design module did not fail the check:\n    ' + out[:400])
-
-
-def case_broken_link(tmp):
-    """A link to a file that is neither installed nor packaged still fails."""
-    target = tmp / 'link'
+def case_generated_tables_and_enterprise(tmp):
+    target = tmp / 'ent-rows'
     target.mkdir()
     install(target, '--tier', 'prototype')
-    (target / 'docs' / 'NOTES.md').write_text('See [missing](MISSING.md).\n')
-    passed, out = check(target)
-    expect(not passed and 'MISSING.md' in out, 'a broken link passed the project check')
+    agents = (target / 'AGENTS.md').read_text()
+    expect('DESIGN_DOC' not in agents and 'VERIFICATION_MATRIX' not in agents, 'prototype AGENTS.md leaked higher-tier rows')
+    # Add custom License check row then upgrade tier to enterprise via rerun --install.
+    profile = target / 'PROJECT_PROFILE.md'
+    profile.write_text(profile.read_text().replace('| Guidance integrity |', '| License check | `reuse lint` | Release | Any | Checked |\n| Guidance integrity |'))
+    install(target, '--tier', 'enterprise')
+    text = profile.read_text()
+    expect('| Dependency audit |' in text and '| Software bill of materials (SBOM) |' in text, 'enterprise rows missing after upgrade')
+    expect('| License check | `reuse lint` |' in text and text.count('| License check |') == 1, 'owner License check row was overwritten or duplicated')
+    agents = (target / 'AGENTS.md').read_text()
+    expect('DESIGN_DOC' in agents and 'VERIFICATION_MATRIX' in agents and 'docs/ENTERPRISE' in agents, 'enterprise AGENTS.md missing rows')
 
 
-def case_team_removed(tmp):
-    """An install recorded with the team feature, which left the package in DOC-114: --plan-upgrade removes its
-    unmodified files, sends a changed one to hand review, and drops team from the recorded modules and features; once
-    the patch is applied, --check-upgrade passes and --sync-adapters keeps the changed team agent, now the project's."""
-    target = tmp / 'team-removed'
+def case_guardrails(tmp):
+    ent = tmp / 'guard-ent'
+    ent.mkdir()
+    install(ent, '--tier', 'enterprise')
+    expect('Bash(gh pr merge:*)' in (ent / '.claude/settings.json').read_text(), 'enterprise claude guardrail lacks gh pr merge')
+    expect('gh' in (ent / '.codex/rules/guidance.rules').read_text(), 'enterprise codex guardrail lacks gh rules')
+    ok, out = check(ent)
+    expect(ok, 'enterprise guardrail check failed: ' + out)
+
+    proto = tmp / 'guard-proto'
+    proto.mkdir()
+    install(proto, '--tier', 'prototype')
+    expect('Bash(gh pr merge:*)' not in (proto / '.claude/settings.json').read_text(), 'prototype claude guardrail kept gh pr merge')
+    hook_cfg = json.loads((proto / '.github/hooks/guidance.json').read_text())
+    expect('preToolUse' in hook_cfg.get('hooks', {}) and 'agentStop' not in hook_cfg.get('hooks', {}),
+           'default .github/hooks/guidance.json must ship preToolUse only (no agentStop)')
+    # Break enterprise guardrail and verify scripts/verify.py rejects it.
+    (ent / '.claude/settings.json').write_text('{"permissions": {"ask": [], "deny": []}}\n')
+    ok, out = check(ent)
+    expect(not ok and 'merge a pull request' in out, 'scripts/verify.py should fail when enterprise guardrail is removed')
+
+
+def case_exclusions_deps_rename_docs_timeouts(tmp):
+    target = tmp / 'verify-features'
     target.mkdir()
-    if install(target, '--tier', 'prototype', '--tools', 'claude').returncode:
+    install(target, '--tier', 'enterprise')
+    profile = target / 'PROJECT_PROFILE.md'
+    # Replace placeholders carefully so --verify works.
+    text = profile.read_text()
+    for placeholder, val in (
+        ('{{INSTALL_COMMAND}}', 'Not applicable: stdlib'),
+        ('{{RUN_COMMAND}}', '`python3 -V`'),
+        ('{{FORMAT_COMMAND}}', 'Not applicable: none'),
+        ('{{STATIC_AND_CONCURRENCY_COMMANDS}}', 'Not applicable: none'),
+        ('{{BUILD_COMMAND}}', 'Not applicable: interpreted'),
+        ('{{TEST_COMMAND}}', '`python3 -c "import sys; assert sys.version_info[0] == 3"`'),
+        ('{{UI_TEST_COMMANDS_OR_JUSTIFIED_EXCLUSION}}', 'Proposed: Not applicable: CLI only'),
+        ('{{RECOVERY_TEST_COMMANDS}}', 'Not applicable: stateless'),
+        ('{{QUALIFICATION_COMMANDS}}', 'Not applicable: CLI'),
+        ('{{VERIFIER_COMMAND}}', '`python3 scripts/verify.py --verify development`'),
+        ('{{DEPENDENCY_AUDIT_COMMAND}}', '{{DEPENDENCY_AUDIT_COMMAND}}'),
+    ):
+        text = text.replace(placeholder, val)
+    profile.write_text(text)
+    (target / 'requirements.txt').write_text('requests==2.31.0\n')
+    init_git(target)
+
+    # 1. Proposed exclusion counts as a gap; --verify release names requirements.txt without exposing its versions.
+    r = verify(target, 'development')
+    expect(r.returncode == 2 and '1 gap: Browser / accessibility smoke' in r.stdout, 'Proposed exclusion should report gap: ' + r.stdout)
+    r_rel = verify(target, 'release', '--receipt', str(tmp / 'receipt.json'))
+    expect('requirements.txt' in r_rel.stdout and '2.31.0' not in r_rel.stdout, 'release dep gap check failed: ' + r_rel.stdout)
+    expect((tmp / 'receipt.json').is_file(), 'verify did not write --receipt')
+
+    # 2. Per-gate timeout
+    profile.write_text(profile.read_text()
+                       .replace('| Browser / accessibility smoke | Proposed: Not applicable: CLI only | Development |',
+                                '| Browser / accessibility smoke | `python3 -c "import time; time.sleep(1.2)"` | Development, timeout 5s |')
+                       .replace('`python3 -c "import sys; assert sys.version_info[0] == 3"`',
+                                '`python3 -c "import time; time.sleep(1.5)"`'))
+    r_to = subprocess.run([sys.executable, '-B', 'scripts/verify.py', '--verify', 'development', '--timeout', '1'],
+                          cwd=target, capture_output=True, text=True)
+    expect('passed    Browser / accessibility smoke' in r_to.stdout and 'timed out after 1s (the --timeout default' in r_to.stdout,
+           'per-gate timeout mismatch:\n' + r_to.stdout)
+
+    # 3. Documentation mode passes on a clean/doc-only repo, and fails on uncommitted code changes.
+    r_doc = verify(target, 'docs')
+    expect(r_doc.returncode == 0 and 'Change scope' not in r_doc.stdout,
+           '--verify docs should pass on clean repo: ' + r_doc.stdout)
+    (target / 'app.py').write_text('x = 1\n')
+    r_doc_code = verify(target, 'docs')
+    expect(r_doc_code.returncode == 1 and 'Change scope' in r_doc_code.stdout,
+           '--verify docs must fail with untracked app.py: ' + r_doc_code.stdout)
+    (target / 'app.py').unlink()
+
+    # 4. Missing required module check fails when all files of a required module are removed.
+    (target / 'docs/UI.md').unlink() if (target / 'docs/UI.md').exists() else None
+    (target / 'docs/ENTERPRISE.md').unlink()
+    (target / '.github/pull_request_template.md').unlink()
+    ok, out = check(target)
+    expect(not ok and 'enterprise module' in out, 'missing required module should fail: ' + out)
+
+
+def case_recorded_exclusions_and_walk_skips(tmp):
+    target = tmp / 'exclusions'
+    target.mkdir()
+    install(target, '--tier', 'production')
+    (target / 'docs/RUNBOOKS.md').unlink()  # linked from AGENTS.md and RELEASE_NOTES.md
+    ok, out = check(target)
+    expect(not ok and 'unresolved or escaping link' in out, 'removing linked file without exclusion must fail')
+    profile = target / 'PROJECT_PROFILE.md'
+    profile.write_text(profile.read_text().replace('{{EXCLUDED_GUIDES_OR_NONE}}', '`docs/RUNBOOKS.md` (stateless worker)'))
+    ok, out = check(target)
+    expect(ok and '1 packaged files absent as recorded in Excluded guidance' in out, 'recorded exclusion should pass: ' + out)
+    # Git-ignored folder and nested .git worktree with broken links must be skipped.
+    init_git(target)
+    (target / '.gitignore').write_text('managed_components/\n')
+    (target / 'managed_components/dep').mkdir(parents=True)
+    (target / 'managed_components/dep/README.md').write_text('[broken](missing.md)\n')
+    (target / '.claude/worktrees/w1').mkdir(parents=True)
+    (target / '.claude/worktrees/w1/.git').write_text('gitdir: ..\n')
+    (target / '.claude/worktrees/w1/README.md').write_text('[broken](missing.md)\n')
+    ok, out = check(target)
+    expect(ok, 'gitignored or nested .git broken link should be skipped: ' + out)
+
+
+def case_tools_and_default_and_broken(tmp):
+    empty = tmp / 'empty'
+    empty.mkdir()
+    r = run_manage(root, '--install', str(empty))
+    expect(r.returncode != 0 and 'Choose a tier' in r.stdout + r.stderr, 'install without tier must explain tiers and exit nonzero')
+    expect(not list(empty.iterdir()), 'install without tier copied files')
+
+    dry = run_manage(root, '--install', str(empty), '--tier', 'prototype', '--dry-run')
+    expect(dry.returncode == 0 and 'Nothing was written' in dry.stdout and not list(empty.iterdir()), '--dry-run wrote files')
+
+    r_all = run_manage(root, '--install', str(empty), '--all')
+    mods_all = set(json.loads((empty / '.guidance.json').read_text())['installed']['modules'])
+    expect('enterprise' not in mods_all and 'ui-design' not in mods_all and 'release-review' in mods_all and 'ui' in mods_all,
+           f'--all modules unexpected: {sorted(mods_all)}')
+
+    claude_only = tmp / 'claude-only'
+    claude_only.mkdir()
+    install(claude_only, '--tier', 'production', '--tools', 'claude')
+    expect((claude_only / '.claude/skills/release-review/SKILL.md').is_file()
+           and not (claude_only / '.agents').exists()
+           and not (claude_only / '.codex').exists()
+           and not (claude_only / '.github/hooks').exists(), '--tools claude leaked other tools')
+    ok, out = check(claude_only)
+    expect(ok, '--tools claude failed check: ' + out)
+
+
+def case_agent_team_interop(tmp):
+    if not AGENT_TEAM_BOOTSTRAP.is_file():
         return
-    record = json.loads((target / 'PACKAGE_MANIFEST.json').read_text())
-    record['installed_from'] = {'commit': '0' * 40}  # a release this checkout does not hold: hashes decide
-    record['installed'] = dict(record['installed'], modules=sorted(record['installed']['modules'] + ['team']), features=['team'])
-    files = {'docs/AGENT_TEAM.md': ('policy', '# Specialist agent team\n'),
-             '.claude/agents/backend.md': ('adapter', '---\nname: "backend"\n---\n<!-- Generated by check_package.py --sync-adapters '
-                                                      'from docs/roles/backend.md. Edit that file, then regenerate. -->\n'),
-             '.claude/agents/database.md': ('adapter', '---\nname: "database"\n---\n<!-- Generated by check_package.py --sync-adapters '
-                                                       'from docs/roles/database.md. Edit that file, then regenerate. -->\n'),
-             'docs/roles/backend.md': ('template', '---\nname: backend\n---\n')}
-    for path, (kind, text) in files.items():
-        (target / path).parent.mkdir(parents=True, exist_ok=True)
-        (target / path).write_text(text)
-        record['files'].append({'path': path, 'kind': kind, 'module': 'team', 'sha256': hashlib.sha256(text.encode()).hexdigest()})
-    (target / 'PACKAGE_MANIFEST.json').write_text(json.dumps(record, indent=2) + '\n')
-    (target / 'docs/roles/backend.md').write_text('---\nname: backend\nclaude-model: opus\n---\n')  # changed here
-    agent = target / '.claude/agents/database.md'
-    agent.write_text(agent.read_text() + 'Keep migrations reversible.\n')  # changed here
-    git = ['git', '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', '-c', 'user.name=t', '-c', 'user.email=t@example.com']
-    for cmd in (['init', '-q', '-b', 'main'], ['add', '-A'], ['commit', '-q', '-m', 'team install']):
-        subprocess.run(git + cmd, cwd=target, capture_output=True, text=True)
-    patch = tmp / 'team-removed.patch'
-    r = subprocess.run([sys.executable, '-B', str(root / 'check_package.py'), '--plan-upgrade', str(target), '--patch', str(patch)],
-                       capture_output=True, text=True)
-    out = r.stdout + r.stderr
-    expect(r.returncode == 0, 'team removal: --plan-upgrade failed: ' + out[-400:])
-    for label, path in (('Remove', 'docs/AGENT_TEAM.md'), ('Remove', '.claude/agents/backend.md'), ('Review', 'docs/roles/backend.md'),
-                        ('Review', '.claude/agents/database.md')):
-        expect(path in plan_section(out, label), f'team removal: {path} not under {label}:\n    ' + out[:900])
-    diff = patch.read_text().split('a/PACKAGE_MANIFEST.json', 1)[-1]
-    added = [l for l in diff.splitlines() if l.startswith('+')]
-    removed = [l for l in diff.splitlines() if l.startswith('-') and '"team"' in l]
-    expect(removed and not any('"team"' in l for l in added), 'team removal: the proposed manifest still records the team feature')
-    # PR #60's audit: the applied removal failed --check-upgrade because check_package.py names AGENT_TEAM.md.
+    # Order 1: agent-guidance first, then agent-team
+    p1 = tmp / 'interop-1'
+    p1.mkdir()
+    install(p1, '--tier', 'production')
+    r1 = subprocess.run([sys.executable, str(AGENT_TEAM_BOOTSTRAP), '--project', str(p1),
+                         '--platforms', 'claude', 'codex', '--roles', 'auditor-advisor', 'backend', '--with-agents-md', '--apply'],
+                        capture_output=True, text=True)
+    expect(r1.returncode == 0, 'agent-team bootstrap failed (order 1): ' + r1.stdout + r1.stderr)
+    ok, out = check(p1)
+    expect(ok, 'scripts/verify.py failed after agent-team bootstrap (order 1): ' + out)
+    expect('## Model escalation' in (p1 / 'AGENTS.md').read_text(), 'agent-team did not append Model escalation to AGENTS.md')
+    # Re-sync and confirm project specialist agents and appended AGENTS.md sections stay intact.
+    run_manage(root, '--sync', str(p1))
+    expect('## Model escalation' in (p1 / 'AGENTS.md').read_text(), '--sync DIR dropped agent-team Model escalation section')
+    expect((p1 / '.claude/agents/auditor-advisor.md').is_file() and (p1 / '.codex/agents/backend.toml').is_file(),
+           '--sync DIR deleted agent-team specialist agents')
+
+    # Order 2: agent-team first, then agent-guidance
+    p2 = tmp / 'interop-2'
+    p2.mkdir()
+    r2 = subprocess.run([sys.executable, str(AGENT_TEAM_BOOTSTRAP), '--project', str(p2),
+                         '--platforms', 'claude', 'codex', '--roles', 'auditor-advisor', '--with-agents-md', '--apply'],
+                        capture_output=True, text=True)
+    expect(r2.returncode == 0, 'agent-team bootstrap failed (order 2): ' + r2.stdout + r2.stderr)
+    install(p2, '--tier', 'production')
+    expect('## Model escalation' in (p2 / 'AGENTS.md').read_text(), 'install without --force clobbered agent-team Model escalation section')
+    ok, out = check(p2)
+    expect(ok, 'scripts/verify.py failed after agent-guidance install (order 2): ' + out)
+
+
+def case_v4_upgrade(tmp):
+    pkg = tmp / 'pkg-v4'
+    shutil.copytree(root, pkg, ignore=shutil.ignore_patterns('.git', '__pycache__'))
+    for stub in ('maintainer/test_install.py', 'maintainer/harness/test_score.py', 'maintainer/harness/test_holdout_analysis.py', 'maintainer/run_scenario.py'):
+        p = pkg / stub
+        if p.is_file():
+            p.write_text('')
+    pgit = init_git(pkg, 'v4 commit 1')
+    target = tmp / 'upg-v4'
+    target.mkdir()
+    r = subprocess.run([sys.executable, '-B', str(pkg / 'manage.py'), '--install', str(target), '--tier', 'internal'],
+                       cwd=pkg, capture_output=True, text=True)
+    expect(r.returncode == 0, 'scratch v4 install failed: ' + r.stdout + r.stderr)
+    (target / 'docs/OPEN_WORK.md').write_text('| OW-1 | Open | item | — |\n')
+    agents = target / 'AGENTS.md'
+    agents.write_text(agents.read_text() + '\n## Team local rule\nAlways benchmark SQLite WAL.\n')
+    (target / 'DESIGN_DOC.md').write_text((target / 'DESIGN_DOC.md').read_text() + '\nCustom module note.\n')
+    init_git(target, 'baseline project')
+
+    # Commit 2 in scratch package: tweak rule 7 wording and DESIGN_DOC.md, then update manifest.
+    pkg_agents = pkg / 'AGENTS.md'
+    pkg_agents.write_text(pkg_agents.read_text().replace('dated status sections outside release notes.',
+                                                          'dated status sections outside release notes or changelogs.'))
+    pkg_design = pkg / 'DESIGN_DOC.md'
+    pkg_design.write_text(pkg_design.read_text() + '\n<!-- upstream section -->\n')
+    um = subprocess.run([sys.executable, '-B', str(pkg / 'manage.py'), '--update-manifest'], cwd=pkg, capture_output=True, text=True)
+    expect(um.returncode == 0, 'scratch --update-manifest failed: ' + um.stdout + um.stderr)
+    subprocess.run(pgit + ['add', '-A'], cwd=pkg, capture_output=True, text=True, check=True)
+    subprocess.run(pgit + ['commit', '-q', '-m', 'v4 commit 2'], cwd=pkg, capture_output=True, text=True, check=True)
+
+    patch = tmp / 'v4.patch'
+    plan = subprocess.run([sys.executable, '-B', str(pkg / 'manage.py'), '--plan-upgrade', str(target), '--patch', str(patch)],
+                          cwd=pkg, capture_output=True, text=True)
+    expect(plan.returncode == 0 and 'Conflict' not in plan.stdout, 'v4 plan failed: ' + plan.stdout + plan.stderr)
+    expect('AGENTS.md' in plan_section(plan.stdout, 'Merge'), 'AGENTS.md should be in Merge:\n' + plan.stdout)
+    expect('DESIGN_DOC.md' in plan_section(plan.stdout, 'Review'), 'customized DESIGN_DOC.md should go to Review:\n' + plan.stdout)
     applied = subprocess.run(['git', 'apply', str(patch)], cwd=target, capture_output=True, text=True)
-    expect(applied.returncode == 0, 'team removal: the patch does not apply: ' + applied.stderr[:300])
-    r = subprocess.run([sys.executable, '-B', str(root / 'check_package.py'), '--check-upgrade', str(target)], capture_output=True, text=True)
-    expect(r.returncode == 0, 'team removal: --check-upgrade fails after the removal:\n    ' + (r.stdout + r.stderr)[-500:])
-    # PR #60's second audit: sync deleted the changed team agent kept for review as an orphan.
-    subprocess.run([sys.executable, '-B', 'check_package.py', '--sync-adapters'], cwd=target, capture_output=True, text=True)
-    expect(agent.is_file() and 'Keep migrations reversible.' in agent.read_text(), 'team removal: --sync-adapters deleted the kept team agent')
-    passed, out = check(target)
-    expect(passed, 'team removal: the project check fails with the kept team agent:\n    ' + out[:600])
-    # The same audit: the exemption for check_package.py's legacy rendering must not hide a real dependency.
-    for cmd in (['add', '-A'], ['commit', '-q', '-m', 'upgraded']):
-        subprocess.run(git + cmd, cwd=target, capture_output=True, text=True)
-    (target / 'check_package.py').unlink()
-    r = subprocess.run([sys.executable, '-B', str(root / 'check_package.py'), '--check-upgrade', str(target)], capture_output=True, text=True)
-    expect(r.returncode and 'check_package.py was deleted but scripts/hooks/pre-commit still names it' in r.stdout,
-           'team removal: --check-upgrade missed the pre-commit hook naming a deleted check_package.py:\n    ' + (r.stdout + r.stderr)[-400:])
+    expect(applied.returncode == 0, 'v4 patch apply failed: ' + applied.stderr)
+    chk = subprocess.run([sys.executable, '-B', str(pkg / 'manage.py'), '--check-upgrade', str(target), '--since', 'HEAD'],
+                         cwd=pkg, capture_output=True, text=True)
+    expect(chk.returncode == 0 and 'nothing lost' in chk.stdout, '--check-upgrade failed cleanly: ' + chk.stdout + chk.stderr)
+    # Deleting OPEN_WORK item fails --check-upgrade.
+    (target / 'docs/OPEN_WORK.md').write_text('| Item | Status | Summary | Blocker |\n|---|---|---|---|\n')
+    chk_bad = subprocess.run([sys.executable, '-B', str(pkg / 'manage.py'), '--check-upgrade', str(target), '--since', 'HEAD'],
+                             cwd=pkg, capture_output=True, text=True)
+    expect(chk_bad.returncode != 0 and 'Open items no longer in any document: OW-1' in chk_bad.stdout,
+           '--check-upgrade missed deleted OW-1: ' + chk_bad.stdout)
+
+
+def case_v3_to_v4_upgrade(tmp):
+    v3_repo = tmp / 'v3-src'
+    v3_repo.mkdir()
+    archive = subprocess.run(['git', '-C', str(root), 'archive', '3.0.2'], capture_output=True)
+    if archive.returncode != 0:
+        problems.append('git archive 3.0.2 failed (tag 3.0.2 required): ' + archive.stderr.decode())
+        return
+    subprocess.run(['tar', '-x', '-C', str(v3_repo)], input=archive.stdout, check=True)
+    target = tmp / 'v3-proj'
+    target.mkdir()
+    r = subprocess.run([sys.executable, '-B', str(v3_repo / 'check_package.py'), '--install', str(target), '--tier', 'internal'],
+                       cwd=v3_repo, capture_output=True, text=True)
+    expect(r.returncode == 0, '3.0.2 install failed: ' + r.stdout + r.stderr)
+    sha_302 = subprocess.run(['git', '-C', str(root), 'rev-parse', '3.0.2'], capture_output=True, text=True, check=True).stdout.strip()
+    rec = json.loads((target / 'PACKAGE_MANIFEST.json').read_text())
+    rec['installed_from'] = {'repository': 'https://example.invalid/repo', 'commit': sha_302, 'dirty': False, 'date': '2026-11-06'}
+    (target / 'PACKAGE_MANIFEST.json').write_text(json.dumps(rec, indent=2) + '\n')
+    spec = target / 'docs/TESTING_SPEC.md'
+    spec.write_text(spec.read_text() + '\n- Local project rule: always run chaos fuzzing.\n')
+    (target / 'docs/OPEN_WORK.md').write_text('# Open work\n\n| ID | Status | Summary | Blocker |\n|---|---|---|---|\n| OW-7 | Open | Ship telemetry | — |\n')
+    (target / 'README.md').write_text('# v3 project\n')
+    init_git(target, 'baseline 3.0.2')
+
+    patch = tmp / 'v3-to-v4.patch'
+    plan = run_manage(root, '--plan-upgrade', str(target), '--patch', str(patch))
+    expect(plan.returncode == 0, 'v3->v4 --plan-upgrade failed: ' + plan.stdout + plan.stderr)
+    out = plan.stdout
+    expect('docs/DOCUMENTATION.md' in plan_section(out, 'Remove'), 'untouched retired DOCUMENTATION.md should be in Remove:\n' + out)
+    expect('PACKAGE_MANIFEST.json' in plan_section(out, 'Remove'), 'PACKAGE_MANIFEST.json should be in Remove:\n' + out)
+    expect('check_package.py' in plan_section(out, 'Remove'), 'untouched check_package.py should be in Remove:\n' + out)
+    expect('docs/TESTING_SPEC.md' in plan_section(out, 'Review'), 'modified retired TESTING_SPEC.md must go to Review:\n' + out)
+    expect('scripts/verify.py' in plan_section(out, 'Add') and '.guidance.json' in plan_section(out, 'Add'),
+           'scripts/verify.py and .guidance.json must be in Add:\n' + out)
+
+    applied = subprocess.run(['git', 'apply', str(patch)], cwd=target, capture_output=True, text=True)
+    expect(applied.returncode == 0, 'v3->v4 git apply failed: ' + applied.stderr)
+    expect((target / '.guidance.json').is_file() and not (target / 'PACKAGE_MANIFEST.json').exists(), '.guidance.json did not replace PACKAGE_MANIFEST.json')
+    expect((target / 'scripts/verify.py').is_file() and not (target / 'check_package.py').exists(), 'scripts/verify.py did not replace check_package.py')
+    expect('always run chaos fuzzing' in (target / 'docs/TESTING_SPEC.md').read_text(), 'edited TESTING_SPEC.md was lost by patch')
+    # Complete review by folding the local rule into AGENTS.md and removing retired TESTING_SPEC.md.
+    agents_file = target / 'AGENTS.md'
+    agents_file.write_text(agents_file.read_text() + '\n- Local project rule: always run chaos fuzzing.\n')
+    (target / 'docs/TESTING_SPEC.md').unlink()
+    ok, cout = check(target)
+    expect(ok, 'scripts/verify.py failed after v3->v4 review fold:\n' + cout)
+    chk = run_manage(root, '--check-upgrade', str(target), '--since', 'HEAD')
+    expect(chk.returncode == 0 and 'nothing lost' in chk.stdout, 'v3->v4 --check-upgrade failed: ' + chk.stdout + chk.stderr)
+    # Dropping the folded local rule from AGENTS.md must fail --check-upgrade.
+    agents_file.write_text(agents_file.read_text().replace('\n- Local project rule: always run chaos fuzzing.\n', ''))
+    chk_drop = run_manage(root, '--check-upgrade', str(target), '--since', 'HEAD')
+    expect(chk_drop.returncode != 0 and 'local change(s) not found verbatim' in chk_drop.stdout,
+           'v3->v4 --check-upgrade missed dropped folded local rule: ' + chk_drop.stdout + chk_drop.stderr)
 
 
 def table():
     sizes = {e['path']: e.get('bytes', 0) for e in manifest['files']}
-    print('| Tier | Modules | Files | KB | Agent-facing prose KB |')
-    print('|---|---|---|---|---|')
-    tooling = ('check_package.py', 'scripts/', '.claude/', '.codex/', '.github/', '.agents/', 'README.md', 'docs/AGENT_TOOLS.md', 'CLAUDE.md')
-    for tier, mods in manifest['tiers'].items():
-        files = [p for p, m in module_of.items() if m in mods]
-        prose = [p for p in files if p.endswith('.md') and not p.startswith(tooling) and p not in tooling]
-        print(f"| {tier} | {', '.join(mods)} | {len(files)} | {sum(sizes[p] for p in files) / 1024:.0f} | {sum(sizes[p] for p in prose) / 1024:.0f} |")
+    print('| Tier | Modules | Files | KB | Agent-facing prose KB | AGENTS.md bytes |')
+    print('|---|---|---|---|---|---|')
+    tooling = ('scripts/', '.claude/', '.codex/', '.github/', '.agents/', 'CLAUDE.md')
+    with tempfile.TemporaryDirectory() as tmp:
+        for tier, mods in manifest['tiers'].items():
+            d = Path(tmp) / tier
+            d.mkdir()
+            install(d, '--tier', tier)
+            files = [p for p, m in module_of.items() if m in mods]
+            prose = [p for p in files if p.endswith('.md') and not p.startswith(tooling) and p not in tooling]
+            ag_bytes = (d / 'AGENTS.md').stat().st_size
+            print(f"| {tier} | {', '.join(mods)} | {len(files)} | {sum(sizes.get(p, 0) for p in files) / 1024:.0f} | "
+                  f"{sum(sizes.get(p, 0) for p in prose) / 1024:.0f} | {ag_bytes} |")
     print('\nFeatures add: ' + '; '.join(f"{f}: {', '.join(p for p, m in module_of.items() if m in mods)}"
                                        for f, mods in manifest['features'].items()))
 
@@ -734,12 +465,25 @@ def main():
         return
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
-        for case in (case_tiers, case_policy, case_generated_tables, case_enterprise, case_guardrails, case_proposed_exclusion, case_dependency_files, case_rename_scope, case_documentation_mode, case_copilot_stop, case_upgrade, case_plan_upgrade, case_tools, case_team_removed, case_recorded_exclusions, case_gate_timeouts, case_default, case_missing_module, case_broken_link):
+        for case in (
+            case_tiers,
+            case_policy,
+            case_selective_skills_and_sync,
+            case_generated_tables_and_enterprise,
+            case_guardrails,
+            case_exclusions_deps_rename_docs_timeouts,
+            case_recorded_exclusions_and_walk_skips,
+            case_tools_and_default_and_broken,
+            case_agent_team_interop,
+            case_v4_upgrade,
+            case_v3_to_v4_upgrade,
+        ):
             case(tmp)
     if problems:
         print('\n'.join(problems))
         sys.exit(1)
-    print('Install tests OK: tiers, design policy, generated tables, enterprise rows, guardrails by tier, proposed exclusions, dependency files, rename scope, documentation mode, Copilot stop hook, features, upgrade, upgrade plan and check, tools, team removal, recorded exclusions, gate timeouts, tier required (dry run, --all, rerun), missing module and broken link.')
+    print('Install tests OK: tiers, design policy, selective skills & sync, generated tables & enterprise rows, guardrails, '
+          'exclusions/deps/timeouts/docs mode, walk skips, tools & defaults, agent-team interop, v4 upgrade, and v3->v4 upgrade.')
 
 
 if __name__ == '__main__':

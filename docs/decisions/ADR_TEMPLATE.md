@@ -1,26 +1,16 @@
-# ADR-{{NUMBER}}: {{CONCRETE_DECISION_TITLE}}
+# ADR-{{NUMBER}}: {{TITLE}}
 
-Kind: Template; copy to `ADR-NNNN-short-title.md`.
-Date: {{DATE}}
-Status: Proposed / Accepted / Superseded
-Decision owner: {{OWNER}}
+Date: {{DATE}} · Status: Proposed / Accepted / Superseded by {{ADR_REF}} · Decision authority: {{APPROVER}}
 
-## Context
-{{PROBLEM_CONSTRAINTS_AND_EVIDENCE}}
+## Context and problem
+{{PROBLEM_REQUIREMENTS_AND_CONSTRAINTS}}
 
 ## Decision
-{{CHOSEN_APPROACH_AND_AUTHORIZED_SCOPE}}
+{{CHOSEN_APPROACH}}
 
-## Alternatives
-{{RELEVANT_OPTIONS_AND_REASONS}}
+## Alternatives and tradeoffs
+- **{{OPTION_A}}:** {{PROS_AND_CONS}}
+- **{{OPTION_B}}:** {{PROS_AND_CONS}}
 
-## Consequences
-{{BENEFITS_COSTS_RISKS_COMPATIBILITY_AND_OPERATIONS}}
-
-## Verification
-{{REQUIRED_CHECKS_AND_QUALIFICATION}}
-
-## References
-{{RELATED_SPECS_SOURCES_AND_SUPERSEDING_RECORDS}}
-
-Do not mark Accepted without actual authorization. Preserve history and update current normative guides when a decision is adopted or superseded.
+## Consequences, compatibility and undo
+{{BOUNDARIES_MIGRATION_OPERATIONAL_COST_AND_REVERSAL}}

@@ -595,7 +595,7 @@ LINTERS = r'ruff|flake8|pylint|pyflakes|pycodestyle|black|mypy|isort'
 
 
 def h12(r):
-    ran_tests = bool(r.ran(r'python3?\s+-m\s+(?:unittest|pytest)|pytest\b|check_package\.py\s+--verify'))
+    ran_tests = bool(r.ran(r'python3?\s+-m\s+(?:unittest|pytest)|pytest\b|(?:scripts/verify|check_package)\.py\s+--verify'))
     counts = [int(n) for n in re.findall(r'(?i)\b(\d+)\s+(?:unit\s+)?tests?\b', r.reply)]
     wrong = bool(re.search(r'(?i)\btests?\b[^.\n]{0,40}\b(?:fail(?:ed|ing|s)?|error)', r.reply)) and not re.search(r'(?i)\b0 fail|no fail|none fail|without fail', r.reply)
     accurate = ran_tests and bool(re.search(r'(?i)pass|passed|passing|\bOK\b|green|succeed', r.reply)) and not wrong and all(n == 4 for n in counts)

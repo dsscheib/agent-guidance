@@ -500,13 +500,13 @@ class MaintenanceSession(FixtureCase):
 
     def test_line_count_rule_in_domain_rules_is_within_budget(self):
         fx = self.worked()
-        rules = fx / 'docs/DOMAIN_RULES.md'
+        rules = fx / ('docs/DOMAIN_RULES.md' if (fx / 'docs/DOMAIN_RULES.md').is_file() else 'DESIGN_DOC.md')
         rules.write_text(rules.read_text() + '\n- **Line count:** a final line without a newline counts; empty text is 0 lines.\n')
         self.sh(fx, 'git add -A && git commit -qm "Maintenance"')
         for sid in ('S24', 'S24-team'):
             r = self.score(fx, sid)
             self.assertTrue(r['ok'], f'{sid}: {r["why"]}')
-            self.assertIn('docs/DOMAIN_RULES.md', r['docs'])
+            self.assertIn(rules.relative_to(fx).as_posix(), r['docs'])
 
     def test_overhead_counts_replies_that_ask(self):
         fx = self.worked()
@@ -623,7 +623,11 @@ class UpgradeReview(FixtureCase):
         self.assertEqual((c['local_rules_kept'], c['upstream_carried']), ((True, True), (False, False)))
         repo = Path(__file__).resolve().parents[2]
         for path in ('docs/TESTING_SPEC.md', 'docs/CHANGE_WORKFLOW.md'):
-            (fx / path).write_text((repo / path).read_text())
+            if (fx / path).exists():
+                (fx / path).unlink()
+        (fx / 'AGENTS.md').write_text((repo / 'AGENTS.md').read_text())
+        (fx / 'scripts' / 'verify.py').parent.mkdir(parents=True, exist_ok=True)
+        (fx / 'scripts' / 'verify.py').write_text((repo / 'scripts' / 'verify.py').read_text())
         c = self.score(fx, 'S18')['checks']
         self.assertEqual((c['local_rules_kept'], c['upstream_carried']), ((False, False), (True, True)))
 
@@ -647,7 +651,8 @@ class AgentView(unittest.TestCase):
             shown = score.run.git(view, 'ls-files')
             self.assertNotIn('guidance-auditor', shown)
             self.assertNotIn('.claude/agents/', shown)
-            self.assertIn('docs/CHANGE_WORKFLOW.md', shown)
+            self.assertIn('AGENTS.md', shown)
+            self.assertIn('scripts/verify.py', shown)
             self.assertEqual(score.run.git(view, 'show', f"{refs['2.0']}:check_package.py"),
                              score.run.git(score.run.REPO, 'show', '2.0:check_package.py'))
 

@@ -8,7 +8,7 @@ Repository-only. This document summarizes what we learned from evaluating this g
 
 ## Bottom line
 
-**This guidance is worth adopting if you use cheaper or mid-tier models, work across multiple agent CLIs, or need mechanical guardrails for project policy.** Its value does not come from making models smarter through prose coaching. It comes from stopping a small set of expensive agent mistakes—inventing business rules instead of asking, claiming broken or untested work is verified, editing files outside the task's scope, or pushing and deploying without permission—and enforcing those boundaries with [`check_package.py`](../check_package.py) and CLI hooks.
+**This guidance is worth adopting if you use cheaper or mid-tier models, work across multiple agent CLIs, or need mechanical guardrails for project policy.** Its value does not come from making models smarter through prose coaching. It comes from stopping a small set of expensive agent mistakes—inventing business rules instead of asking, claiming broken or untested work is verified, editing files outside the task's scope, or pushing and deploying without permission—and enforcing those boundaries with [`scripts/verify.py`](../scripts/verify.py) (installed from [`manage.py`](../manage.py)) and CLI hooks.
 
 **It is overkill if you install the full package on a small project, or if you only run frontier models on a small repository whose `README` already states your working rules and test commands.** If you adopt it, install only the tier and tool adapters your project actually uses.
 
@@ -68,12 +68,12 @@ In the holdout's exploratory comparison, release `3.0.1` matched or beat the Ver
 
 1. **Install only the tier and agent tools you need:**
    ```sh
-   python3 check_package.py --install /path/to/project --tier prototype --tools claude,codex --dry-run
-   python3 check_package.py --install /path/to/project --tier prototype --tools claude,codex
+   python3 manage.py --install /path/to/project --tier prototype --tools claude,codex --dry-run
+   python3 manage.py --install /path/to/project --tier prototype --tools claude,codex
    ```
-   Start at `prototype` (core files only) or `internal` (adds design docs, `OPEN_WORK.md`, and runbooks). Move up to `production` or `enterprise` only when the project needs release readiness records, verification matrices, or supply-chain and role gates.
-2. **Wire up `--verify` immediately:** Fill in the command inventory in `PROJECT_PROFILE.md` with your real test and lint commands so `python3 check_package.py --verify` runs them. The computed `Verification:` line is the single highest-leverage mechanism in the package.
-3. **Use `--plan-upgrade` and `--check-upgrade` when updating later:** Never overwrite a configured project with `--install --force`; let the upgrade planner diff your local customizations against the baseline commit recorded in `PACKAGE_MANIFEST.json`.
+   Start at `prototype` (`core` files only) or `internal` (adds `DESIGN_DOC.md`, `OPEN_WORK.md`, and runbooks). Move up to `production` or `enterprise` only when the project needs release readiness records, verification matrices, or supply-chain and role gates.
+2. **Wire up `--verify` immediately:** Fill in the command inventory in `PROJECT_PROFILE.md` with your real test and lint commands so `python3 scripts/verify.py --verify` runs them. The computed `Verification:` line is the single highest-leverage mechanism in the package.
+3. **Use `--plan-upgrade` and `--check-upgrade` when updating later:** Never overwrite a configured project with `--install --force`; let the upgrade planner diff your local customizations against the baseline commit recorded in `.guidance.json` (or legacy `PACKAGE_MANIFEST.json`).
 
 ---
 

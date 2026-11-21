@@ -1,6 +1,6 @@
 {
   "package": "reusable-project-guidance",
-  "version": "3.0",
+  "version": "4.0-dev",
   "status": "unconfigured-templates",
   "procedures": "docs/procedures",
   "adapters": [
@@ -39,6 +39,12 @@
   "repo_only": [
     "MAINTAINING.md",
     "LICENSE",
+    "README.md",
+    "docs/AGENT_TOOLS.md",
+    "docs/procedures/upgrade-guidance.md",
+    ".github/hooks/guidance_stop.py",
+    "manage.py",
+    "PACKAGE_MANIFEST.json",
     "maintainer/",
     ".claude/settings.local.json"
   ],
@@ -46,14 +52,14 @@
     "maintainer/fixtures/"
   ],
   "modules": {
-    "core": "Every project: agent instructions, profile, work register, change and testing policy, checker, guardrails, bootstrap, final audit and upgrade",
-    "design": "Requirements, architecture, domain rules, decisions and roadmap",
-    "operations": "Runbooks, release notes and the security and production policy",
-    "release": "Verification matrix, release readiness and review templates",
-    "production-ops": "Selected-host qualification and soak protocol",
-    "enterprise": "Traceability, roles and separation of duties, CI evidence and supply-chain gates",
-    "ui": "Feature: UX, UI patterns, acceptance checklist and branding",
-    "data": "Feature: import, export and file formats",
+    "core": "Every project: AGENTS.md, PROJECT_PROFILE.md, OPEN_WORK.md, scripts/verify.py, pre-commit hook and CLI guardrails",
+    "design": "Architecture, public boundaries, domain rules, invariants and ADRs",
+    "operations": "Operator runbooks and release notes",
+    "release-review": "Deep read-only pre-release audit procedure and selective skill",
+    "release": "Verification matrix, release readiness record and release-readiness skill",
+    "enterprise": "Traceability, separation of duties, CI evidence, PR template and supply-chain gates",
+    "ui": "Feature: UI visual direction, tokens, matrix and non-negotiable floor",
+    "ui-design": "Feature: on-demand ui-design specialist craft skill (includes docs/UI.md)",
     "stack-go": "Feature: server-rendered web profile for Go",
     "stack-rust": "Feature: server-rendered web profile for Rust",
     "embedded": "Feature: embedded firmware and hardware profile"
@@ -71,24 +77,28 @@
       "core",
       "design",
       "operations",
-      "release",
-      "production-ops"
+      "release-review",
+      "release"
     ],
     "enterprise": [
       "core",
       "design",
       "operations",
+      "release-review",
       "release",
-      "production-ops",
       "enterprise"
     ]
   },
   "features": {
+    "release-review": [
+      "release-review"
+    ],
     "ui": [
       "ui"
     ],
-    "data": [
-      "data"
+    "ui-design": [
+      "ui",
+      "ui-design"
     ],
     "stack-go": [
       "stack-go"
@@ -135,87 +145,47 @@
     "routing": [
       {
         "module": "core",
-        "row": "| Any behavior | [TESTING_SPEC](docs/TESTING_SPEC.md), [CHANGE_WORKFLOW](docs/CHANGE_WORKFLOW.md) | Tests for the changed behavior; run `python3 check_package.py --verify` |"
+        "row": "| Any behavior | [PROJECT_PROFILE](PROJECT_PROFILE.md) (Command inventory) | Tests for changed behavior; run `python3 scripts/verify.py --verify` |"
       },
       {
         "module": "core",
-        "row": "| A rename or refactor that keeps behavior | [CHANGE_WORKFLOW](docs/CHANGE_WORKFLOW.md) | Nothing beyond the code, its tests and references |"
-      },
-      {
-        "module": "release",
-        "row": "| The verification status of a requirement | [VERIFICATION_MATRIX](docs/VERIFICATION_MATRIX.md) | VERIFICATION_MATRIX rows for affected requirements |"
-      },
-      {
-        "module": "core",
-        "row": "| Project identity, stack, tier, supported environments, commands | [PROJECT_PROFILE](PROJECT_PROFILE.md) | PROJECT_PROFILE; [README](README.md) if setup steps changed |"
+        "row": "| What users run or see (CLI options, usage, output formats) | [README](README.md) | README usage in the same change (never UAT steps) |"
       },
       {
         "module": "design",
-        "row": "| Domain terms, invariants, lifecycles, transactions | [DOMAIN_RULES](docs/DOMAIN_RULES.md) | DOMAIN_RULES |"
-      },
-      {
-        "module": "core",
-        "row": "| What users run or see: commands, options, output formats (not functions inside the code) | [README](README.md) | README usage, in the same change |"
+        "row": "| Architecture, public boundaries (APIs, schemas, file formats), domain terms, invariants, lifecycles | [DESIGN_DOC](DESIGN_DOC.md) | DESIGN_DOC (internal helpers need no entry) |"
       },
       {
         "module": "design",
-        "row": "| Boundaries between components or with external callers (APIs, published library API, file formats), schema, persistence, delivery scope | [DESIGN_DOC](DESIGN_DOC.md), [ARCHITECTURE](docs/ARCHITECTURE.md) | DESIGN_DOC; command-line usage stays in README |"
-      },
-      {
-        "module": "data",
-        "row": "| Import, export, file formats | [DATA_PORTABILITY](docs/DATA_PORTABILITY.md) | DATA_PORTABILITY |"
-      },
-      {
-        "module": "ui",
-        "row": "| UI, components, accessibility | [UX_DESIGN_SPEC](docs/UX_DESIGN_SPEC.md), [UI_PATTERNS](docs/UI_PATTERNS.md), [UX_ACCEPTANCE_CHECKLIST](docs/UX_ACCEPTANCE_CHECKLIST.md) | UI_PATTERNS for new or changed patterns; UX_DESIGN_SPEC for changed contracts |"
-      },
-      {
-        "module": "ui",
-        "row": "| Brand assets, tokens, themes | [BRANDING](docs/BRANDING.md) | BRANDING |"
+        "row": "| Durable architecture or dependency decision | [DESIGN_DOC](DESIGN_DOC.md) | New ADR from [the template](docs/decisions/ADR_TEMPLATE.md) |"
       },
       {
         "module": "operations",
-        "row": "| Authentication, authorization, secrets, dependencies, deployment, jobs, backups, automation | [SECURITY_PRODUCTION_SPEC](docs/SECURITY_PRODUCTION_SPEC.md), [RUNBOOKS](docs/RUNBOOKS.md) | Whichever of those owns the changed policy or procedure |"
-      },
-      {
-        "module": "release",
-        "row": "| A release candidate | [release readiness](docs/procedures/release-readiness.md), [PRODUCTION_READINESS](docs/PRODUCTION_READINESS.md) | PRODUCTION_READINESS |"
-      },
-      {
-        "module": "enterprise",
-        "row": "| Any change | [ENTERPRISE](docs/ENTERPRISE.md#traceability) | Ticket ID in each commit and the PR |"
-      },
-      {
-        "module": "enterprise",
-        "row": "| Approving, merging or accepting work | [ENTERPRISE](docs/ENTERPRISE.md#roles-and-separation-of-duties) | Nothing; the named role decides |"
-      },
-      {
-        "module": "design",
-        "row": "| Durable architecture or dependency decision | [ARCHITECTURE](docs/ARCHITECTURE.md) | New ADR from [the template](docs/decisions/ADR_TEMPLATE.md) |"
-      },
-      {
-        "module": "release",
-        "row": "| Time-sensitive platform or vendor claims | [SOURCES](docs/SOURCES.md) | SOURCES |"
-      },
-      {
-        "module": "design",
-        "row": "| Future scope | [ROADMAP](docs/ROADMAP.md) | ROADMAP (planning only; it authorizes nothing) |"
+        "row": "| Deployment, backups, jobs, recovery, secrets, or automation | [docs/RUNBOOKS](docs/RUNBOOKS.md) | docs/RUNBOOKS |"
       },
       {
         "module": "operations",
-        "row": "| A release or review deployment | [CHANGE_WORKFLOW](docs/CHANGE_WORKFLOW.md#deployment-and-review-cadence), [RUNBOOKS](docs/RUNBOOKS.md) | [RELEASE_NOTES](docs/RELEASE_NOTES.md): one short entry |"
+        "row": "| A release or review deployment | [docs/RUNBOOKS](docs/RUNBOOKS.md) | One short entry in [docs/RELEASE_NOTES](docs/RELEASE_NOTES.md) |"
+      },
+      {
+        "module": "release",
+        "row": "| Requirement verification status | [docs/VERIFICATION_MATRIX](docs/VERIFICATION_MATRIX.md) | Affected rows in docs/VERIFICATION_MATRIX |"
+      },
+      {
+        "module": "release",
+        "row": "| A release candidate | [release-readiness](docs/procedures/release-readiness.md), [docs/PRODUCTION_READINESS](docs/PRODUCTION_READINESS.md) | docs/PRODUCTION_READINESS |"
+      },
+      {
+        "module": "ui",
+        "row": "| UI, visual direction, components, or accessibility | [docs/UI](docs/UI.md) | docs/UI for new tokens or patterns |"
+      },
+      {
+        "module": "enterprise",
+        "row": "| Ticket traceability or approving/merging/accepting work | [docs/ENTERPRISE](docs/ENTERPRISE.md) | Ticket ID in commits and PR; named role decides |"
       },
       {
         "module": "core",
-        "row": "| Anything unresolved: decisions, gaps, defects, blockers | [OPEN_WORK](docs/OPEN_WORK.md) | OPEN_WORK |"
-      },
-      {
-        "module": "core",
-        "row": "| Delegating work to another agent | [CHANGE_WORKFLOW](docs/CHANGE_WORKFLOW.md#delegating-work) | Nothing beyond the delegated change |"
-      },
-      {
-        "module": "core",
-        "row": "| Documentation process and status vocabulary | [DOCUMENTATION](docs/DOCUMENTATION.md) | DOCUMENTATION |"
+        "row": "| Anything unresolved (decisions, gaps, defects, blockers) | [docs/OPEN_WORK](docs/OPEN_WORK.md) | Update docs/OPEN_WORK in place |"
       }
     ],
     "routing_notes": [
@@ -230,32 +200,20 @@
       {
         "module": "embedded",
         "row": "Embedded firmware and hardware: [profile](profiles/EMBEDDED_FIRMWARE.md)."
-      },
-      {
-        "module": "production-ops",
-        "row": "Production operations: [profile](profiles/PRODUCTION_OPERATIONS.md)."
       }
     ],
     "procedures": [
       {
-        "module": "core",
-        "row": "| [bootstrap-project](docs/procedures/bootstrap-project.md) | Starting a project or filling an incomplete PROJECT_PROFILE |"
-      },
-      {
-        "module": "core",
-        "row": "| [final-audit](docs/procedures/final-audit.md) | Finishing any change, before reporting completion |"
+        "module": "release-review",
+        "row": "| [release-review](docs/procedures/release-review.md) | Deep read-only pre-release audit across every risk area |"
       },
       {
         "module": "release",
-        "row": "| [release-readiness](docs/procedures/release-readiness.md) | Preparing or evaluating a release candidate |"
+        "row": "| [release-readiness](docs/procedures/release-readiness.md) | Assembling gate evidence and evaluating a release candidate |"
       },
       {
-        "module": "release",
-        "row": "| [release-review](docs/procedures/release-review.md) | A final, in-depth audit of a release candidate, before release readiness |"
-      },
-      {
-        "module": "core",
-        "row": "| [upgrade-guidance](docs/procedures/upgrade-guidance.md) | Adopting this guidance in an existing project, or updating an earlier adoption |"
+        "module": "ui-design",
+        "row": "| [ui-design](docs/procedures/ui-design.md) | Designing a new UI, setting visual direction, or polishing screens and interaction craft |"
       }
     ]
   },
@@ -307,395 +265,220 @@
     {
       "path": "AGENTS.md",
       "kind": "entry",
-      "bytes": 10543,
-      "sha256": "06380815a69797961b82e2d713f28e82dd535959c40820288a3961deeb37ce9c",
-      "module": "core"
+      "module": "core",
+      "bytes": 6414,
+      "sha256": "e8265145a58beeb1992d658cc47df596e1cddc7f3bdffa77d13a4ede39f46d09"
     },
     {
       "path": "CLAUDE.md",
       "kind": "entry",
+      "module": "core",
       "bytes": 11,
-      "sha256": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49",
-      "module": "core"
-    },
-    {
-      "path": "README.md",
-      "kind": "entry",
-      "bytes": 10074,
-      "sha256": "213dcaab398985c5a0d0e751d8812792a7a0993fb49a93c7ceba74a679ff0727",
-      "module": "core"
+      "sha256": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49"
     },
     {
       "path": ".claude/settings.json",
       "kind": "guardrail",
+      "module": "core",
       "bytes": 493,
-      "sha256": "07a707b05fa80b6f275026620f30f51ccf191cf30a2d59fd702399fe3dee39c2",
-      "module": "core"
+      "sha256": "07a707b05fa80b6f275026620f30f51ccf191cf30a2d59fd702399fe3dee39c2"
     },
     {
       "path": ".codex/rules/guidance.rules",
       "kind": "guardrail",
+      "module": "core",
       "bytes": 1777,
-      "sha256": "d8932e799201d50f4853d3402c3a5beec5a43175950c7d8c96dbcac1961d2c1d",
-      "module": "core"
+      "sha256": "d8932e799201d50f4853d3402c3a5beec5a43175950c7d8c96dbcac1961d2c1d"
     },
     {
       "path": ".github/hooks/guidance.json",
       "kind": "guardrail",
-      "bytes": 560,
-      "sha256": "c64ba1780913c812dc0b7d61d8561bf70a86ea32b723759da3d6edeb798c2bd7",
-      "module": "core"
+      "module": "core",
+      "bytes": 325,
+      "sha256": "e8b0f143ed3184a8bb7d67bcf1e75ec84c8c0c5c9051702df0fe4e4ae7e0243a"
     },
     {
       "path": ".github/hooks/guidance_guardrail.py",
       "kind": "guardrail",
+      "module": "core",
       "bytes": 3546,
-      "sha256": "83e686bcff34dd8d27382776bd2e3fd1a9fb396c884ad39305debf9acd015b38",
-      "module": "core"
-    },
-    {
-      "path": ".github/hooks/guidance_stop.py",
-      "kind": "guardrail",
-      "bytes": 3873,
-      "sha256": "170930e085946a429dd5ab2a930b95c5478bae718fb9845107024a7de77b59e6",
-      "module": "core"
-    },
-    {
-      "path": "docs/AGENT_TOOLS.md",
-      "kind": "policy",
-      "bytes": 13899,
-      "sha256": "9fd53eff4e18a003aaa7780ed908d98880275fc1e1ee169585ab2207bd7246ec",
-      "module": "core"
-    },
-    {
-      "path": "docs/ARCHITECTURE.md",
-      "kind": "policy",
-      "bytes": 3458,
-      "sha256": "5b5865ad6639e9bdd1d0ab5be2ab5697ece3c0372ee70b6fb47b57ec39100af7",
-      "module": "design"
-    },
-    {
-      "path": "docs/CHANGE_WORKFLOW.md",
-      "kind": "policy",
-      "bytes": 6074,
-      "sha256": "74a75bb9223f4bb3c8fe92f538cfe93d0db6a46c54fb1e1b5604e17c436c2c8b",
-      "module": "core"
-    },
-    {
-      "path": "docs/DATA_PORTABILITY.md",
-      "kind": "policy",
-      "bytes": 2904,
-      "sha256": "813a8d4fdd7e52da39a4542a54c24062596e442eac09bbd56bc48b662b1320ba",
-      "module": "data"
-    },
-    {
-      "path": "docs/ENTERPRISE.md",
-      "kind": "policy",
-      "module": "enterprise",
-      "bytes": 2967,
-      "sha256": "df306c20933ffab5ca79e3fb530796daea49863edd56cad9158d7b592a8d03b7"
-    },
-    {
-      "path": "docs/DOCUMENTATION.md",
-      "kind": "policy",
-      "bytes": 8063,
-      "sha256": "bef7dce48dfd27934a2515fe89e8bfc058eae13874b6dfb0d69013716a63b3d2",
-      "module": "core"
-    },
-    {
-      "path": "docs/SECURITY_PRODUCTION_SPEC.md",
-      "kind": "policy",
-      "bytes": 5502,
-      "sha256": "ad591dc7f478eb90ac4da9d2292f01c7d42e807eb5db35c381646f5d14c22f07",
-      "module": "operations"
-    },
-    {
-      "path": "docs/TESTING_SPEC.md",
-      "kind": "policy",
-      "bytes": 8457,
-      "sha256": "cebe78812eda70444a511cbb9a6190a64e54397f2ce5454193fb661369931f44",
-      "module": "core"
-    },
-    {
-      "path": "docs/UI_PATTERNS.md",
-      "kind": "policy",
-      "bytes": 2791,
-      "sha256": "be29dde2e43609d8053b9102c0bea15e90ae44995834229a34b58865a75a4d28",
-      "module": "ui"
-    },
-    {
-      "path": "docs/UX_DESIGN_SPEC.md",
-      "kind": "policy",
-      "bytes": 6108,
-      "sha256": "4cedbf4dee25f3e96975f8b488bd537e797736b4cd1ca574e192456ae58f6387",
-      "module": "ui"
+      "sha256": "83e686bcff34dd8d27382776bd2e3fd1a9fb396c884ad39305debf9acd015b38"
     },
     {
       "path": "PROJECT_PROFILE.md",
       "kind": "template",
       "stage": "code",
-      "bytes": 7948,
-      "sha256": "05ff45afd2c0c922788d60328f4ed579509738efd95bfcf772d46e781a3b3e86",
-      "module": "core"
+      "module": "core",
+      "bytes": 4730,
+      "sha256": "6510c8755f2c7efa3ace61b53436341162eeca025c33b209e7d6f9d957d26f09"
+    },
+    {
+      "path": "docs/OPEN_WORK.md",
+      "kind": "register",
+      "module": "core",
+      "bytes": 546,
+      "sha256": "125a64cdfcea637a55ed6db26adc84fa482f3cd23f01ce74f7e8bc4adaa1147d"
+    },
+    {
+      "path": "scripts/verify.py",
+      "kind": "tooling",
+      "module": "core",
+      "bytes": 22812,
+      "sha256": "b31340b7d3de4cc79abfe9cb623f0d9c19f4abab20e4b242ce2165edc2730502"
+    },
+    {
+      "path": "scripts/hooks/pre-commit",
+      "kind": "tooling",
+      "module": "core",
+      "bytes": 283,
+      "sha256": "bbe8abf537328dc2b65525b2dd145cb56152925eafa89dcc7fc6748c91697d97"
     },
     {
       "path": "DESIGN_DOC.md",
       "kind": "template",
-      "bytes": 2615,
-      "sha256": "8f7ad2cf753563e5609ba8124b2d6865b14262b8d73f6da3a206e0588940b030",
-      "module": "design"
-    },
-    {
-      "path": "docs/BRANDING.md",
-      "kind": "template",
-      "bytes": 631,
-      "sha256": "ea33d3ff5ac85913bcb5747f7a0206380c6c02b2f598e33b1bcd1579fb1399a7",
-      "module": "ui"
-    },
-    {
-      "path": "docs/DOMAIN_RULES.md",
-      "kind": "template",
-      "bytes": 2228,
-      "sha256": "1940929e03531f1fd80f2221b5df2f06644b6b72e117777a13cbce419a03a434",
-      "module": "design"
-    },
-    {
-      "path": "docs/RUNBOOKS.md",
-      "kind": "template",
-      "bytes": 4676,
-      "sha256": "94510232b3fa31d837aad920428749638c998830ca0a122aef394e72063a60dc",
-      "module": "operations"
-    },
-    {
-      "path": "docs/REQUIREMENTS_REVIEW.md",
-      "kind": "template",
-      "bytes": 1203,
-      "sha256": "3fa89dc07dbba49b34c254de58df4163543d8879660d88e6327df246ad0cd9d2",
-      "module": "release"
-    },
-    {
-      "path": "docs/TEST_VERIFICATION_HANDOFF.md",
-      "kind": "template",
-      "bytes": 1538,
-      "sha256": "96554e0d09608dbac6a75cfe7b85b2cc514a72063fdfb157c0740f00794f1a5c",
-      "module": "release"
-    },
-    {
-      "path": "docs/UX_ACCEPTANCE_CHECKLIST.md",
-      "kind": "template",
-      "bytes": 2025,
-      "sha256": "12cf8823d355fb276abf9fdcb364fd253345d01580ad914e11fc30b6ff99f90c",
-      "module": "ui"
-    },
-    {
-      "path": "docs/VERIFICATION_REVIEW.md",
-      "kind": "template",
-      "bytes": 1051,
-      "sha256": "18c9e9ab16b1a569aee86c829329e322f15dd09540d084aa73adbfc38df277ed",
-      "module": "release"
+      "module": "design",
+      "bytes": 2179,
+      "sha256": "e0614ad7037a99f9851555e1de90f617c6fca4c83457d5da40f047b6a690edb9"
     },
     {
       "path": "docs/decisions/ADR_TEMPLATE.md",
       "kind": "template",
-      "bytes": 671,
-      "sha256": "452c1db0db928d628cc73eb88172ae35ee3c48c0de7c1fbc55d446f4f7ebf273",
-      "module": "design"
+      "module": "design",
+      "bytes": 440,
+      "sha256": "297913a37b69f3305cdf70a87cd4fcea625680ff2b63fecade1e2db83ec0be2b"
+    },
+    {
+      "path": "docs/RUNBOOKS.md",
+      "kind": "template",
+      "module": "operations",
+      "bytes": 2783,
+      "sha256": "10a3eb9fad736be6fee7b40ca4c7217df3117e32dd5de004bfbe8c622b3c890d"
+    },
+    {
+      "path": "docs/RELEASE_NOTES.md",
+      "kind": "register",
+      "module": "operations",
+      "bytes": 394,
+      "sha256": "41a5b887bd6a9f9790b2dafe5545a625c778f45f510e0b6dc3cfeaa93ee9df5f"
+    },
+    {
+      "path": "docs/procedures/release-review.md",
+      "kind": "procedure",
+      "module": "release-review",
+      "bytes": 3611,
+      "sha256": "9126e21a2b75b379ba7f87a724e3bf76ab7e061e1a2a429efcd2a5afc5f9032c"
+    },
+    {
+      "path": "docs/VERIFICATION_MATRIX.md",
+      "kind": "register",
+      "module": "release",
+      "bytes": 1014,
+      "sha256": "e32e1f450cdf0f71522d31584915baf9c46c62c2eb876557a8023e21e21c4324"
+    },
+    {
+      "path": "docs/PRODUCTION_READINESS.md",
+      "kind": "register",
+      "module": "release",
+      "bytes": 2060,
+      "sha256": "bfb104522792d0034c651457ba6d7d50f0fcafe1e494d7537ffe13874b9e9cc5"
+    },
+    {
+      "path": "docs/procedures/release-readiness.md",
+      "kind": "procedure",
+      "module": "release",
+      "bytes": 2296,
+      "sha256": "78594514690f9f16dc4b1d1cd58c85337cee745b61896bed5a66d0133b0054c1"
+    },
+    {
+      "path": "docs/ENTERPRISE.md",
+      "kind": "policy",
+      "module": "enterprise",
+      "bytes": 2511,
+      "sha256": "5258c9f67e4d55242e644b02bdf6e483c18e90731a5e8f1c62db7bac0affe29f"
     },
     {
       "path": ".github/pull_request_template.md",
       "kind": "template",
       "module": "enterprise",
-      "bytes": 512,
-      "sha256": "cf9556b7430de8293a4b241c0993f45c8aea7578df730d902536f5dda7e9dda7"
+      "bytes": 506,
+      "sha256": "81e541d0425e18aac790d93c82c3f36e5b71cee7c31caaeb0df81cc22c51d1e2"
     },
     {
-      "path": "docs/OPEN_WORK.md",
-      "kind": "register",
-      "bytes": 1016,
-      "sha256": "2489ab19e9834e7500c66976a2b807a1d16fa4736f61d94a0e8c7acabfd8fe25",
-      "module": "core"
+      "path": "docs/UI.md",
+      "kind": "template",
+      "module": "ui",
+      "bytes": 1587,
+      "sha256": "39f92b9417cf54f17235b498dc64385b3d56cbec25b691648614b8c562e3fd11"
     },
     {
-      "path": "docs/RELEASE_NOTES.md",
-      "kind": "register",
-      "bytes": 609,
-      "sha256": "8fa64450815f2ce95da460886016e5f90a26d998abf9b70625bb1843f786c609",
-      "module": "operations"
-    },
-    {
-      "path": "docs/PRODUCTION_READINESS.md",
-      "kind": "register",
-      "bytes": 1842,
-      "sha256": "83f8dc26361cd8704a9a25e18bd60f152a325e162e28628413dcdca82cecedee",
-      "module": "release"
-    },
-    {
-      "path": "docs/ROADMAP.md",
-      "kind": "register",
-      "bytes": 1443,
-      "sha256": "822da18faef97de9e24e02d6bb0aceb83a6cbfca98202ca040cac4471a6f0bc7",
-      "module": "design"
-    },
-    {
-      "path": "docs/SOURCES.md",
-      "kind": "register",
-      "bytes": 764,
-      "sha256": "4081f319303bb34ad3204d3cc54b19089e02a885cfcebc1e257debd9b18a6ae1",
-      "module": "release"
-    },
-    {
-      "path": "docs/VERIFICATION_MATRIX.md",
-      "kind": "register",
-      "bytes": 1653,
-      "sha256": "25e8c94b5af7fc33d4fc6485725bdb305d06b79c3cd1ce24cdca3c219da340b2",
-      "module": "release"
-    },
-    {
-      "path": "docs/procedures/bootstrap-project.md",
+      "path": "docs/procedures/ui-design.md",
       "kind": "procedure",
-      "bytes": 4462,
-      "sha256": "3657d1262f4c0d9eb1406fbe6fa3204c00136fb35d3bab6b8360ddf641644837",
-      "module": "core"
-    },
-    {
-      "path": "docs/procedures/final-audit.md",
-      "kind": "procedure",
-      "bytes": 5397,
-      "sha256": "0388f2d10c93de8a3521a82af0ad7f1dddc9dfaa0932393e25c2024064fd289a",
-      "module": "core"
-    },
-    {
-      "path": "docs/procedures/release-readiness.md",
-      "kind": "procedure",
-      "bytes": 2861,
-      "sha256": "d8874cfd0502521a05e174cb2dd81660ff431866fa50fe4c817259484953ac0c",
-      "module": "release"
-    },
-    {
-      "path": "docs/procedures/release-review.md",
-      "kind": "procedure",
-      "bytes": 4028,
-      "sha256": "59670f0ca557cf32dbab101f62691e4004611a7a9bb80d313f4f64284a6749fa",
-      "module": "release"
-    },
-    {
-      "path": "docs/procedures/upgrade-guidance.md",
-      "kind": "procedure",
-      "bytes": 10853,
-      "sha256": "ac0b96c9f4fa75c06e09f4dc4660a53ce0425ca1a192b6c5db5a7b173ac2f10f",
-      "module": "core"
-    },
-    {
-      "path": "profiles/EMBEDDED_FIRMWARE.md",
-      "kind": "profile",
-      "bytes": 4290,
-      "sha256": "a2acba619f3b2fd3052b5664f54def071ef5b7b30ff8718e7cabaae874f675d3",
-      "module": "embedded"
-    },
-    {
-      "path": "profiles/PRODUCTION_OPERATIONS.md",
-      "kind": "profile",
-      "bytes": 5849,
-      "sha256": "ad1843169c83ffa5227a0d8b8b44a7e5ea1b1d0ced9e24eeaead0c0f7d8697b4",
-      "module": "production-ops"
+      "module": "ui-design",
+      "bytes": 5360,
+      "sha256": "9f3b3ff83a462a012eeab32b6c0fc7952afe1300e41047e9a71572ae032de586"
     },
     {
       "path": "profiles/SERVER_RENDERED_WEB_GO.md",
       "kind": "profile",
-      "bytes": 2127,
-      "sha256": "81f85b5f7d2c2152411ea4fc2fd8d30be417711110589717b270155b031948df",
-      "module": "stack-go"
+      "module": "stack-go",
+      "bytes": 1035,
+      "sha256": "656fda1f767fb8b21eac6c9e1e200472568cb16fc957c6625f114f581eed31f2"
     },
     {
       "path": "profiles/SERVER_RENDERED_WEB_RUST.md",
       "kind": "profile",
-      "bytes": 3447,
-      "sha256": "de7fcf64805221af8c82d2c75461e9b3786c9afb68149a04499c703f2c7a9d5c",
-      "module": "stack-rust"
+      "module": "stack-rust",
+      "bytes": 1265,
+      "sha256": "225f332d23be368e7063aff8d4ed190fc3545f3dd0f6008135ae59ac7e6c7d5d"
     },
     {
-      "path": "check_package.py",
-      "kind": "tooling",
-      "bytes": 83398,
-      "sha256": "cb8640b9ce65f37bfe46d2e04b9fff01ac20cacf823cad9af1502e57534b83f7",
-      "module": "core"
-    },
-    {
-      "path": "scripts/hooks/pre-commit",
-      "kind": "tooling",
-      "bytes": 271,
-      "sha256": "5b47e2a3d77e8d064247a836e816ae0482da50a1e42ed50bb9777e66a91ddf06",
-      "module": "core"
-    },
-    {
-      "path": ".agents/skills/bootstrap-project/SKILL.md",
-      "kind": "adapter",
-      "bytes": 680,
-      "sha256": "ebdfdac8d60b9fe7aa4e9667b701f25535979313fe6a8f851d99de1e3e985f6e",
-      "module": "core"
-    },
-    {
-      "path": ".agents/skills/final-audit/SKILL.md",
-      "kind": "adapter",
-      "bytes": 660,
-      "sha256": "3b1b6b1aa4f79479981b1d3ba415c7eafb9797dd532d2cd6752f0286dbd870ef",
-      "module": "core"
+      "path": "profiles/EMBEDDED_FIRMWARE.md",
+      "kind": "profile",
+      "module": "embedded",
+      "bytes": 2755,
+      "sha256": "75ff688baa7b8c22f08f398ee92550d72d945c438585e7a942bb3e7de334ab10"
     },
     {
       "path": ".agents/skills/release-readiness/SKILL.md",
       "kind": "adapter",
-      "bytes": 693,
-      "sha256": "4174905b49a146cf1666c372c4275857aa4e883105d4175ef6752d1aa914f01e",
-      "module": "release"
+      "module": "release",
+      "bytes": 676,
+      "sha256": "49f0e2458281b2f06e8eefc5e2155a9fe6a533b9347c67b56b18c31cc37c5ca9"
     },
     {
       "path": ".agents/skills/release-review/SKILL.md",
       "kind": "adapter",
-      "bytes": 814,
-      "sha256": "7526951725a2cc5cf7a1204ec9ae5471cadc41ccfefb7a6e213e38a91ae09974",
-      "module": "release"
+      "module": "release-review",
+      "bytes": 755,
+      "sha256": "892365fcd74a8b1a8532ac4e494d6d72cd0f2e903ff74d2c3b674dcca9457dfc"
     },
     {
-      "path": ".claude/skills/bootstrap-project/SKILL.md",
+      "path": ".agents/skills/ui-design/SKILL.md",
       "kind": "adapter",
-      "bytes": 680,
-      "sha256": "ebdfdac8d60b9fe7aa4e9667b701f25535979313fe6a8f851d99de1e3e985f6e",
-      "module": "core"
-    },
-    {
-      "path": ".claude/skills/final-audit/SKILL.md",
-      "kind": "adapter",
-      "bytes": 660,
-      "sha256": "3b1b6b1aa4f79479981b1d3ba415c7eafb9797dd532d2cd6752f0286dbd870ef",
-      "module": "core"
+      "module": "ui-design",
+      "bytes": 703,
+      "sha256": "fa89585c2be3f7c8a11196146184a4d0e83573b079a4bb1f1cc64ee019b2c25b"
     },
     {
       "path": ".claude/skills/release-readiness/SKILL.md",
       "kind": "adapter",
-      "bytes": 693,
-      "sha256": "4174905b49a146cf1666c372c4275857aa4e883105d4175ef6752d1aa914f01e",
-      "module": "release"
+      "module": "release",
+      "bytes": 676,
+      "sha256": "49f0e2458281b2f06e8eefc5e2155a9fe6a533b9347c67b56b18c31cc37c5ca9"
     },
     {
       "path": ".claude/skills/release-review/SKILL.md",
       "kind": "adapter",
-      "bytes": 814,
-      "sha256": "7526951725a2cc5cf7a1204ec9ae5471cadc41ccfefb7a6e213e38a91ae09974",
-      "module": "release"
+      "module": "release-review",
+      "bytes": 755,
+      "sha256": "892365fcd74a8b1a8532ac4e494d6d72cd0f2e903ff74d2c3b674dcca9457dfc"
     },
     {
-      "path": ".agents/skills/upgrade-guidance/SKILL.md",
+      "path": ".claude/skills/ui-design/SKILL.md",
       "kind": "adapter",
-      "bytes": 782,
-      "sha256": "4f7437c9b972d12f2808b8daae517c3eff74876b8ca55f5159d68b50a38b0297",
-      "module": "core"
-    },
-    {
-      "path": ".claude/skills/upgrade-guidance/SKILL.md",
-      "kind": "adapter",
-      "bytes": 782,
-      "sha256": "4f7437c9b972d12f2808b8daae517c3eff74876b8ca55f5159d68b50a38b0297",
-      "module": "core"
+      "module": "ui-design",
+      "bytes": 703,
+      "sha256": "fa89585c2be3f7c8a11196146184a4d0e83573b079a4bb1f1cc64ee019b2c25b"
     }
   ]
 }

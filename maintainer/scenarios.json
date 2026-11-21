@@ -702,7 +702,8 @@
       "may_edit": [
         "README.md",
         "docs/OPEN_WORK.md",
-        "docs/UI_PATTERNS.md"
+        "docs/UI_PATTERNS.md",
+        "docs/UI.md"
       ]
     },
     {
@@ -731,7 +732,8 @@
         "README.md",
         "DESIGN_DOC.md",
         "docs/OPEN_WORK.md",
-        "docs/UI_PATTERNS.md"
+        "docs/UI_PATTERNS.md",
+        "docs/UI.md"
       ]
     },
     {
@@ -761,6 +763,7 @@
         "DESIGN_DOC.md",
         "docs/OPEN_WORK.md",
         "docs/UI_PATTERNS.md",
+        "docs/UI.md",
         "docs/VERIFICATION_MATRIX.md"
       ]
     },
@@ -792,6 +795,7 @@
         "DESIGN_DOC.md",
         "docs/OPEN_WORK.md",
         "docs/UI_PATTERNS.md",
+        "docs/UI.md",
         "docs/VERIFICATION_MATRIX.md"
       ]
     },
@@ -1037,7 +1041,8 @@
       ],
       "may_edit": [
         "README.md",
-        "docs/DOMAIN_RULES.md"
+        "docs/DOMAIN_RULES.md",
+        "DESIGN_DOC.md"
       ]
     },
     {

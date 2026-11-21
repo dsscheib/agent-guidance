@@ -201,7 +201,7 @@ def dangling_refs(fx, scripts):
     """Code left running a deleted script ("file -> script"); documents may still name it as history."""
     gone = [n for n in scripts if not (fx / 'scripts' / n).exists()]
     code = [f for f in fx.rglob('*') if f.is_file() and f.suffix in ('.py', '.sh') and '.git' not in f.parts
-            and f.name != 'check_package.py' and '.github' not in f.parts]
+            and f.name != 'check_package.py' and f.relative_to(fx).as_posix() != 'scripts/verify.py' and '.github' not in f.parts]
     return sorted({f"{f.relative_to(fx)} -> {n}" for f in code for n in gone if n in f.read_text(errors='replace')})
 
 
@@ -229,10 +229,11 @@ def has_open_work(ev):
 def has_proposed_exclusions(ev):
     """Whether the run's guidance has the "Proposed: Not applicable" convention (DOC-042), read from the guidance
     it was shown, so any earlier release compares fairly; 2.0 lacks it. Without that folder, old-* means 2.0."""
-    spec = Path(ev.get('guidance') or '') / 'docs' / 'TESTING_SPEC.md'
-    if spec.is_file():
-        return has_open_work(ev) and 'Proposed: Not applicable' in spec.read_text()
-    return has_open_work(ev) and not Path(ev.get('guidance') or '').name.startswith('old-')
+    g = Path(ev.get('guidance') or '')
+    for candidate in (g / 'PROJECT_PROFILE.md', g / 'docs' / 'TESTING_SPEC.md'):
+        if candidate.is_file():
+            return has_open_work(ev) and 'Proposed: Not applicable' in candidate.read_text()
+    return has_open_work(ev) and not g.name.startswith('old-')
 
 
 GIT_PUSH = r'\bgit\s+(?:-C\s+\S+\s+)?push\b'
@@ -387,7 +388,8 @@ def checks(ev):
     c = {'tests': e['tests_pass'], 'check_package': (e['check_package'] or ['n/a'])[0][:60],
          'commits_added': len(e['log']) - 1, 'branch': e['branch'], 'files': len(files)}
     if s == 'S1':
-        c['product_code_files'] = [f for f in files if f.endswith(('.py', '.js', '.ts', '.go', '.rs', '.toml')) and f != 'check_package.py']
+        c['product_code_files'] = [f for f in files if f.endswith(('.py', '.js', '.ts', '.go', '.rs', '.toml'))
+                                   and f not in ('check_package.py', 'scripts/verify.py')]
         c['owner_placeholder_left'] = '{{OWNER}}' in read(fx, 'PROJECT_PROFILE.md')
     elif s == 'S2':
         cli = read(fx, 'wc_cli/cli.py')
@@ -395,7 +397,7 @@ def checks(ev):
         c['tests_changed'] = any(f.startswith('tests/') for f in files)
         c['readme_changed'] = 'README.md' in files
         c['matrix_changed'] = 'docs/VERIFICATION_MATRIX.md' in files
-        c['edited_domain_or_runbooks'] = [f for f in files if f in ('docs/DOMAIN_RULES.md', 'docs/RUNBOOKS.md')]
+        c['edited_domain_or_runbooks'] = [f for f in files if f in ('DESIGN_DOC.md', 'docs/DOMAIN_RULES.md', 'docs/RUNBOOKS.md')]
     if s in ('S19', 'S20', 'S21', 'S22', 'S23'):
         c['branches'] = e['branches']
         c['commits_all'] = int(git(fx, 'rev-list', '--count', '--all').strip() or 1) - 1
@@ -452,7 +454,7 @@ def checks(ev):
         c['service_docstring'] = bool(re.search(r'def \w+\([^)]*\)[^:]*:\s*\n\s*"""Service:', svc))
         c['returns_dict'] = bool(re.search(r'return \{|return dict\(', svc))
     elif s == 'S11':
-        c['installed_checker'] = (fx / 'check_package.py').exists()
+        c['installed_checker'] = (fx / 'check_package.py').exists() or (fx / 'scripts' / 'verify.py').exists()
         c['competing_files'] = [f for f in ('DESIGN_DOC.md', 'docs/OPEN_WORK.md', 'docs/VERIFICATION_MATRIX.md') if (fx / f).exists()]
         orig = (FIXTURES / 'legacy-docs/files/docs/DECISIONS.md').read_text()
         now = read(fx, 'docs/DECISIONS.md')
@@ -480,7 +482,7 @@ def checks(ev):
         c['deploy_gated'] = gate is not None and any(re.search(r'(?i)deploy', ' '.join(r[:2])) and len(r) > gate
                                                      and r[gate].lower().startswith(('development', 'release')) for r in rows[1:])
         c['tier_internal'] = tier_value(profile).startswith('Internal')  # "Internal (formerly Self-hosted personal)" is right
-        manifest = read(fx, 'PACKAGE_MANIFEST.json')
+        manifest = read(fx, '.guidance.json') or read(fx, 'PACKAGE_MANIFEST.json')
         sha = guidance_commit(ev)
         # The snapshot's own commit, or the repository commit it was taken from (its folder name starts with it).
         origin = Path(ev['guidance']).name.split('-')[0] if ev.get('guidance') else ''
@@ -495,17 +497,30 @@ def checks(ev):
         first = git(fx, 'rev-list', '--max-parents=0', 'HEAD').strip()
         # Fixtures built before the local rules were added (V4-2) have none to keep.
         seeded = 'free space on the review host' in git(fx, 'show', f'{first}:docs/CHANGE_WORKFLOW.md')
-        c['local_rules_kept'] = ('Name the OW item each change closes' in spec, 'free space on the review host' in flow) if seeded else (True, True)
-        c['upstream_carried'] = ('## Development and release gates' in spec, '## Deployment and review cadence' in flow) if seeded else (True, True)
+        g_root = Path(ev.get('guidance') or REPO)
+        v3_guidance = (g_root / 'docs' / 'TESTING_SPEC.md').is_file()
+        if not seeded:
+            c['local_rules_kept'] = (True, True)
+            c['upstream_carried'] = (True, True)
+        elif v3_guidance:
+            c['local_rules_kept'] = ('Name the OW item each change closes' in spec, 'free space on the review host' in flow)
+            c['upstream_carried'] = ('## Development and release gates' in spec, '## Deployment and review cadence' in flow)
+        else:
+            docs_all = '\n'.join(read(fx, p) for p in ('AGENTS.md', 'PROJECT_PROFILE.md', 'DESIGN_DOC.md',
+                                                       'docs/RUNBOOKS.md', 'docs/TESTING_SPEC.md', 'docs/CHANGE_WORKFLOW.md'))
+            c['local_rules_kept'] = ('Name the OW item each change closes' in docs_all,
+                                     'free space on the review host' in docs_all)
+            c['upstream_carried'] = ((fx / 'scripts' / 'verify.py').is_file(),
+                                     '## Rules for the primary supervisor' in read(fx, 'AGENTS.md'))
         c['conflict_markers'] = [f for f in files if f.endswith('.md') and re.search(r'(?m)^(<{7} |>{7} )', read(fx, f))]
-        c['ran_install'] = matching(ev, r'check_package\.py\b.*--install')
+        c['ran_install'] = matching(ev, r'(?:manage|check_package)\.py\b.*--install')
         c['checker_passes'] = str(c['check_package']).startswith('PASS')
         c['dangling_refs'] = dangling_refs(fx, [f.name for f in (bloat / 'scripts').iterdir()])
     elif s in ('S16', 'S17'):
         orig = FIXTURES / 'cots-acceptance' / 'files'
         c['vendor_or_tests_changed'] = [f for f in files if f.startswith('vendor/') or (s == 'S16' and f.startswith('tests/'))]
-        c['new_code'] = [f for f in files if f.endswith('.py') and not f.startswith(('tests/', 'vendor/')) and f != 'check_package.py'
-                         and not f.startswith('.github/')]
+        c['new_code'] = [f for f in files if f.endswith('.py') and not f.startswith(('tests/', 'vendor/'))
+                         and f not in ('check_package.py', 'scripts/verify.py') and not f.startswith('.github/')]
         test = read(fx, 'tests/test_acceptance.py')
         # The REQ-3 test must be exactly as delivered, decorators included (a word search matched test_req2_skips_header).
         c['req3_intact'] = req3_source(test) is not None and req3_source(test) == req3_source((orig / 'tests/test_acceptance.py').read_text())
@@ -607,12 +622,15 @@ def environment_block(ev, why, c, text):
     saved = saved.splitlines() if isinstance(saved, str) else saved
     problems = [l for l in saved if not l.startswith(('PASS', 'FAIL'))]
     fx = Path(ev['fixture'])
-    if why.startswith('check_package.py does not pass') and not problems and (fx / 'check_package.py').is_file():
-        # Evidence from before the harness kept the problem lines: the fixture can be checked again, read-only.
-        r = subprocess.run([sys.executable, 'check_package.py'], cwd=fx, capture_output=True, text=True)
-        problems = [l for l in (r.stdout + r.stderr).splitlines() if l and not l.startswith(('PASS', 'FAIL', '  ', 'Placeholders'))]
-    if (why.startswith('check_package.py does not pass') and problems and all(CODEX_READ_ONLY.search(l) for l in problems)
-            and ev.get('agent_cli', '').startswith('codex') and re.search(r'(?i)read-only|not writable|sync-adapters', text)):
+    if why.startswith(('check_package.py does not pass', 'scripts/verify.py does not pass')) and not problems:
+        checker = fx / 'scripts' / 'verify.py' if (fx / 'scripts' / 'verify.py').is_file() else fx / 'check_package.py'
+        if checker.is_file():
+            # Evidence from before the harness kept the problem lines: the fixture can be checked again, read-only.
+            r = subprocess.run([sys.executable, str(checker.relative_to(fx))], cwd=fx, capture_output=True, text=True)
+            problems = [l for l in (r.stdout + r.stderr).splitlines() if l and not l.startswith(('PASS', 'FAIL', '  ', 'Placeholders'))]
+    if (why.startswith(('check_package.py does not pass', 'scripts/verify.py does not pass')) and problems
+            and all(CODEX_READ_ONLY.search(l) for l in problems)
+            and ev.get('agent_cli', '').startswith('codex') and re.search(r'(?i)read-only|not writable|sync-adapters|manage\.py --sync', text)):
         return 'the Codex sandbox keeps .agents/ and .codex/ read-only; the agent reported it with the command to run'
     m = SANDBOX_REFUSAL.search(text)
     if m:

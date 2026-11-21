@@ -4,7 +4,7 @@ Repository-only. An independent, in-depth review of the guidance package, run by
 
 ## When to run it
 - **Before tagging a release.** Audit the range from the previous release tag to the candidate commit.
-- **Before merging a consequential change:** AGENTS.md, a policy, a procedure, `check_package.py`, the install or upgrade path, or the scenario scorer. Audit the pull request's range.
+- **Before merging a consequential change:** `AGENTS.md`, a procedure, `manage.py`, `scripts/verify.py`, the install or upgrade path, or the scenario scorer. Audit the pull request's range.
 - **When the maintainer asks.** Audit whatever range they name.
 
 A routine documentation fix needs no audit.

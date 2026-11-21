@@ -3,7 +3,7 @@
   "profile": {
     "OWNER": "Scenario Owner (fixture maintainer)",
     "PROJECT_TIER": "Production service (adopted by Scenario Owner)",
-    "ADOPTED_PROFILES": "profiles/PRODUCTION_OPERATIONS.md",
+    "ADOPTED_PROFILES": "None",
     "AGENT_MAY_COMMIT": "Per work item, on a feature branch",
     "BRANCH_POLICY": "Feature branches named `<type>/<topic>`; never commit to main",
     "COMMIT_CONVENTION": "Conventional Commits",

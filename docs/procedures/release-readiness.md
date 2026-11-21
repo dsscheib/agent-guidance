@@ -1,25 +1,23 @@
 ---
 name: release-readiness
-description: Assemble and evaluate the evidence for a release candidate against the project tier's required gates, and fill in the release readiness record. Use when preparing a release, asked whether a candidate can ship, or asked to qualify a build. It never grants release acceptance or deploys; only the owner does.
+description: Assemble and evaluate the evidence for a release candidate against the project tier's required gates, and fill in the release readiness record. Use when preparing a release, asked whether a candidate can ship, or asked to qualify a build. It never grants release acceptance or deploys; only the user does.
 ---
 # Release readiness procedure
 
-Kind: Procedure. Records go in [PRODUCTION_READINESS.md](../PRODUCTION_READINESS.md); gate definitions are in [TESTING_SPEC.md](../TESTING_SPEC.md); production-tier qualification is in [profiles/PRODUCTION_OPERATIONS.md](../../profiles/PRODUCTION_OPERATIONS.md).
+Records go in [docs/PRODUCTION_READINESS.md](../PRODUCTION_READINESS.md).
 
 ## 1. Identify the candidate
-Record the commit, the source and artifact identities, the build configuration, and the target environment. A candidate built from a dirty working tree is a blocker: commit the source and rebuild. Evidence produced by a different candidate does not count unless TESTING_SPEC's reuse rule applies, and the reuse rationale is recorded.
+Record the commit SHA, source and artifact identities, build configuration, and target environment. A dirty working tree is a blocker: commit first and rebuild. Reuse earlier evidence only when the candidate/environment change does not affect that path, and record why.
 
 ## 2. Build the full gate inventory
-Start from the tier column in [PROJECT_PROFILE.md](../../PROJECT_PROFILE.md) and the adopted gates in [VERIFICATION_MATRIX.md](../VERIFICATION_MATRIX.md). Every required gate appears exactly once. Exclusions need a recorded owner decision, and missing tooling is a gap, not an exclusion.
+Start from the project's adopted tier and [docs/VERIFICATION_MATRIX.md](../VERIFICATION_MATRIX.md). Every required gate appears once. Exclusions require recorded owner approval; missing tooling is a gap, never an exclusion.
 
 ## 3. Collect evidence
-- Run the [release review](release-review.md) on the candidate first, unless the owner skips it for this release. Each confirmed defect it reports is a blocker with an OPEN_WORK ID; each plausible concern and missing piece of evidence is either resolved or recorded.
-- Run `python3 check_package.py --verify release --receipt <file>` to run every Development and Release gate in the command inventory and save the results as evidence. Run any other automated gate the tier requires with its recorded command. Keep the raw output, exit codes, dates and environment.
-- Keep manual checks, target-host qualification and authorization separate from local results. A running or partial check is "in progress", not passed.
-- For the Production service tier, run the qualification protocol and the aggregate verifier from the production operations profile.
+1. Run [release-review](release-review.md) on the candidate first unless the user explicitly skips it. Confirmed defects are blockers with [docs/OPEN_WORK.md](../OPEN_WORK.md) IDs; concerns and missing evidence must be resolved or recorded.
+2. Run `python3 scripts/verify.py --verify release --receipt <file>` to execute every Development and Release gate in [PROJECT_PROFILE.md](../../PROJECT_PROFILE.md). Run any remaining tier gates and retain raw outputs, exit codes, dates, and environments.
+3. Keep local suites, target-host qualification, manual checks, and authorizations distinct. An in-progress or partial check is not passed.
 
-## 4. Fill in the readiness record
-For each gate, record the requirement, procedure, result, current evidence and work ID. Then fill in the implementation completion and verification completion lines. Leave "Release acceptance: Not granted" unless the owner has recorded an acceptance decision for this candidate and environment.
+## 4. Update the readiness record and report
+Fill in each gate row, the implementation completion line, and the verification completion line in [docs/PRODUCTION_READINESS.md](../PRODUCTION_READINESS.md). Leave `Release acceptance: Not granted.` unless an authorized decision already accepted this candidate and environment.
 
-## 5. Report
-Report the gate table, blockers with their OPEN_WORK IDs, accepted exceptions with their expiry, and a recommendation. Acceptance does not authorize deployment. Deployment needs its own explicit authorization (AGENTS.md rule 3). After a deployment, add one entry to [RELEASE_NOTES.md](../RELEASE_NOTES.md).
+Report the gate table, blockers with `OPEN_WORK` IDs, accepted exceptions with expiry dates, and a recommendation. Acceptance does not authorize deployment—deployment requires its own explicit approval. After deployment, add one short entry to [docs/RELEASE_NOTES.md](../RELEASE_NOTES.md).
