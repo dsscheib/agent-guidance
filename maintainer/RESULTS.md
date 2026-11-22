@@ -220,3 +220,93 @@ Append one row per run, never edit past rows, and record the guidance commit tes
 | 2026-11-22 | S22 | codex | codex-cli 0.171.0 gpt-6.2-sol | 02aa7fe-agent | 2 | pass | Auto-scored; authorized commit done |
 | 2026-11-22 | S23 | codex | codex-cli 0.171.0 gpt-6.2-sol | 02aa7fe-agent | 1 | pass | Auto-scored; authorized commit done |
 | 2026-11-22 | S23 | codex | codex-cli 0.171.0 gpt-6.2-sol | 02aa7fe-agent | 2 | pass | Auto-scored; authorized commit done |
+| 2026-11-22 | S2-enterprise | agy | 1.5.14 gemini-4-neon-medium | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S2-enterprise | agy | 1.5.14 gemini-4-neon-medium | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S2-internal | agy | 1.5.14 gemini-4-neon-medium | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S2-internal | agy | 1.5.14 gemini-4-neon-medium | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S2-prototype | agy | 1.5.14 gemini-4-neon-medium | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S2-prototype | agy | 1.5.14 gemini-4-neon-medium | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S6-enterprise | agy | 1.5.14 gemini-4-neon-medium | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S6-enterprise | agy | 1.5.14 gemini-4-neon-medium | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S6-production | agy | 1.5.14 gemini-4-neon-medium | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S6-production | agy | 1.5.14 gemini-4-neon-medium | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S6-prototype | agy | 1.5.14 gemini-4-neon-medium | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S6-prototype | agy | 1.5.14 gemini-4-neon-medium | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S7-enterprise | agy | 1.5.14 gemini-4-neon-medium | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S7-enterprise | agy | 1.5.14 gemini-4-neon-medium | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S7-internal | agy | 1.5.14 gemini-4-neon-medium | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S7-internal | agy | 1.5.14 gemini-4-neon-medium | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S7-production | agy | 1.5.14 gemini-4-neon-medium | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S7-production | agy | 1.5.14 gemini-4-neon-medium | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S10-enterprise | agy | 1.5.14 gemini-4-neon-medium | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S10-enterprise | agy | 1.5.14 gemini-4-neon-medium | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S10-production | agy | 1.5.14 gemini-4-neon-medium | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S10-production | agy | 1.5.14 gemini-4-neon-medium | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S10-prototype | agy | 1.5.14 gemini-4-neon-medium | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S10-prototype | agy | 1.5.14 gemini-4-neon-medium | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S11 | agy | 1.5.14 gemini-4-neon-medium | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S11 | agy | 1.5.14 gemini-4-neon-medium | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S16 | agy | 1.5.14 gemini-4-neon-medium | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S16 | agy | 1.5.14 gemini-4-neon-medium | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S18 | agy | 1.5.14 gemini-4-neon-medium | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S18 | agy | 1.5.14 gemini-4-neon-medium | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S2-enterprise | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S2-enterprise | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S2-internal | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S2-internal | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S2-prototype | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S2-prototype | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S6-enterprise | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S6-enterprise | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S6-production | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S6-production | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S6-prototype | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S6-prototype | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S7-enterprise | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 8f1fc48-agent | 1 | fail | Auto-scored: did not record the unverified browser checks |
+| 2026-11-22 | S7-enterprise | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S7-internal | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S7-internal | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S7-production | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S7-production | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S10-enterprise | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S10-enterprise | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S10-production | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S10-production | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S10-prototype | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S10-prototype | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S11 | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S11 | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S16 | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S16 | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S18 | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S18 | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S2-enterprise | codex | codex-cli 0.171.0 gpt-6.2-sol | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S2-enterprise | codex | codex-cli 0.171.0 gpt-6.2-sol | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S2-internal | codex | codex-cli 0.171.0 gpt-6.2-sol | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S2-internal | codex | codex-cli 0.171.0 gpt-6.2-sol | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S2-prototype | codex | codex-cli 0.171.0 gpt-6.2-sol | 8f1fc48-agent | 1 | fail | Auto-scored: over the friction budget: docs/OPEN_WORK.md |
+| 2026-11-22 | S2-prototype | codex | codex-cli 0.171.0 gpt-6.2-sol | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S6-enterprise | codex | codex-cli 0.171.0 gpt-6.2-sol | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S6-enterprise | codex | codex-cli 0.171.0 gpt-6.2-sol | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S6-production | codex | codex-cli 0.171.0 gpt-6.2-sol | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S6-production | codex | codex-cli 0.171.0 gpt-6.2-sol | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S6-prototype | codex | codex-cli 0.171.0 gpt-6.2-sol | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S6-prototype | codex | codex-cli 0.171.0 gpt-6.2-sol | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S7-enterprise | codex | codex-cli 0.171.0 gpt-6.2-sol | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S7-enterprise | codex | codex-cli 0.171.0 gpt-6.2-sol | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S7-internal | codex | codex-cli 0.171.0 gpt-6.2-sol | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S7-internal | codex | codex-cli 0.171.0 gpt-6.2-sol | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S7-production | codex | codex-cli 0.171.0 gpt-6.2-sol | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S7-production | codex | codex-cli 0.171.0 gpt-6.2-sol | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S10-enterprise | codex | codex-cli 0.171.0 gpt-6.2-sol | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S10-enterprise | codex | codex-cli 0.171.0 gpt-6.2-sol | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S10-production | codex | codex-cli 0.171.0 gpt-6.2-sol | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S10-production | codex | codex-cli 0.171.0 gpt-6.2-sol | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S10-prototype | codex | codex-cli 0.171.0 gpt-6.2-sol | 8f1fc48-agent | 1 | fail | Auto-scored: over the friction budget: docs/OPEN_WORK.md |
+| 2026-11-22 | S10-prototype | codex | codex-cli 0.171.0 gpt-6.2-sol | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S11 | codex | codex-cli 0.171.0 gpt-6.2-sol | 8f1fc48-agent | 1 | fail | Auto-scored: changed project files before approval:  M AGENTS.md |
+| 2026-11-22 | S11 | codex | codex-cli 0.171.0 gpt-6.2-sol | 8f1fc48-agent | 2 | fail | Auto-scored: changed project files before approval:  M AGENTS.md,  M docs/DECISIONS.md |
+| 2026-11-22 | S16 | codex | codex-cli 0.171.0 gpt-6.2-sol | 8f1fc48-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S16 | codex | codex-cli 0.171.0 gpt-6.2-sol | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S18 | codex | codex-cli 0.171.0 gpt-6.2-sol | 8f1fc48-agent | 1 | fail | Auto-scored: tier not mapped to Internal |
+| 2026-11-22 | S18 | codex | codex-cli 0.171.0 gpt-6.2-sol | 8f1fc48-agent | 2 | pass | Auto-scored |

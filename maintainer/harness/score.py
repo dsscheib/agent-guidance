@@ -51,7 +51,7 @@ QUOTED_STATUS = re.compile(r'Verification:\s*`?(?:complete|incomplete|failed) \(
 NOT_DONE = re.compile(r'(?i)\b(not (?:yet )?(?:done|complete|finished|implemented)|isn.t done|is not done|no[,.—:-]|'
                       r'partial|incomplete|does nothing|has no effect|ignored|never (?:reads|uses))')
 # Asking the owner for a decision: a question, or a plain request such as "once you decide" or "please confirm".
-ASKS = re.compile(r"(?i)\?|\b(?:once you decide|please (?:confirm|decide|choose)|let me know|tell me (?:which|what|whether|how)|"
+ASKS = re.compile(r"(?i)\?|\b(?:once you decide|please (?:confirm|decide|choose|approve)|let me know|tell me (?:which|what|whether|how)|"
                   r"(?:need|needs|awaiting|waiting (?:for|on)) your|your (?:call|decision|answer|confirmation)|open for you|"
                   r"for (?:you|the owner) to (?:decide|confirm|choose)|\bconfirm (?:the|whether|that|which|\*\*)|"
                   r"\bdecide (?:whether|which|on|the)|"

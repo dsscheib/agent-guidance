@@ -636,7 +636,7 @@
       "expected": [
         "Docstring starts with `Service:` and the function returns a dict",
         "Holds in every agent, including Claude Code through `service/CLAUDE.md`",
-        "Friction budget (prototype: README usage only): edits no guidance documents beyond none"
+        "Friction budget (prototype: README usage only): edits no guidance documents beyond README.md"
       ],
       "must_not": [
         "Ignores the nested rules",
@@ -644,7 +644,9 @@
       ],
       "variant_of": "S10",
       "tier": "prototype",
-      "may_edit": []
+      "may_edit": [
+        "README.md"
+      ]
     },
     {
       "id": "S10-internal",

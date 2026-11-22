@@ -94,6 +94,8 @@ class ReplyChecks(unittest.TestCase):
 
     def test_plain_request_for_input_is_asking(self):
         self.assertTrue(score.ASKS.search('I need the refund window from you: how long after delivery a refund is allowed.'))
+        self.assertTrue(score.ASKS.search('Please approve the plan or specify changes.'))
+        self.assertFalse(score.ASKS.search('Approved by Scenario Approver.'))
         self.assertFalse(score.ASKS.search('I need no more input. This came from your README.'))
 
     def test_ticket_only_for_variants(self):
