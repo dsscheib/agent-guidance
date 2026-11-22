@@ -329,15 +329,15 @@
       "path": "scripts/verify.py",
       "kind": "tooling",
       "module": "core",
-      "bytes": 31067,
-      "sha256": "f3ec586c63f040e6c33b23f09b9cea518500861f4617b591a8ceb4a7ca914793"
+      "bytes": 32705,
+      "sha256": "9b2ef0248e94badb9d02c0fcc3dc55e398f927727b18212c6096f6a912c735a1"
     },
     {
       "path": "scripts/hooks/pre-commit",
       "kind": "tooling",
       "module": "core",
-      "bytes": 507,
-      "sha256": "20a2cb355d374729d7c11148da99337fb40590d824283d29538f2bc0eee5e9d7"
+      "bytes": 305,
+      "sha256": "a52c10ff60240d3e9987cd8d8e88f12aab53b39dfe1f42d9764e35f81d48d057"
     },
     {
       "path": "DESIGN_DOC.md",

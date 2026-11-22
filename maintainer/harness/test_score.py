@@ -1156,6 +1156,162 @@ class Phase2ScorerFixes(FixtureCase):
             self.assertFalse(tmp_marker.exists())
             self.assertFalse((fx / 'ro-write.txt').exists())
 
+    def test_environment_block_sandboxes_fallback_and_uses_saved_diagnostics(self):
+        fx = self.fixture('S18')
+        (fx / 'scripts').mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=Path.home()) as ext_dir, tempfile.TemporaryDirectory() as tmp_dir:
+            home_marker = Path(ext_dir) / 'host-home-leaked.txt'
+            tmp_marker = Path(tmp_dir) / 'host-tmp-leaked.txt'
+            canary_out = fx / 'canary-seen.txt'
+            (fx / 'scripts' / 'verify.py').write_text(
+                'import os, sys\nfrom pathlib import Path\n'
+                f'for p in ({str(home_marker)!r}, {str(tmp_marker)!r}, "ro-verify.txt", "canary-seen.txt"):\n'
+                '    try:\n'
+                '        Path(p).write_text("leaked")\n'
+                '    except OSError:\n'
+                '        pass\n'
+                'val = os.environ.get("AUDIT_CANARY")\n'
+                'if val:\n'
+                '    print("ENV_LEAK:" + val)\n'
+                'print("Stale or missing adapter .agents/skills/final-audit/SKILL.md; run --sync")\n'
+                'print("FAIL (project mode): 1 problem(s).")\n'
+                'sys.exit(1)\n'
+            )
+            why = 'scripts/verify.py does not pass: FAIL (project mode): 1 problem(s).'
+            reply = '.agents is read-only here; run --sync'
+            legacy_ev = {
+                'agent_cli': 'codex@gpt-6.2-sol', 'fixture': str(fx), 'steps': [],
+                'evidence': {'check_package': ['FAIL (project mode): 1 problem(s).']},
+            }
+            with unittest.mock.patch.dict(os.environ, {'AUDIT_CANARY': 'secret-canary-value'}):
+                b = score.environment_block(legacy_ev, why, {'check_package': 'FAIL (project mode): 1 problem(s).'}, reply)
+            self.assertIsNotNone(b)
+            self.assertIn('Codex sandbox', b)
+            self.assertFalse(home_marker.exists())
+            self.assertFalse(tmp_marker.exists())
+            self.assertFalse((fx / 'ro-verify.txt').exists())
+            self.assertFalse(canary_out.exists())
+
+            # Hostile legacy checker without CODEX_READ_ONLY (with AUDIT_CANARY injected) must stay sandboxed and return None.
+            (fx / 'scripts' / 'verify.py').write_text(
+                'import os, sys\nfrom pathlib import Path\n'
+                f'for p in ({str(home_marker)!r}, {str(tmp_marker)!r}):\n'
+                '    try:\n'
+                '        Path(p).write_text(os.environ.get("AUDIT_CANARY", ""))\n'
+                '    except OSError:\n'
+                '        pass\n'
+                'sys.exit(1)\n'
+            )
+            with unittest.mock.patch.dict(os.environ, {'AUDIT_CANARY': 'secret-canary-value'}):
+                b2 = score.environment_block(legacy_ev, why, {'check_package': 'FAIL (project mode): 1 problem(s).'}, reply)
+            self.assertIsNone(b2)
+            self.assertFalse(home_marker.exists())
+            self.assertFalse(tmp_marker.exists())
+
+            # Modern evidence carrying full check_package lines must not re-run the fixture checker.
+            modern_ev = {
+                'agent_cli': 'codex@gpt-6.2-sol', 'fixture': str(fx), 'steps': [],
+                'evidence': {'check_package': [
+                    'FAIL (project mode): 1 problem(s).',
+                    'Stale or missing adapter .agents/skills/final-audit/SKILL.md; run --sync',
+                ]},
+            }
+            with unittest.mock.patch.object(score.run, 'run_fixture_cmd', side_effect=AssertionError('should not re-run')):
+                b3 = score.environment_block(modern_ev, why, {'check_package': 'FAIL (project mode): 1 problem(s).'}, reply)
+            self.assertIn('Codex sandbox', b3)
+
+    def test_hostile_fixture_git_config_is_isolated(self):
+        fx = self.fixture('S24')
+        with tempfile.TemporaryDirectory(dir=Path.home()) as ext_dir, tempfile.TemporaryDirectory() as tmp_dir:
+            home_marker = Path(ext_dir) / 'git-home-leaked.txt'
+            tmp_marker = Path(tmp_dir) / 'git-tmp-leaked.txt'
+            fx_marker = fx / 'git-hook-ran.txt'
+            hook = fx / 'evil-git-hook.sh'
+            hook.write_text(
+                '#!/bin/sh\n'
+                f'for p in {str(home_marker)!r} {str(tmp_marker)!r} {str(fx_marker)!r}; do\n'
+                '  printf "%s" "${AUDIT_CANARY:-clean}" > "$p" 2>/dev/null || true\n'
+                'done\n'
+                'exit 0\n'
+            )
+            hook.chmod(0o755)
+            # Trigger hostile diff.external too by dirtying a tracked file after committing the hook? Keep hook untracked and dirty cli.py.
+            for key, val in (('core.fsmonitor', str(hook)), ('core.fsmonitorVersion', '1'), ('diff.external', str(hook))):
+                subprocess.run(['git', '-C', str(fx), 'config', key, val], check=True)
+            self.edit(fx, 'wc_cli/cli.py', 'count_words', 'count_words # touched')
+            with unittest.mock.patch.dict(os.environ, {'AUDIT_CANARY': 'secret-canary-value'}):
+                t = score.run.tree(fx)
+                e = score.run.evidence(fx)
+                st = score.git(fx, 'status', '--porcelain')
+                df = score.git(fx, 'diff', 'HEAD')
+                r_host = score.run.git(fx, 'status', '--porcelain')
+                r_sb = score.run.run_fixture_cmd(fx, [*score.run.SAFE_GIT, 'status', '--porcelain'], read_only=True)
+            self.assertTrue(t['head'])
+            self.assertIn('M wc_cli/cli.py', [l.strip() for l in t['changed']])
+            self.assertTrue(e['log'])
+            self.assertIn('wc_cli/cli.py', st)
+            self.assertEqual(r_sb.returncode, 0, r_sb.stderr)
+            self.assertIn('count_words # touched', df)
+            self.assertIn('wc_cli/cli.py', r_host)
+            self.assertFalse(home_marker.exists())
+            self.assertFalse(tmp_marker.exists())
+            self.assertFalse(fx_marker.exists())
+
+    def test_git_ignores_do_not_hide_uncommitted_files_and_bytecode_is_explicit(self):
+        fx = self.fixture('S24')
+        self.edit(fx, 'wc_cli/cli.py', 'def summarize', 'def count_all')
+        self.edit(fx, 'tests/test_cli.py', 'summarize', 'count_all')
+        self.sh(fx, 'git add -A', 'git commit -qm rename')
+        with tempfile.TemporaryDirectory() as cfg_dir:
+            ignores = Path(cfg_dir) / 'global-ignore'
+            ignores.write_text('*.secret\n__pycache__/\n')
+            gcfg = Path(cfg_dir) / 'gitconfig'
+            gcfg.write_text(f'[core]\n\texcludesFile = {ignores}\n')
+            with unittest.mock.patch.dict(os.environ, {'GIT_CONFIG_GLOBAL': str(gcfg)}):
+                cache = fx / 'wc_cli' / '__pycache__'
+                cache.mkdir(parents=True)
+                (cache / 'cli.cpython-312.pyc').write_bytes(b'pyc')
+                (fx / 'tests' / 'temp.pyo').write_bytes(b'pyo')
+
+                # Untracked Python bytecode caches are explicitly excluded and keep the clean-tree check passing.
+                ev_clean = {'scenario': 'S24', 'fixture': str(fx), 'run': 1, 'evidence': score.run.evidence(fx),
+                            'steps': [{'step': 1, 'commands': [], 'messages': ['Done.'], 'final': 'Done.'}]}
+                self.assertEqual(ev_clean['evidence']['untracked'], [])
+                self.assertEqual(ev_clean['evidence']['status'], [])
+                self.assertEqual(score.checks(ev_clean)['uncommitted'], [])
+
+                # Host global ignores (*.secret) must never hide real untracked files in evidence() or S24/S29 checks.
+                (fx / 'leftover.secret').write_text('do-not-hide\n')
+                ev_secret = score.run.evidence(fx)
+                self.assertIn('leftover.secret', ev_secret['untracked'])
+                self.assertIn('?? leftover.secret', score.checks(
+                    {'scenario': 'S24', 'fixture': str(fx), 'run': 1, 'evidence': ev_secret,
+                     'steps': [{'step': 1, 'commands': [], 'messages': ['Done.'], 'final': 'Done.'}]}
+                )['uncommitted'])
+                (fx / 'leftover.secret').unlink()
+
+                # A non-bytecode file inside an untracked directory alongside __pycache__ is still caught.
+                extra = fx / 'extra_dir'
+                (extra / '__pycache__').mkdir(parents=True)
+                (extra / '__pycache__' / 'b.pyc').write_bytes(b'pyc')
+                (extra / 'a.txt').write_text('keep me visible\n')
+                ev_mixed = score.run.evidence(fx)
+                self.assertEqual(ev_mixed['untracked'], ['extra_dir/a.txt'])
+                self.assertEqual(score.checks(
+                    {'scenario': 'S24', 'fixture': str(fx), 'run': 1, 'evidence': ev_mixed,
+                     'steps': [{'step': 1, 'commands': [], 'messages': ['Done.'], 'final': 'Done.'}]}
+                )['uncommitted'], ['?? extra_dir/a.txt'])
+                shutil.rmtree(extra)
+
+                # Staged bytecode files remain visible in uncommitted checks.
+                subprocess.run(['git', '-C', str(fx), 'add', '-f', 'wc_cli/__pycache__/cli.cpython-312.pyc'], check=True)
+                ev_staged = score.run.evidence(fx)
+                self.assertEqual(ev_staged['status'], ['A  wc_cli/__pycache__/cli.cpython-312.pyc'])
+                self.assertEqual(score.checks(
+                    {'scenario': 'S24', 'fixture': str(fx), 'run': 1, 'evidence': ev_staged,
+                     'steps': [{'step': 1, 'commands': [], 'messages': ['Done.'], 'final': 'Done.'}]}
+                )['uncommitted'], ['A  wc_cli/__pycache__/cli.cpython-312.pyc'])
+
 
 class Suites(unittest.TestCase):
     def test_catalog_suites_are_valid_disjoint_and_exclude_legacy_bases(self):

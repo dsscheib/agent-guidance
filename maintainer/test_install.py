@@ -276,6 +276,48 @@ def case_guardrails(tmp):
     ok, out = check(ent2)
     expect(ok, 'scripts/verify.py failed after restoring .github/hooks/guidance.json: ' + out)
 
+    base_hook = json.loads(orig_hcfg)
+    for label, mut in (
+        ('disabled both', lambda d: d['hooks']['preToolUse'][0].update({
+            'bash': 'python3 .github/hooks/guidance_guardrail.py.disabled',
+            'powershell': 'python .github/hooks/guidance_guardrail.py.disabled',
+        })),
+        ('disabled bash only', lambda d: d['hooks']['preToolUse'][0].update({
+            'bash': 'python3 .github/hooks/guidance_guardrail.py.disabled',
+        })),
+        ('echo command', lambda d: d['hooks']['preToolUse'][0].update({
+            'bash': 'echo .github/hooks/guidance_guardrail.py',
+        })),
+        ('trailing shell operator', lambda d: d['hooks']['preToolUse'][0].update({
+            'bash': 'python3 .github/hooks/guidance_guardrail.py || true',
+        })),
+        ('wrong cwd', lambda d: d['hooks']['preToolUse'][0].update({'cwd': 'subdir'})),
+        ('disabled type', lambda d: d['hooks']['preToolUse'][0].update({'type': 'disabled'})),
+    ):
+        cfg = json.loads(json.dumps(base_hook))
+        mut(cfg)
+        hcfg.write_text(json.dumps(cfg, indent=2) + '\n')
+        ok, out = check(ent2)
+        expect(not ok and 'guidance.json' in out and 'preToolUse' in out,
+               f'scripts/verify.py should reject {label} in .github/hooks/guidance.json: ' + out)
+
+    for label, mut in (
+        ('python -B and backslash powershell', lambda d: d['hooks']['preToolUse'][0].update({
+            'bash': 'python3 -B .github/hooks/guidance_guardrail.py',
+            'powershell': 'python .github\\hooks\\guidance_guardrail.py',
+        })),
+        ('bash only without powershell', lambda d: d['hooks']['preToolUse'][0].pop('powershell', None)),
+    ):
+        cfg = json.loads(json.dumps(base_hook))
+        mut(cfg)
+        hcfg.write_text(json.dumps(cfg, indent=2) + '\n')
+        ok, out = check(ent2)
+        expect(ok, f'scripts/verify.py should accept {label} in .github/hooks/guidance.json: ' + out)
+
+    hcfg.write_text(orig_hcfg)
+    ok, out = check(ent2)
+    expect(ok, 'scripts/verify.py failed after restoring .github/hooks/guidance.json: ' + out)
+
 
 def case_exclusions_deps_rename_docs_timeouts(tmp):
     target = tmp / 'verify-features'
@@ -573,6 +615,17 @@ def case_tools_and_default_and_broken(tmp):
     expect('unconfigured template repository' not in (r_dj_ver.stdout + r_dj_ver.stderr)
            and not (django / 'project-manage-ran').exists(),
            'scripts/verify.py --verify mistook installed project for template repo: ' + r_dj_ver.stdout + r_dj_ver.stderr)
+
+    # Even with .guidance.json removed and a non-guidance PACKAGE_MANIFEST.json carrying "repo_only",
+    # pre-commit delegates to scripts/verify.py (never mistaking it for the guidance template repo).
+    init_git(django)
+    (django / '.guidance.json').unlink()
+    (django / 'PACKAGE_MANIFEST.json').write_text(json.dumps({'package': 'other-project', 'repo_only': []}) + '\n')
+    r_hook = subprocess.run(['sh', 'scripts/hooks/pre-commit'], cwd=django, capture_output=True, text=True)
+    expect(r_hook.returncode != 0 and not (django / 'project-manage-ran').exists()
+           and 'FAIL (project mode)' in (r_hook.stdout + r_hook.stderr),
+           'scripts/hooks/pre-commit must route non-template repo through project verify.py: '
+           + r_hook.stdout + r_hook.stderr)
 
 
 def case_agent_team_interop(tmp):

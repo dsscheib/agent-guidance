@@ -67,7 +67,6 @@ OPEN_ITEM = re.compile(r'^\|\s*([A-Z][A-Z0-9]*-\d+)\s*\|(.*)$', re.M)
 REVISION = re.compile(r'\b(?=[0-9a-f]*\d)(?=[0-9a-f]*[a-f])[0-9a-f]{7,40}\b')
 LEGACY_REFERENCES = {
     'scripts/verify.py': ('PACKAGE_MANIFEST.json', 'check_package.py'),
-    'scripts/hooks/pre-commit': ('PACKAGE_MANIFEST.json',),
 }
 EXCLUDED_ROW = re.compile(r'^\|\s*Excluded guidance\b.*$', re.M)
 _PACKAGED = {}

@@ -39,11 +39,60 @@ def log(msg):
         print(time.strftime('%H:%M:%S'), msg, flush=True)
 
 
+HOST_SAFE_GIT = ('-c', 'core.fsmonitor=false', '-c', 'core.hooksPath=/dev/null', '-c', 'protocol.ext.allow=never')
+SAFE_GIT = ('env', 'GIT_CONFIG_NOSYSTEM=1', 'git', '--no-pager', *HOST_SAFE_GIT,
+            '-c', 'core.excludesFile=/dev/null', '-c', 'core.pager=cat', '-c', 'safe.directory=*')
+NO_EXT_DIFF_CMDS = {'diff', 'show', 'log', 'diff-files', 'diff-index', 'diff-tree'}
+
+
+def safe_git_args(args):
+    if args and args[0] in NO_EXT_DIFF_CMDS and '--no-ext-diff' not in args:
+        return (args[0], '--no-ext-diff', '--no-textconv', *args[1:])
+    return args
+
+
 def git(cwd, *args, check=False):
-    r = subprocess.run(['git', '-C', str(cwd), *args], capture_output=True, text=True)
+    r = subprocess.run(['git', '-C', str(cwd), *HOST_SAFE_GIT, *safe_git_args(args)], capture_output=True, text=True)
     if check and r.returncode:
         raise SystemExit(f"git {' '.join(args)} failed: {r.stderr.strip()}")
     return r.stdout.strip()
+
+
+def is_bytecode_path(path):
+    """Whether a git path refers to a Python bytecode cache (__pycache__/, *.pyc, *.pyo)."""
+    rel = path.strip()
+    if len(rel) >= 2 and rel[0] == '"' and rel[-1] == '"':
+        rel = rel[1:-1]
+    return '__pycache__' in Path(rel).parts or rel.endswith(('.pyc', '.pyo'))
+
+
+def filter_untracked_bytecode(porcelain_lines):
+    """Drop empty lines and untracked Python bytecode entries; keep staged/modified entries and all other files."""
+    out = []
+    for line in porcelain_lines:
+        if not line.strip():
+            continue
+        if line.startswith('?? ') and is_bytecode_path(line[3:]):
+            continue
+        out.append(line)
+    return out
+
+
+def fixture_git(cwd, *args, check=False, strip=False, timeout=30):
+    """Run a read-only git command inside sandbox.sh with isolated config and hostile-hook overrides."""
+    if not Path(cwd).is_dir():
+        if check:
+            raise SystemExit(f"git directory does not exist: {cwd}")
+        return ''
+    try:
+        r = run_fixture_cmd(cwd, [*SAFE_GIT, *safe_git_args(args)], timeout=timeout, read_only=True)
+    except subprocess.TimeoutExpired:
+        if check:
+            raise SystemExit(f"git {' '.join(args)} timed out")
+        return ''
+    if check and r.returncode:
+        raise SystemExit(f"git {' '.join(args)} failed: {r.stderr.strip()}")
+    return r.stdout.strip() if strip else r.stdout
 
 
 def checkouts(repo):
@@ -342,8 +391,8 @@ def parse_step(agent, out, logdir, step):
 
 def tree(fx):
     """The fixture's HEAD and its changed tracked files, recorded after each step (untracked notes do not count)."""
-    status = subprocess.run(['git', '-C', str(fx), 'status', '--porcelain', '--untracked-files=no'], capture_output=True, text=True)
-    return {'head': git(fx, 'rev-parse', 'HEAD'), 'changed': status.stdout.splitlines()}
+    status = fixture_git(fx, 'status', '--porcelain', '--untracked-files=no')
+    return {'head': fixture_git(fx, 'rev-parse', 'HEAD', strip=True), 'changed': status.splitlines()}
 
 
 def run_fixture_cmd(fx, cmd, timeout=120, read_only=False):
@@ -389,7 +438,7 @@ def run_fixture_cmd(fx, cmd, timeout=120, read_only=False):
 
 
 def evidence(fx):
-    first = git(fx, 'rev-list', '--max-parents=0', 'HEAD')
+    first = fixture_git(fx, 'rev-list', '--max-parents=0', 'HEAD', strip=True)
     lines = lambda p: len((fx / p).read_text().splitlines()) if (fx / p).is_file() else None
     try:
         tests = run_fixture_cmd(fx, [sys.executable, '-B', '-m', 'unittest', '-q'], timeout=120)
@@ -413,12 +462,13 @@ def evidence(fx):
             check = ['timed out']
     revision = fx / 'review' / 'REVISION'
     return {
-        'branch': git(fx, 'branch', '--show-current'),
-        'branches': git(fx, 'branch', '--format=%(refname:short)').splitlines(),
-        'log': git(fx, 'log', '--oneline', '--all').splitlines(),
-        'status': git(fx, 'status', '--porcelain').splitlines(),
-        'changed_vs_initial': git(fx, 'diff', '--name-status', first, '--', '.').splitlines() if first else [],
-        'untracked': git(fx, 'ls-files', '--others', '--exclude-standard').splitlines(),
+        'branch': fixture_git(fx, 'branch', '--show-current', strip=True),
+        'branches': fixture_git(fx, 'branch', '--format=%(refname:short)', strip=True).splitlines(),
+        'log': fixture_git(fx, 'log', '--oneline', '--all', strip=True).splitlines(),
+        'status': filter_untracked_bytecode(fixture_git(fx, 'status', '--porcelain', '--untracked-files=all').splitlines()),
+        'changed_vs_initial': fixture_git(fx, 'diff', '--name-status', first, '--', '.', strip=True).splitlines() if first else [],
+        'untracked': [p for p in fixture_git(fx, 'ls-files', '--others', '--exclude-standard', strip=True).splitlines()
+                      if p and not is_bytecode_path(p)],
         'profile_lines': lines('PROJECT_PROFILE.md'),
         'open_work_lines': lines('docs/OPEN_WORK.md'),
         'tests_pass': tests_pass,

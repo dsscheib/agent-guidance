@@ -2,7 +2,7 @@
 """Project-side guidance integrity and gate verification runner."""
 from datetime import date
 from pathlib import Path
-import argparse, json, os, re, signal, subprocess, sys, time
+import argparse, json, os, re, shlex, signal, subprocess, sys, time
 
 root = Path(__file__).resolve().parent.parent
 guidance_path = root / '.guidance.json'
@@ -222,6 +222,36 @@ def check_agents_tables(record, errors):
                           f'run manage.py --sync {root}')
 
 
+def valid_copilot_guardrail_cmd(cmd, cwd_val, expected_target, posix=True):
+    if not isinstance(cmd, str) or not cmd.strip():
+        return False
+    try:
+        tokens = shlex.split(cmd, posix=posix)
+    except ValueError:
+        return False
+    if not posix:
+        tokens = [t[1:-1] if len(t) >= 2 and t[0] == t[-1] and t[0] in ('"', "'") else t for t in tokens]
+    if len(tokens) >= 3 and Path(tokens[0].replace('\\', '/')).name.lower() == 'env':
+        tokens = tokens[1:]
+    if len(tokens) < 2:
+        return False
+    if not re.fullmatch(r'(?:python(?:\d+(?:\.\d+)*)?|py)(?:\.exe)?', Path(tokens[0].replace('\\', '/')).name.lower()):
+        return False
+    if not all(re.fullmatch(r'-[bBEIOqsSuv]+', tok) for tok in tokens[1:-1]):
+        return False
+    script = tokens[-1]
+    if not script or script.startswith('-'):
+        return False
+    if cwd_val is None:
+        norm_cwd = '.'
+    elif isinstance(cwd_val, str) and cwd_val.strip():
+        norm_cwd = cwd_val.replace('\\', '/')
+    else:
+        return False
+    resolved = ((root / norm_cwd) / script.replace('\\', '/')).resolve()
+    return resolved == expected_target and resolved.is_file()
+
+
 def check_guardrails(record, errors):
     checks = record.get('guardrail_checks')
     if checks is None:
@@ -255,10 +285,18 @@ def check_guardrails(record, errors):
                 errors.append('.github/hooks/guidance.json is not valid JSON; restore it from the package')
             else:
                 pre = (data.get('hooks') or {}).get('preToolUse') if isinstance(data, dict) else None
-                registered = isinstance(pre, list) and any(
-                    isinstance(item, dict) and any('guidance_guardrail.py' in str(item.get(k, '')) for k in ('bash', 'powershell'))
-                    for item in pre
-                )
+                expected_target = (root / '.github' / 'hooks' / 'guidance_guardrail.py').resolve()
+
+                def valid_hook_entry(item):
+                    if not isinstance(item, dict) or item.get('type', 'command') != 'command':
+                        return False
+                    keys = [k for k in ('bash', 'powershell') if k in item and item[k] is not None]
+                    return bool(keys) and all(
+                        valid_copilot_guardrail_cmd(item[k], item.get('cwd'), expected_target, posix=(k == 'bash'))
+                        for k in keys
+                    )
+
+                registered = isinstance(pre, list) and any(valid_hook_entry(item) for item in pre)
                 if not registered:
                     errors.append('.github/hooks/guidance.json does not register guidance_guardrail.py under hooks.preToolUse; restore it from the package')
 
