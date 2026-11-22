@@ -384,6 +384,25 @@ def case_exclusions_deps_rename_docs_timeouts(tmp):
            and not (target / 'timeout-leaked').exists(),
            'per-gate timeout mismatch or child process survived timeout:\n' + r_to.stdout)
 
+    # 2b. A gate that reruns the phase it belongs to is refused instead of recursing until memory runs out.
+    # The depth fuse keeps a broken guard from forking without end; it stops after three nested runs.
+    timed_profile = profile.read_text()
+    r_nested = verify(target, 'release')
+    expect('Refused:' not in r_nested.stdout,
+           'a Release gate running --verify development must still run the development phase:\n' + r_nested.stdout)
+    profile.write_text(timed_profile.replace(
+        '| Guidance integrity |',
+        '| Self rerun | `[ "${SELF_RERUN_DEPTH:-0}" -lt 3 ] && SELF_RERUN_DEPTH=$((${SELF_RERUN_DEPTH:-0}+1)) '
+        'python3 scripts/verify.py --verify development` | Development | Dev | — |\n| Guidance integrity |'))
+    r_self = verify(target, 'development')
+    expect(r_self.returncode == 1 and 'failed    Self rerun' in r_self.stdout
+           and 'Refused: a gate command reran scripts/verify.py --verify development inside itself '
+               '(development -> development)' in r_self.stdout,
+           'a gate rerunning its own phase must fail once instead of recursing:\n' + r_self.stdout)
+    profile.write_text(timed_profile)
+    # Without a 1s --timeout, the timeout case's gate runs to completion and writes its marker file.
+    (target / 'timeout-leaked').unlink(missing_ok=True)
+
     # 3. Documentation mode passes on a clean/doc-only repo, and fails on uncommitted code or .txt changes.
     r_doc = verify(target, 'docs')
     expect(r_doc.returncode == 0 and 'Change scope' not in r_doc.stdout,

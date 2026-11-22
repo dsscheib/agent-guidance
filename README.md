@@ -70,7 +70,7 @@ Per-tool adapters installed inside projects:
 **In an installed project** (`scripts/verify.py`, zero repo tooling bloat):
 - `python3 scripts/verify.py` — checks links, `CLAUDE.md` shims, selective skill wrappers, document budgets (`PROJECT_PROFILE.md` <= 250 lines, `docs/OPEN_WORK.md` <= 150 lines, pointer files <= 10 lines), enterprise guardrails/notes, and placeholder counts.
 - `python3 scripts/verify.py --require code` / `--require release` — fails if placeholders remain at that stage.
-- `python3 scripts/verify.py --verify [development|docs|release]` — runs configured command-inventory gates (`timeout 60m` overrides `--timeout 900`; `--receipt FILE` writes JSON) and prints the verbatim `Verification:` summary line.
+- `python3 scripts/verify.py --verify [development|docs|release]` — runs configured command-inventory gates (`timeout 60m` overrides `--timeout 900`; `--receipt FILE` writes JSON; a gate that reruns the phase already running fails instead of recursing) and prints the verbatim `Verification:` summary line.
 
 **From this template repository** (`manage.py`):
 - `python3 manage.py` — validates templates, links, adapters, budgets, manifest SHA-256 hashes, `test_install.py`, harness scorer tests, and `run_scenario.py --check`.
