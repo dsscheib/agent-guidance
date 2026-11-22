@@ -553,12 +553,15 @@ def evidence(fx):
     open_work_lines = lines('docs/OPEN_WORK.md')
     rev_raw = safe_read_text(fx, 'review/REVISION')
     review_revision = rev_raw.strip() if rev_raw is not None else None
-    try:
-        tests = run_fixture_cmd(fx, [sys.executable, '-B', '-m', 'unittest', '-q'], timeout=120)
-        tests_pass = tests.returncode == 0
-        tests_tail = ((tests.stderr or tests.stdout).strip().splitlines() or [''])[-1]
-    except subprocess.TimeoutExpired:
-        tests_pass, tests_tail = False, 'timed out'
+    with tempfile.TemporaryDirectory(prefix='guidance-test-') as test_tmp:
+        test_fx = Path(test_tmp) / 'fx'
+        shutil.copytree(fx, test_fx, symlinks=True, ignore=shutil.ignore_patterns('__pycache__'))
+        try:
+            tests = run_fixture_cmd(test_fx, [sys.executable, '-B', '-m', 'unittest', '-q'], timeout=120)
+            tests_pass = tests.returncode == 0
+            tests_tail = ((tests.stderr or tests.stdout).strip().splitlines() or [''])[-1]
+        except subprocess.TimeoutExpired:
+            tests_pass, tests_tail = False, 'timed out'
     check = None
     if safe_is_file(fx, 'scripts/verify.py'):
         try:

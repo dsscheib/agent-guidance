@@ -29,25 +29,77 @@ set -eu
 fix=$(realpath "$1"); shift
 H=$HOME
 [ -n "${SB_HOME:-}" ] || { echo "sandbox.sh: SB_HOME is required (a folder for this run's home)" >&2; exit 2; }
+[ ! -L "$SB_HOME" ] || { echo "sandbox.sh: SB_HOME must not be a symlink" >&2; exit 2; }
 mkdir -p "$SB_HOME"
 home=$(realpath "$SB_HOME")
 [ "$home" = "$H" ] && { echo "sandbox.sh: SB_HOME must not be the real home" >&2; exit 2; }
 for d in "$H/.claude" "$H/.codex" "$H/.copilot" "$H/.gemini" "$H/.config" "$H/.local"; do
   case "$home/" in "$d/"*) echo "sandbox.sh: SB_HOME must not be inside $d" >&2; exit 2 ;; esac
 done
-for f in ${SB_SIGN_IN-.claude/.credentials.json .codex/auth.json}; do
-  if [ -f "$H/$f" ] && [ ! -e "$home/$f" ]; then
-    mkdir -p "$(dirname "$home/$f")"
-    cp -p "$H/$f" "$home/$f"
-  fi
-done
-if [ "${SB_TRUST:-1}" = 1 ] && [ ! -e "$home/.codex/config.toml" ]; then
-  mkdir -p "$home/.codex"
-  printf '[projects."%s"]\ntrust_level = "trusted"\n' "$fix" > "$home/.codex/config.toml"
-fi
-if [ ! -e "$home/.gitconfig" ]; then
-  printf '[user]\n\tname = Scenario Agent\n\temail = agent@example.invalid\n[init]\n\tdefaultBranch = main\n' > "$home/.gitconfig"
-fi
+SB_H="$H" SB_HOME_RESOLVED="$home" SB_FIX="$fix" SB_SIGN_IN_VAL="${SB_SIGN_IN-.claude/.credentials.json .codex/auth.json}" SB_TRUST_VAL="${SB_TRUST:-1}" python3 -B - <<'PY'
+import os, pathlib, stat
+
+H = pathlib.Path(os.environ['SB_H'])
+home = os.environ['SB_HOME_RESOLVED']
+fix = os.environ['SB_FIX']
+sign_in = os.environ['SB_SIGN_IN_VAL'].split()
+trust = os.environ['SB_TRUST_VAL'] == '1'
+
+
+def open_rel_dir_nofollow(base, parts):
+    dfd = os.open(base, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        for part in parts:
+            try:
+                nxt = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=dfd)
+            except FileNotFoundError:
+                os.mkdir(part, 0o700, dir_fd=dfd)
+                nxt = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=dfd)
+            os.close(dfd)
+            dfd = nxt
+        return dfd
+    except OSError:
+        os.close(dfd)
+        return None
+
+
+def write_new_nofollow(base, rel_parts, data, mode=0o644):
+    dfd = open_rel_dir_nofollow(base, rel_parts[:-1])
+    if dfd is None:
+        return
+    try:
+        fd = os.open(rel_parts[-1], os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, mode, dir_fd=dfd)
+    except OSError:
+        return
+    finally:
+        os.close(dfd)
+    with os.fdopen(fd, 'wb') as out:
+        out.write(data)
+
+
+for raw in sign_in:
+    p = pathlib.PurePosixPath(raw)
+    if p.is_absolute() or '..' in p.parts:
+        continue
+    src = H / raw
+    if not src.is_file():
+        continue
+    try:
+        data = src.read_bytes()
+        mode = stat.S_IMODE(src.stat().st_mode)
+    except OSError:
+        continue
+    parts = [part for part in p.parts if part and part != '.']
+    if parts:
+        write_new_nofollow(home, parts, data, mode=mode)
+
+if trust:
+    cfg = f'[projects."{fix}"]\ntrust_level = "trusted"\n'.encode('utf-8')
+    write_new_nofollow(home, ['.codex', 'config.toml'], cfg, mode=0o644)
+
+gitconfig = b'[user]\n\tname = Scenario Agent\n\temail = agent@example.invalid\n[init]\n\tdefaultBranch = main\n'
+write_new_nofollow(home, ['.gitconfig'], gitconfig, mode=0o644)
+PY
 binds=""  # Assumes paths without spaces.
 for p in ${SB_TOOLS-$H/.local/bin $H/.local/share/mise $H/.config/mise $H/.local/share/uv $H/.local/share/pop-workstation $H/.cargo/bin $H/.rustup $H/go/bin}; do
   [ -e "$p" ] && binds="$binds --ro-bind $p $p"

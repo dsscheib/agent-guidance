@@ -163,7 +163,7 @@ def build(scenario, target):
     if install and record.is_file():
         source = json.loads(record.read_text()).get('installed_from', {}).get('repository', '')
         if source.startswith('/') or str(root) in record.read_text():
-            problems.append(f'installed manifest names a local path as its source: {source}')
+            problems.append(f'installed manifest names a local path as its source: {source} (clone from a remote URL or set git remote origin to a non-local URL)')
     configured = scenario.get('configured', True)
     verifier = ['scripts/verify.py'] if (target / 'scripts' / 'verify.py').is_file() else ['check_package.py']
     if not install:

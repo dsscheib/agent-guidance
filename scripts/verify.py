@@ -2,7 +2,7 @@
 """Project-side guidance integrity and gate verification runner."""
 from datetime import date
 from pathlib import Path
-import argparse, json, os, re, shlex, signal, subprocess, sys, time
+import argparse, ast, json, os, re, shlex, signal, subprocess, sys, time
 
 root = Path(__file__).resolve().parent.parent
 guidance_path = root / '.guidance.json'
@@ -54,6 +54,14 @@ def git(*args):
     except OSError:
         return ''
     return r.stdout.strip() if r.returncode == 0 else ''
+
+
+def git_z(*args):
+    try:
+        r = subprocess.run(['git', '-C', str(root), *args], capture_output=True, text=True)
+    except OSError:
+        return []
+    return [x for x in r.stdout.split('\0') if x] if r.returncode == 0 else []
 
 
 def git_ignored():
@@ -252,6 +260,65 @@ def valid_copilot_guardrail_cmd(cmd, cwd_val, expected_target, posix=True):
     return resolved == expected_target and resolved.is_file()
 
 
+def guardrail_present(rel_path, text, token):
+    if rel_path == '.claude/settings.json':
+        try:
+            data = json.loads(text)
+        except ValueError:
+            return False
+        perms = data.get('permissions') if isinstance(data, dict) else None
+        if not isinstance(perms, dict):
+            return False
+        ask = perms.get('ask') if isinstance(perms.get('ask'), list) else []
+        deny = perms.get('deny') if isinstance(perms.get('deny'), list) else []
+        allow = perms.get('allow') if isinstance(perms.get('allow'), list) else []
+        return token in (ask + deny) and token not in allow
+    if rel_path == '.codex/rules/guidance.rules':
+        m = re.match(r'^pattern\s*=\s*(\[.*\])$', token.strip())
+        if not m:
+            return token in text
+        try:
+            want_pat = ast.literal_eval(m.group(1))
+            tree = ast.parse(text)
+        except (SyntaxError, ValueError):
+            return False
+        decisions = []
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == 'prefix_rule':
+                kw = {k.arg: k.value for k in node.keywords if k.arg}
+                if 'pattern' in kw and 'decision' in kw:
+                    try:
+                        pat = ast.literal_eval(kw['pattern'])
+                        dec = ast.literal_eval(kw['decision'])
+                    except ValueError:
+                        continue
+                    if pat == want_pat:
+                        decisions.append(dec)
+        return any(d in ('prompt', 'forbidden') for d in decisions) and 'allow' not in decisions
+    if rel_path == '.github/hooks/guidance_guardrail.py':
+        m = re.match(r'^\((\[.*\])\s*,$', token.strip())
+        if not m:
+            return token in text
+        try:
+            want_pat = ast.literal_eval(m.group(1))
+            tree = ast.parse(text)
+        except (SyntaxError, ValueError):
+            return False
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Assign) and any(
+                isinstance(t, ast.Name) and t.id in ('ASK', 'GH_ASK', 'DENY', 'GH_DENY') for t in node.targets
+            ) and isinstance(node.value, (ast.List, ast.Tuple)):
+                for elt in node.value.elts:
+                    if isinstance(elt, (ast.Tuple, ast.List)) and elt.elts:
+                        try:
+                            if ast.literal_eval(elt.elts[0]) == want_pat:
+                                return True
+                        except ValueError:
+                            continue
+        return False
+    return token in text
+
+
 def check_guardrails(record, errors):
     checks = record.get('guardrail_checks')
     if checks is None:
@@ -272,7 +339,7 @@ def check_guardrails(record, errors):
                   for tool, action, path, token in fallback if not tools or tool in tools]
     for rule in checks:
         target = root / rule['path']
-        if not target.is_file() or rule['token'] not in target.read_text():
+        if not target.is_file() or not guardrail_present(rule['path'], target.read_text(errors='replace'), rule['token']):
             errors.append(f"{rule['path']} lacks the enterprise guardrail that asks before you {rule['action']}; restore it from the package")
     if any(r['path'] == '.github/hooks/guidance_guardrail.py' for r in checks):
         hook_cfg = root / '.github' / 'hooks' / 'guidance.json'
@@ -369,7 +436,7 @@ def inventory_gates(phase):
     profile = root / 'PROJECT_PROFILE.md'
     if not profile.is_file():
         return [], 'PROJECT_PROFILE.md not found'
-    lines = profile.read_text().splitlines()
+    lines = FENCE.sub('', profile.read_text()).splitlines()
     try:
         start = next(i for i, l in enumerate(lines) if l.strip().lower() == '## command inventory')
     except StopIteration:
@@ -380,6 +447,8 @@ def inventory_gates(phase):
         if line.startswith('## '):
             break
         if not line.lstrip().startswith('|'):
+            if header is not None:
+                break
             continue
         cells = split_table_row(line)
         if header is None:
@@ -458,12 +527,12 @@ def run_gate_command(command, limit, env=None):
         return None, '', '', True
 
 
-def non_documentation_changes(packaged):
+def non_documentation_changes():
     if not git('rev-parse', '--git-dir'):
         return None
     base = next((b for b in (git('merge-base', 'HEAD', ref) for ref in ('@{upstream}', 'origin/HEAD', 'main', 'master')) if b), 'HEAD')
-    changed = set(git('diff', '--name-only', base).splitlines()) | set(git('ls-files', '--others', '--exclude-standard').splitlines())
-    return sorted(p for p in changed if p and Path(p).suffix not in PROSE_SUFFIXES and p not in packaged and p not in GUIDANCE_RECORDS)
+    changed = set(git_z('diff', '--name-only', '-z', base)) | set(git_z('ls-files', '-z', '--others', '--exclude-standard'))
+    return sorted(p for p in changed if p and Path(p).suffix.lower() not in PROSE_SUFFIXES and p not in GUIDANCE_RECORDS)
 
 
 def dependency_files(limit=10):
@@ -511,9 +580,8 @@ def verify(phase, timeout, receipt, record):
                 entry['output_tail'] = (stdout + stderr).strip().splitlines()[-5:]
             entry['seconds'] = round(time.monotonic() - started, 1)
         results.append(entry)
-    files = {e['path'] if isinstance(e, dict) else e for e in record.get('files', [])}
     if phase == 'documentation':
-        code = non_documentation_changes({p for p in files if p.endswith('.md')} - {'README.md'})
+        code = non_documentation_changes()
         if code is None:
             problem = problem or 'documentation mode needs git to check that only documentation changed'
         elif code:

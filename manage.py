@@ -768,14 +768,15 @@ def install(manifest, target, force, tier=None, features=(), everything=False, d
     print('Next: fill PROJECT_PROFILE.md above "## Command inventory", then run: python3 scripts/verify.py --require code')
 
 
-def unified(path, old, new):
+def unified(path, old, new, old_mode=None, new_mode=None):
     def lines(text):
         out = (text or '').splitlines(keepends=True)
         if out and not out[-1].endswith('\n'):
             out[-1] += '\n\\ No newline at end of file\n'
         return out
     head = [f'diff --git a/{path} b/{path}\n']
-    head += ['new file mode 100644\n'] if old is None else ['deleted file mode 100644\n'] if new is None else []
+    head += ([f"new file mode {new_mode or '100644'}\n"] if old is None
+             else [f"deleted file mode {old_mode or '100644'}\n"] if new is None else [])
     body = list(difflib.unified_diff(lines(old), lines(new), '/dev/null' if old is None else 'a/' + path,
                                      '/dev/null' if new is None else 'b/' + path))
     return ''.join(head + body) if body else ''
@@ -886,7 +887,9 @@ def plan_upgrade(manifest, target, patch=None):
                 hunks = merged.returncode if merged.returncode > 0 else '?'
                 action, note = 'conflict', f'{hunks} conflicting hunk(s) with local changes'
         if action in ('replace', 'add', 'remove'):
-            diffs.append(unified(path, mine, new))
+            new_mode = ('100755' if os.access(root / path, os.X_OK) else '100644') if action == 'add' else None
+            old_mode = ('100755' if file.exists() and os.access(file, os.X_OK) else '100644') if action == 'remove' else None
+            diffs.append(unified(path, mine, new, old_mode=old_mode, new_mode=new_mode))
             if path == 'AGENTS.md' and action in ('replace', 'add'):
                 agents_patch_text = new
         if action in ('replace', 'add', 'remove', 'merge'):
@@ -894,6 +897,22 @@ def plan_upgrade(manifest, target, patch=None):
             if not os.access(parent if parent.is_dir() else parent.parent, os.W_OK):
                 blocked.append(path)
         rows.append((action, path, kind, note))
+
+    removed_set = {p for a, p, _, _ in rows if a == 'remove'}
+    link_warnings = []
+    for action, path, _, _ in rows:
+        if action in ('keep', 'review', 'conflict', 'merge') and path.endswith('.md') and (target / path).is_file():
+            targets = set()
+            for link in LINK.findall(prose((target / path).read_text(errors='replace'))):
+                if '://' in link or link.startswith(('#', 'mailto:')):
+                    continue
+                resolved = ((target / path).parent / link.split('#')[0]).resolve()
+                if resolved.is_relative_to(target):
+                    rpath = rel(resolved, target)
+                    if rpath in removed_set:
+                        targets.add(rpath)
+            if targets:
+                link_warnings.append((path, sorted(targets)))
 
     installed = record.get('installed') or {'tier': None, 'features': []}
     features = [f for f in (installed.get('features') or []) if f in manifest['features']]
@@ -933,6 +952,8 @@ def plan_upgrade(manifest, target, patch=None):
             print(f'{labels[action]}: {len(group)}')
             for _, path, kind, note in (group if action != 'keep' else ()):
                 print(f'  {path}' + (f' ({note})' if note else ''))
+    for path, targets in link_warnings:
+        print(f"  Note: {path} links to removed file(s): {', '.join(targets)} — update these links when applying")
     if any(r[0] in ('conflict', 'review') for r in rows) and have_base:
         print(f"Upstream change for a file: git -C {root} diff {base_commit[:12]} {source['commit'][:12]} -- PATH")
     if any(r[1].startswith(('.agents/', '.claude/', '.codex/')) or r[2] == 'procedure' for r in rows if r[0] != 'keep'):
@@ -1003,6 +1024,17 @@ def check_upgrade(manifest, target, since='HEAD'):
         users = [p for p in code if name in (target / p).read_text(errors='replace') and gone not in LEGACY_REFERENCES.get(p, ())]
         if users:
             problems.append(f'{gone} was deleted but {", ".join(users)} still names it')
+    deleted_set = {g for g in deleted if not g.endswith('/SKILL.md')}
+    if deleted_set:
+        for md_path in sorted(p for p in now_files if p.endswith('.md') and (target / p).is_file()):
+            for link in LINK.findall(prose((target / md_path).read_text(errors='replace'))):
+                if '://' in link or link.startswith(('#', 'mailto:')):
+                    continue
+                resolved = ((target / md_path).parent / link.split('#')[0]).resolve()
+                if resolved.is_relative_to(target):
+                    rpath = rel(resolved, target)
+                    if rpath in deleted_set and not resolved.exists():
+                        problems.append(f'{rpath} was deleted but {md_path} still links to it')
 
     raw_g, raw_l = shown(GUIDANCE_FILE), shown(LEGACY_MANIFEST)
     try:
@@ -1243,6 +1275,10 @@ def run_template_checks(manifest, errors, require=None):
             r = subprocess.run(cmd, capture_output=True, text=True)
             if r.returncode:
                 errors.append(f'{label}:\n  ' + (r.stdout + r.stderr).strip().replace('\n', '\n  '))
+            else:
+                for line in (r.stdout + r.stderr).splitlines():
+                    if line.startswith('SKIP:'):
+                        print(f'{label}: {line}')
 
     counts = placeholders(files, manifest)
     code_total = sum(c for c, _ in counts.values())

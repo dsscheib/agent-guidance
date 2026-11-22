@@ -307,8 +307,8 @@
       "path": ".github/hooks/guidance_guardrail.py",
       "kind": "guardrail",
       "module": "core",
-      "bytes": 4013,
-      "sha256": "a4a3fc9a5d983a36ea4dc37ed8a068f1ce8fdc1d9e08293704ae38c6dd3ae6aa"
+      "bytes": 4028,
+      "sha256": "82401d2cf69d04611dda8f951bfdd68c2392d0e3d8e2a54eb47a78c9b29b75e9"
     },
     {
       "path": "PROJECT_PROFILE.md",
@@ -329,8 +329,8 @@
       "path": "scripts/verify.py",
       "kind": "tooling",
       "module": "core",
-      "bytes": 33282,
-      "sha256": "d93cabd6a6434471f0bc17ba19b91a192575f0fdc86cda00438181fdb0f7b6dd"
+      "bytes": 36132,
+      "sha256": "a8f34fb5907648c6b4542a2d2e5617aee67ec67e2d5c8239a4a8e92b4589f7b9"
     },
     {
       "path": "scripts/hooks/pre-commit",

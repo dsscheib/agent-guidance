@@ -236,9 +236,46 @@ def case_guardrails(tmp):
     claude_guard.write_text('{"permissions": {"ask": [], "deny": []}}\n')
     ok, out = check(ent)
     expect(not ok and 'merge a pull request' in out, 'scripts/verify.py should fail when enterprise guardrail is removed')
+    claude_cfg = json.loads(orig_claude)
+    claude_allow = json.loads(orig_claude)
+    claude_allow['permissions']['ask'] = [r for r in claude_cfg['permissions']['ask'] if 'gh pr merge' not in r]
+    claude_allow['permissions']['allow'] = ['Bash(gh pr merge:*)']
+    claude_guard.write_text(json.dumps(claude_allow, indent=2) + '\n')
+    ok, out = check(ent)
+    expect(not ok and '.claude/settings.json' in out,
+           'scripts/verify.py must reject Claude guardrail moved to permissions.allow: ' + out)
+    claude_both = json.loads(orig_claude)
+    claude_both['permissions']['allow'] = ['Bash(gh pr merge:*)']
+    claude_guard.write_text(json.dumps(claude_both, indent=2) + '\n')
+    ok, out = check(ent)
+    expect(not ok and '.claude/settings.json' in out,
+           'scripts/verify.py must reject Claude guardrail duplicated into permissions.allow: ' + out)
+    claude_guard.write_text(orig_claude)
+
+    orig_codex = codex_guard.read_text()
+    codex_guard.write_text(orig_codex.replace('pattern = ["gh", "pr", "merge"],\n    decision = "prompt"',
+                                              'pattern = ["gh", "pr", "merge"],\n    decision = "allow"'))
+    ok, out = check(ent)
+    expect(not ok and '.codex/rules/guidance.rules' in out,
+           'scripts/verify.py must reject Codex decision = "allow" guardrail: ' + out)
+    codex_guard.write_text('\n'.join(
+        '# ' + l if '["gh", "pr", "merge"]' in l else l for l in orig_codex.splitlines()
+    ) + '\n')
+    ok, out = check(ent)
+    expect(not ok and '.codex/rules/guidance.rules' in out,
+           'scripts/verify.py must reject commented-out Codex guardrail: ' + out)
+    codex_guard.write_text(orig_codex)
+
+    orig_copilot_py = copilot_guard.read_text()
+    copilot_guard.write_text(orig_copilot_py.replace("(['pr', 'merge'],", "# (['pr', 'merge'],"))
+    ok, out = check(ent)
+    expect(not ok and '.github/hooks/guidance_guardrail.py' in out,
+           'scripts/verify.py must reject commented-out Copilot GH_ASK entry: ' + out)
+    copilot_guard.write_text(orig_copilot_py)
+
     for path, orig in ((claude_guard, orig_claude),
-                       (codex_guard, codex_guard.read_text()),
-                       (copilot_guard, copilot_guard.read_text())):
+                       (codex_guard, orig_codex),
+                       (copilot_guard, orig_copilot_py)):
         path.unlink()
         ok, out = check(ent)
         expect(not ok and path.name in out and 'merge a pull request' in out,
@@ -418,6 +455,16 @@ def case_exclusions_deps_rename_docs_timeouts(tmp):
         r_row = verify(target, 'development')
         expect(r_row.returncode == 2 and token in r_row.stdout and purpose in r_row.stdout,
                f'{purpose} must fail independently as incomplete:\n' + r_row.stdout)
+    # Fenced example tables and a second non-inventory table under ## Command inventory must not become executable gates.
+    profile.write_text(base_profile.replace(
+        '| Purpose | Command |',
+        '```markdown\n| Purpose | Command | Gate | Environment | Evidence |\n|---|---|---|---|---|\n'
+        '| Fenced example | `touch fenced-ran` | Development | Dev | — |\n```\n\n| Purpose | Command |',
+    ) + '\nNote after inventory:\n\n| Extra | Header |\n|---|---|\n| Foo | Bar |\n')
+    r_fence = verify(target, 'development')
+    expect(not (target / 'fenced-ran').exists() and 'Fenced example' not in r_fence.stdout
+           and 'unrecognized' not in r_fence.stdout,
+           'fenced example or trailing table leaked into inventory gates:\n' + r_fence.stdout)
     profile.write_text(base_profile)
 
     # 2. Per-gate timeout (including killing/reaping child processes spawned by timed-out shell commands)
@@ -453,10 +500,15 @@ def case_exclusions_deps_rename_docs_timeouts(tmp):
     # Without a 1s --timeout, the timeout case's gate runs to completion and writes its marker file.
     (target / 'timeout-leaked').unlink(missing_ok=True)
 
-    # 3. Documentation mode passes on a clean/doc-only repo, and fails on uncommitted code or .txt changes.
+    # 3. Documentation mode passes on a clean/doc-only repo (including Unicode .md paths), and fails on uncommitted code or .txt changes.
     r_doc = verify(target, 'docs')
     expect(r_doc.returncode == 0 and 'Change scope' not in r_doc.stdout,
            '--verify docs should pass on clean repo: ' + r_doc.stdout)
+    (target / 'résumé.md').write_text('# Notes\n')
+    r_uni = verify(target, 'docs')
+    expect(r_uni.returncode == 0 and 'Change scope' not in r_uni.stdout,
+           '--verify docs should accept Unicode .md filename résumé.md: ' + r_uni.stdout)
+    (target / 'résumé.md').unlink()
     for bad_file in ('app.py', 'notes.txt'):
         (target / bad_file).write_text('x = 1\n')
         r_doc_bad = verify(target, 'docs')
@@ -858,7 +910,8 @@ def case_v3_to_v4_upgrade(tmp):
     applied = subprocess.run(['git', 'apply', str(patch)], cwd=target, capture_output=True, text=True)
     expect(applied.returncode == 0, 'v3->v4 git apply failed: ' + applied.stderr)
     expect((target / '.guidance.json').is_file() and not (target / 'PACKAGE_MANIFEST.json').exists(), '.guidance.json did not replace PACKAGE_MANIFEST.json')
-    expect((target / 'scripts/verify.py').is_file() and not (target / 'check_package.py').exists(), 'scripts/verify.py did not replace check_package.py')
+    expect((target / 'scripts/verify.py').is_file() and os.access(target / 'scripts/verify.py', os.X_OK)
+           and not (target / 'check_package.py').exists(), 'scripts/verify.py did not replace check_package.py with +x')
     expect((target / 'README.md').is_file() and (target / 'README.md').read_text().startswith('# v3-proj\n'),
            'README.md stub missing after v3->v4 upgrade')
     expect('always run chaos fuzzing' in (target / 'docs/TESTING_SPEC.md').read_text(), 'edited TESTING_SPEC.md was lost by patch')
@@ -889,6 +942,7 @@ def case_v3_to_v4_upgrade(tmp):
     chk_conflict = run_manage(root, '--check-upgrade', str(target), '--since', 'HEAD')
     expect(chk_conflict.returncode != 0 and 'unresolved merge conflict markers' in chk_conflict.stdout,
            'v3->v4 --check-upgrade must fail on unresolved conflict markers: ' + chk_conflict.stdout + chk_conflict.stderr)
+    agents_file.write_text(clean_agents)
 
     # Untouched 3.0.2 --tier enterprise PROJECT_PROFILE.md (with installer-inserted profile_rows) must replace cleanly.
     ent_target = tmp / 'v3-ent'
@@ -915,6 +969,42 @@ def case_v3_to_v4_upgrade(tmp):
     ent_chk = run_manage(root, '--check-upgrade', str(ent_target), '--since', 'HEAD')
     expect(ent_chk.returncode == 0 and 'nothing lost' in ent_chk.stdout,
            'v3 enterprise -> v4 --check-upgrade failed: ' + ent_chk.stdout + ent_chk.stderr)
+
+    # Filled v3 PROJECT_PROFILE.md linking to a retired doc warns during --plan-upgrade and fails --check-upgrade until updated.
+    filled = tmp / 'v3-filled'
+    filled.mkdir()
+    r_fill = subprocess.run([sys.executable, '-B', str(v3_repo / 'check_package.py'), '--install', str(filled), '--tier', 'production'],
+                            cwd=v3_repo, capture_output=True, text=True)
+    expect(r_fill.returncode == 0, '3.0.2 production install failed: ' + r_fill.stdout + r_fill.stderr)
+    fill_rec = json.loads((filled / 'PACKAGE_MANIFEST.json').read_text())
+    fill_rec['installed_from'] = {'repository': 'https://example.invalid/repo', 'commit': sha_302, 'dirty': False, 'date': '2026-11-06'}
+    (filled / 'PACKAGE_MANIFEST.json').write_text(json.dumps(fill_rec, indent=2) + '\n')
+    fill_prof = filled / 'PROJECT_PROFILE.md'
+    fill_prof.write_text(fill_prof.read_text() + '\nSee [Domain rules](docs/DOMAIN_RULES.md).\n')
+    init_git(filled, 'filled 3.0.2 production')
+    fill_patch = tmp / 'v3-filled-to-v4.patch'
+    fill_plan = run_manage(root, '--plan-upgrade', str(filled), '--patch', str(fill_patch))
+    expect(fill_plan.returncode == 0 and 'Note: PROJECT_PROFILE.md links to removed file(s):' in fill_plan.stdout
+           and 'docs/DOMAIN_RULES.md' in fill_plan.stdout,
+           '--plan-upgrade must warn when review/kept PROJECT_PROFILE.md links to removed docs/DOMAIN_RULES.md:\n' + fill_plan.stdout)
+    fill_applied = subprocess.run(['git', 'apply', str(fill_patch)], cwd=filled, capture_output=True, text=True)
+    expect(fill_applied.returncode == 0, 'v3 filled -> v4 git apply failed: ' + fill_applied.stderr)
+    fill_chk_bad = run_manage(root, '--check-upgrade', str(filled), '--since', 'HEAD')
+    expect(fill_chk_bad.returncode != 0
+           and 'docs/DOMAIN_RULES.md was deleted but PROJECT_PROFILE.md still links to it' in fill_chk_bad.stdout,
+           '--check-upgrade missed broken .md link to removed docs/DOMAIN_RULES.md:\n' + fill_chk_bad.stdout)
+
+    # Resolving retired links in a kept/upgraded .md file restores clean --check-upgrade.
+    readme_orig = (target / 'README.md').read_text()
+    (target / 'README.md').write_text(readme_orig + '\nSee [Spec](docs/TESTING_SPEC.md).\n')
+    chk_link_bad = run_manage(root, '--check-upgrade', str(target), '--since', 'HEAD')
+    expect(chk_link_bad.returncode != 0
+           and 'docs/TESTING_SPEC.md was deleted but README.md still links to it' in chk_link_bad.stdout,
+           '--check-upgrade missed broken .md link in README.md:\n' + chk_link_bad.stdout)
+    (target / 'README.md').write_text(readme_orig)
+    chk_link_ok = run_manage(root, '--check-upgrade', str(target), '--since', 'HEAD')
+    expect(chk_link_ok.returncode == 0 and 'nothing lost' in chk_link_ok.stdout,
+           '--check-upgrade failed after removing broken link from README.md:\n' + chk_link_ok.stdout)
 
 
 def case_v2_to_v4_upgrade(tmp):

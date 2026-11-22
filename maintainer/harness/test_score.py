@@ -1398,9 +1398,23 @@ class Phase2ScorerFixes(FixtureCase):
                     {'agent_cli': 'codex@gpt-6', 'fixture': str(fx), 'steps': []},
                     'scripts/verify.py does not pass: FAIL', {}, '.agents is read-only',
                 ))
-            self.assertTrue((fx / 'created_by_test.txt').exists())
+            self.assertTrue(ev['tests_pass'])
+            self.assertFalse((fx / 'created_by_test.txt').exists())
             self.assertNotIn('created_by_test.txt', ev['untracked'])
             self.assertFalse(any('created_by_test.txt' in line for line in ev['status']))
+
+            # A test that mutates its workspace runs in a disposable copy and cannot alter S7's original fixture.
+            s7_fx = self.fixture('S7')
+            (s7_fx / 'tests' / 'test_mutates_server.py').write_text(
+                'import unittest\nfrom pathlib import Path\n'
+                'class MutatesServer(unittest.TestCase):\n'
+                '    def test_adds_settings_link(self):\n'
+                '        p = Path("app/server.py")\n'
+                '        p.write_text(p.read_text() + "\\n# /settings\\n")\n'
+            )
+            r_s7 = self.score(s7_fx, 'S7', reply='Added tests.')
+            self.assertEqual(r_s7['why'], 'no navigation link')
+            self.assertNotIn('/settings', (s7_fx / 'app' / 'server.py').read_text())
 
             # Codex session scanner ignores symlinked session files and folders.
             fake_home = Path(self.tmp.name) / 'fake-home'
@@ -1409,6 +1423,54 @@ class Phase2ScorerFixes(FixtureCase):
             (sess / 'rollout-1-s1.jsonl').symlink_to(secret)
             (sess / 'sub').symlink_to(host_sub, target_is_directory=True)
             self.assertEqual(score.run.safe_codex_sessions(fake_home, 's1'), [])
+
+    def test_sandbox_ignores_dangling_symlinks_across_resumed_steps(self):
+        fx = self.fixture('S24')
+        with tempfile.TemporaryDirectory(dir=Path.home()) as host_tmp:
+            host_p = Path(host_tmp)
+            t_git = host_p / 'git-target'
+            t_codex = host_p / 'codex-target'
+            t_cred = host_p / 'cred-target'
+            t_dir = host_p / 'codex-dir-escape'
+            src_cred = host_p / 'real_cred.json'
+            src_cred.write_text('{"token": "secret"}\n')
+            src_cred.chmod(0o600)
+            rel_cred = src_cred.relative_to(Path.home())
+
+            sb_home = host_p / 'sb-home'
+            logs = host_p / 'logs'
+            guidance = host_p / 'guidance'
+            for d in (sb_home, logs, guidance):
+                d.mkdir()
+            (sb_home / '.gitconfig').symlink_to(t_git)
+            (sb_home / '.codex').mkdir()
+            (sb_home / '.codex' / 'config.toml').symlink_to(t_codex)
+            (sb_home / rel_cred).parent.mkdir(parents=True)
+            (sb_home / rel_cred).symlink_to(t_cred)
+
+            env = {**os.environ, 'SB_HOME': str(sb_home), 'SB_LOGDIR': str(logs),
+                   'SB_GUIDANCE': str(guidance), 'SB_SIGN_IN': str(rel_cred)}
+            r = subprocess.run([str(score.run.SANDBOX), str(fx), 'true'], capture_output=True, text=True, env=env)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertFalse(t_git.exists())
+            self.assertFalse(t_codex.exists())
+            self.assertFalse(t_cred.exists())
+
+            # Also verify symlinked .codex directory and symlinked SB_HOME itself.
+            sb_home2 = host_p / 'sb-home2'
+            sb_home2.mkdir()
+            (sb_home2 / '.codex').symlink_to(t_dir, target_is_directory=True)
+            r2 = subprocess.run([str(score.run.SANDBOX), str(fx), 'true'],
+                                capture_output=True, text=True, env={**env, 'SB_HOME': str(sb_home2)})
+            self.assertEqual(r2.returncode, 0, r2.stderr)
+            self.assertFalse(t_dir.exists())
+
+            sb_link = host_p / 'sb-link'
+            sb_link.symlink_to(host_p / 'outside-home', target_is_directory=True)
+            r3 = subprocess.run([str(score.run.SANDBOX), str(fx), 'true'],
+                                capture_output=True, text=True, env={**env, 'SB_HOME': str(sb_link)})
+            self.assertEqual(r3.returncode, 2)
+            self.assertFalse((host_p / 'outside-home').exists())
 
 
 class Suites(unittest.TestCase):
