@@ -178,15 +178,38 @@ def case_generated_tables_and_enterprise(tmp):
     expect('| License check | `reuse lint` |' in text and text.count('| License check |') == 1, 'owner License check row was overwritten or duplicated')
     agents = (target / 'AGENTS.md').read_text()
     expect('DESIGN_DOC' in agents and 'VERIFICATION_MATRIX' in agents and 'docs/ENTERPRISE' in agents, 'enterprise AGENTS.md missing rows')
-    # Hand-editing a generated AGENTS.md table fails scripts/verify.py until manage.py --sync DIR restores it.
+    # Hand-editing, deleting, or duplicating a generated AGENTS.md table or deleting .guidance.json fails scripts/verify.py.
     (target / 'AGENTS.md').write_text(agents.replace('| Requirement verification status |', '| Tampered row |'))
     ok, out = check(target)
-    expect(not ok and 'AGENTS.md routing table does not match .guidance.json' in out,
+    expect(not ok and 'AGENTS.md routing table' in out,
            'scripts/verify.py should fail on tampered AGENTS.md table: ' + out)
     r_sync = run_manage(root, '--sync', str(target))
     expect(r_sync.returncode == 0, 'manage.py --sync failed after table edit: ' + r_sync.stderr)
     ok, out = check(target)
     expect(ok, 'scripts/verify.py failed after manage.py --sync repaired table: ' + out)
+
+    clean_agents = (target / 'AGENTS.md').read_text()
+    without_routing = re.sub(r'<!-- generated: routing;.*?<!-- end generated: routing -->\n?', '', clean_agents, flags=re.S)
+    (target / 'AGENTS.md').write_text(without_routing)
+    ok, out = check(target)
+    expect(not ok and 'AGENTS.md routing table' in out,
+           'scripts/verify.py should fail when generated routing block is deleted: ' + out)
+
+    routing_block = re.search(r'(<!-- generated: routing;.*?<!-- end generated: routing -->\n?)', clean_agents, re.S).group(1)
+    (target / 'AGENTS.md').write_text(clean_agents + '\n' + routing_block)
+    ok, out = check(target)
+    expect(not ok and 'AGENTS.md routing table' in out,
+           'scripts/verify.py should fail when generated routing block is duplicated: ' + out)
+    (target / 'AGENTS.md').write_text(clean_agents)
+
+    guidance_copy = (target / '.guidance.json').read_text()
+    (target / '.guidance.json').unlink()
+    ok, out = check(target)
+    expect(not ok and '.guidance.json not found' in out,
+           'scripts/verify.py should fail when .guidance.json is removed: ' + out)
+    (target / '.guidance.json').write_text(guidance_copy)
+    ok, out = check(target)
+    expect(ok, 'scripts/verify.py failed after restoring .guidance.json: ' + out)
 
 
 def case_guardrails(tmp):
@@ -236,10 +259,16 @@ def case_exclusions_deps_rename_docs_timeouts(tmp):
     (target / 'requirements.txt').write_text('requests==2.31.0\n')
     init_git(target)
 
-    # 1. Proposed exclusion counts as a gap; --verify release names requirements.txt without exposing its versions.
+    # 1. Proposed exclusion counts as a gap; --verify release names requirements.txt without exposing its versions and skips Manual rows.
+    profile.write_text(profile.read_text().replace(
+        '| Guidance integrity |',
+        '| Deploy review | `python3 -c "open(\'manual-ran\', \'w\').write(\'x\')"` | Manual | Staging | Manual |\n| Guidance integrity |',
+    ))
     r = verify(target, 'development')
     expect(r.returncode == 2 and '1 gap: Browser / accessibility smoke' in r.stdout, 'Proposed exclusion should report gap: ' + r.stdout)
     r_rel = verify(target, 'release', '--receipt', str(tmp / 'receipt.json'))
+    expect(not (target / 'manual-ran').exists() and 'Deploy review' not in r_rel.stdout,
+           'release verification must not execute Manual commands:\n' + r_rel.stdout)
     expect('requirements.txt' in r_rel.stdout and '2.31.0' not in r_rel.stdout, 'release dep gap check failed: ' + r_rel.stdout)
     expect((tmp / 'receipt.json').is_file(), 'verify did not write --receipt')
 

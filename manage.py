@@ -434,9 +434,10 @@ def sync_adapters(manifest, errors, target_dir=None, template=True):
     if agents is not None and agents != (base / 'AGENTS.md').read_text():
         (base / 'AGENTS.md').write_text(agents)
         print('Regenerated the AGENTS.md routing and procedure tables')
-    if not template and (base / GUIDANCE_FILE).is_file() and 'agents_blocks' in record:
-        blocks = expected_agents_blocks(manifest, modules)
-        if record.get('agents_blocks') != blocks:
+    if not template and (base / GUIDANCE_FILE).is_file() and isinstance(record.get('agents_blocks'), dict):
+        tracked = record['agents_blocks']
+        blocks = {k: v for k, v in expected_agents_blocks(manifest, modules).items() if k in tracked}
+        if tracked != blocks:
             record['agents_blocks'] = blocks
             (base / GUIDANCE_FILE).write_text(json.dumps(record, indent=2) + '\n')
 
@@ -545,7 +546,7 @@ def add_release_profile_section(profile, modules):
         profile.write_text(text.rstrip('\n') + '\n' + m.group(2) + '\n')
 
 
-def build_guidance_record(manifest, tier, features, modules, tools, source, wanted_entries):
+def build_guidance_record(manifest, tier, features, modules, tools, source, wanted_entries, agents_path=None):
     required = set(manifest['tiers'].get(tier or '', [])) | {
         m for f in features for m in manifest['features'].get(f, [])}
     module_files = {
@@ -558,6 +559,10 @@ def build_guidance_record(manifest, tier, features, modules, tools, source, want
         eff = effective(e['path'], packaged_text(manifest, e['path']), manifest, set(modules))
         sha = hashlib.sha256(eff.encode()).hexdigest() if eff is not None else e.get('sha256')
         file_entries.append({'path': e['path'], 'kind': e.get('kind', ''), 'sha256': sha})
+    blocks = expected_agents_blocks(manifest, modules)
+    if agents_path is not None and Path(agents_path).is_file():
+        present = {m.group(2) for m in GENERATED.finditer(Path(agents_path).read_text(errors='replace'))}
+        blocks = {k: v for k, v in blocks.items() if k in present}
     return {
         'version': manifest['version'],
         'installed_from': source,
@@ -568,7 +573,7 @@ def build_guidance_record(manifest, tier, features, modules, tools, source, want
             'tools': tools,
         },
         'module_files': module_files,
-        'agents_blocks': expected_agents_blocks(manifest, modules),
+        'agents_blocks': blocks,
         'guardrail_checks': expected_guardrail_checks(manifest, modules, tools),
         'files': file_entries,
         'uninstalled': [e['path'] for e in manifest['files'] if e['path'] not in wanted_paths],
@@ -642,7 +647,8 @@ def install(manifest, target, force, tier=None, features=(), everything=False, d
 
     record_dest = target / GUIDANCE_FILE
     source = prev_doc.get('installed_from') if (record_dest.exists() and not force) else source_identity()
-    record = build_guidance_record(manifest, chosen_tier, all_features, modules, chosen, source or source_identity(), wanted_entries)
+    record = build_guidance_record(manifest, chosen_tier, all_features, modules, chosen, source or source_identity(),
+                                   wanted_entries, agents_path=target / 'AGENTS.md')
     if not record_dest.exists() or force or chosen_tier != previous.get('tier') or modules != sorted(prev_modules) or chosen != sorted(previous.get('tools', [])):
         record_dest.write_text(json.dumps(record, indent=2) + '\n')
         copied.append(GUIDANCE_FILE)

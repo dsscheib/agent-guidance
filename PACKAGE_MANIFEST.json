@@ -266,8 +266,8 @@
       "path": "AGENTS.md",
       "kind": "entry",
       "module": "core",
-      "bytes": 6648,
-      "sha256": "3c5b3bcd718eeaa7cb3df8feb874809644a63cc7b5b4af6741b8df75a1309d5b"
+      "bytes": 6666,
+      "sha256": "49bcc19fb58b9443a04d6d0f996beebcaa7b250e962aac1cc1bd181b5a8fb771"
     },
     {
       "path": "CLAUDE.md",
@@ -309,8 +309,8 @@
       "kind": "template",
       "stage": "code",
       "module": "core",
-      "bytes": 4730,
-      "sha256": "6510c8755f2c7efa3ace61b53436341162eeca025c33b209e7d6f9d957d26f09"
+      "bytes": 4738,
+      "sha256": "4db1d4d2c91fc943e64cac455d29a0d87fe46cf854cbed9a6828ac0471c49766"
     },
     {
       "path": "docs/OPEN_WORK.md",
@@ -323,8 +323,8 @@
       "path": "scripts/verify.py",
       "kind": "tooling",
       "module": "core",
-      "bytes": 23718,
-      "sha256": "a363b394eb5e32b6c0f695c6615beb893edc7079c03df46f21ad4517fb9829a7"
+      "bytes": 24545,
+      "sha256": "b117483154dcd603dc03af16d27933ad14d0ba5c0a8a5d55a8eb057816e7896a"
     },
     {
       "path": "scripts/hooks/pre-commit",
@@ -351,8 +351,8 @@
       "path": "docs/RUNBOOKS.md",
       "kind": "template",
       "module": "operations",
-      "bytes": 2783,
-      "sha256": "10a3eb9fad736be6fee7b40ca4c7217df3117e32dd5de004bfbe8c622b3c890d"
+      "bytes": 2801,
+      "sha256": "bed7e7d9cdbafcaa17ed78abfa981f0045f670358046c3a553c10f14b54b8104"
     },
     {
       "path": "docs/RELEASE_NOTES.md",
@@ -414,8 +414,8 @@
       "path": "docs/procedures/ui-design.md",
       "kind": "procedure",
       "module": "ui-design",
-      "bytes": 5434,
-      "sha256": "f7cfd397b719d50f99686bbcd1b735c4c5bcf72e3d1490ec0abeead8234402f4"
+      "bytes": 4874,
+      "sha256": "18ff6fa97d183b6824eec93ff74cca6f9a614fbd5f21afd4b6264a18038aecce"
     },
     {
       "path": "profiles/SERVER_RENDERED_WEB_GO.md",

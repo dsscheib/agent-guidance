@@ -2,7 +2,7 @@
 
 Repository-only. Version 4 refocuses this package on **strong frontier supervisor models coordinating specialist subagents** (such as `agent-team`), **multi-CLI repositories**, and **deterministic verification gates** (`scripts/verify.py`).
 
-Earlier v1–v3 work evaluated cheaper/mid-tier models across ~50-file installs; Version 4 pivots away from older budget models to lean, tiered installs (~10–24 files) with selective on-demand skills (`release-review`, `release-readiness`, `ui-design`). The archived v3 evaluation, holdout study, and raw-run results live at git tag `3.0.2` (`git show 3.0.2:maintainer/EVALUATION.md` and `3.0.2:maintainer/HOLDOUT_RESULTS.md`) and in the `eval-2026-11-04` / `holdout-2026-11-06` GitHub releases.
+Earlier v1–v3 work evaluated cheaper/mid-tier models across ~50-file installs; Version 4 pivots away from older budget models to lean, tiered installs (~10–24 files) with selective on-demand skills (`release-review`, `release-readiness`, `ui-design`). The archived v3 evaluation, holdout study, and raw-run results live at pre-v4 commit `ce9ffe2` (`git show ce9ffe2:maintainer/EVALUATION.md` and `ce9ffe2:maintainer/HOLDOUT_RESULTS.md`) and in the `eval-2026-11-04` / `holdout-2026-11-06` GitHub releases.
 
 ---
 
@@ -34,7 +34,7 @@ Earlier v1–v3 work evaluated cheaper/mid-tier models across ~50-file installs;
 | File or folder | Purpose |
 |---|---|
 | [SCENARIOS.md](SCENARIOS.md) | Active scenario catalog, pass criteria, and instructions for manual and automated runs |
-| [RESULTS.md](RESULTS.md) | Clean v4 log of scenario runs (v1–v3 archive at tag `3.0.2`) |
+| [RESULTS.md](RESULTS.md) | Clean v4 log of scenario runs (v1–v3 archive at commit `ce9ffe2`) |
 | [AUDIT.md](AUDIT.md) | Independent pre-release / consequential-merge audit checklist |
 | [`run_scenario.py`](run_scenario.py) & [`scenarios.json`](scenarios.json) | Reproducible scenario fixture builder and machine-readable scenario definitions |
 | [`test_install.py`](test_install.py) | Deterministic test suite for `--install`, tiers, tools, budgets, `--verify`, `agent-team` interop, and upgrades |

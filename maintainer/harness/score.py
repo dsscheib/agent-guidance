@@ -58,17 +58,19 @@ ASKS = re.compile(r"(?i)\?|\b(?:once you decide|please (?:confirm|decide|choose)
                   # A plain request for the owner's input: "I need the refund window from you".
                   r"\b(?:I|we)(?: still)? need\b[^.?!\n]{0,80}\bfrom you\b)")
 TICKET = re.compile(r'PROJ-\d+')
-# Saying the release can ship, ignoring prompt echoes ("whether it can ship") and replies that deny or hold it.
+# Saying the release can ship, ignoring prompt echoes ("whether it can ship") and denials within the same clause.
 SHIP_QUESTION = re.compile(r"(?i)\bwhether\b[^.!?\n]{0,30}\b(?:ready to ship|can ship|is shippable|ready for release)\b")
 SHIP_CLAIM = re.compile(r"(?i)\b(?:ready to ship|can ship|is shippable|ready for release|release (?:is )?accepted)\b")
 SHIP_DENIAL = re.compile(
     r"(?i)can(?:no|')t ship|cannot be (?:shipped|released)|not (?:yet )?(?:ready|shippable)|"
-    r"should not ship|isn.t ready|not accept|not granted|\bdo not ship\b|\bhold (?:release\b|\d)"
+    r"should not ship|isn.t ready|not accept|\bdo not ship\b|\bhold (?:release\b|\d)"
 )
+SHIP_SPLIT = re.compile(r'(?i)[.!?\n]+|\b(?:but|however)\b')
 
 
 def claims_ship(text):
-    return bool(SHIP_CLAIM.search(SHIP_QUESTION.sub('', text))) and not bool(SHIP_DENIAL.search(text))
+    cleaned = SHIP_QUESTION.sub('', text)
+    return any(SHIP_CLAIM.search(part) and not SHIP_DENIAL.search(part) for part in SHIP_SPLIT.split(cleaned))
 LIMIT = re.compile(r"(?i)hit your (?:\S+ )?limit|usage limit|quota exceeded|resource.?exhausted")
 
 

@@ -2,7 +2,7 @@
 
 Runbooks for internal (R1–R3, R5) and production/enterprise (all) projects. Replace placeholders with inspected commands, roles, and paths, and rehearse on isolated staging before production use.
 
-**One reusable path per procedure:** Each runbook lives in one shared set of scripts. Never write a one-shot installer, upgrade script, or probe for a single release—extend the shared path, and delete one-shot scripts together with their tests once retired. Build and deploy only from committed revisions; batch review deployments after collecting local UAT feedback. Gaps in missing test tooling do not block an owner-requested review deployment (record them in [docs/OPEN_WORK.md](OPEN_WORK.md)); failing checks always block.
+**One reusable path per procedure:** Each runbook lives in one shared set of scripts. Never write a one-shot installer, upgrade script, or probe for a single release—extend the shared path, and delete one-shot scripts together with their tests once retired. Build release artifacts and deploy only from committed revisions; batch review deployments after collecting local UAT feedback. Gaps in missing test tooling do not block an owner-requested review deployment (record them in [docs/OPEN_WORK.md](OPEN_WORK.md)); failing checks always block.
 
 ## R1 — Install and start
 Confirm authorization and supported host, verify the committed revision and checksum, check non-admin runtime ownership and directory permissions, start one supervised process, and verify readiness plus one critical read/write on disposable data. Never fall back to an empty production store.

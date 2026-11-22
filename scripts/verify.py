@@ -19,6 +19,11 @@ POINTER_FILES = ('GEMINI.md', '.github/copilot-instructions.md')
 POINTER_MAX_LINES = 10
 EXCLUDED_ROW = re.compile(r'^\|\s*Excluded guidance\b.*$', re.M)
 GATE_TIMEOUT = re.compile(r'(?i)\btimeout\s*[:=]?\s*(\d+)\s*(s|sec|seconds?|m|min|minutes?|h|hours?)?\b')
+GATE_PHASES = {
+    'development': {'development'},
+    'documentation': {'documentation'},
+    'release': {'development', 'release', 'documentation'},
+}
 PROSE_SUFFIXES = {'.md', '.txt', '.rst'}
 GUIDANCE_RECORDS = ('.guidance.json', 'PACKAGE_MANIFEST.json', 'docs/guidance-provenance.json')
 DEPENDENCY_FILES = re.compile(r'requirements[\w.-]*\.txt|pyproject\.toml|setup\.(py|cfg)|Pipfile(\.lock)?|poetry\.lock|uv\.lock'
@@ -80,10 +85,16 @@ def frontmatter(text):
 
 
 def load_record():
-    if guidance_path.is_file():
-        return json.loads(guidance_path.read_text())
-    legacy = root / 'PACKAGE_MANIFEST.json'
-    return json.loads(legacy.read_text()) if legacy.is_file() else {}
+    for path in (guidance_path, root / 'PACKAGE_MANIFEST.json'):
+        if path.is_file():
+            try:
+                data = json.loads(path.read_text())
+                if isinstance(data, dict):
+                    return data, None
+                return None, f'{rel(path)}: expected a JSON object'
+            except ValueError as error:
+                return None, f'{rel(path)}: not valid JSON ({error})'
+    return None, '.guidance.json not found; restore installation metadata or reinstall with manage.py --install'
 
 
 def recorded_exclusions(profile):
@@ -182,12 +193,16 @@ def check_skills(record, errors):
 def check_agents_tables(record, errors):
     blocks = record.get('agents_blocks')
     agents = root / 'AGENTS.md'
-    if not isinstance(blocks, dict) or not agents.is_file():
+    if not isinstance(blocks, dict) or not blocks or not agents.is_file():
         return
+    found = {}
     for match in GENERATED.finditer(agents.read_text(errors='replace')):
-        name, body = match.group(2), match.group(3)
-        if name in blocks and body != blocks[name]:
-            errors.append(f'AGENTS.md {name} table does not match .guidance.json; run manage.py --sync {root}')
+        found.setdefault(match.group(2), []).append(match.group(3))
+    for name, expected in blocks.items():
+        matches = found.get(name, [])
+        if len(matches) != 1 or matches[0] != expected:
+            errors.append(f'AGENTS.md {name} table is missing, duplicated, or does not match .guidance.json; '
+                          f'run manage.py --sync {root}')
 
 
 def check_guardrails(record, errors):
@@ -243,6 +258,11 @@ def gate_timeout(gate):
     return int(m.group(1)) * {'s': 1, 'm': 60, 'h': 3600}[(m.group(2) or 's').lower()[0]]
 
 
+def gate_labels(gate):
+    cleaned = GATE_TIMEOUT.sub('', gate.lower())
+    return {p.strip(' ()') for p in re.split(r'[/,;]', cleaned) if p.strip(' ()')}
+
+
 def inventory_gates(phase):
     profile = root / 'PROJECT_PROFILE.md'
     if not profile.is_file():
@@ -266,11 +286,8 @@ def inventory_gates(phase):
             continue
         row = dict(zip(header, cells))
         gate = row.get('gate', '').lower()
-        if not gate or gate in ('—', '-', 'no', 'none'):
-            continue
-        if phase == 'development' and not gate.startswith('development'):
-            continue
-        if phase == 'documentation' and 'documentation' not in gate:
+        labels = gate_labels(gate)
+        if not labels or not (labels & GATE_PHASES[phase]) or not (labels <= GATE_PHASES['release']):
             continue
         cell = row.get('command', '')
         code = INLINE_CODE.findall(cell)
@@ -406,11 +423,14 @@ def main():
     ap.add_argument('--receipt', metavar='FILE', help='write --verify results as JSON')
     ap.add_argument('--require', choices=['code', 'release'], help='fail if placeholders remain at this stage')
     args = ap.parse_args()
-    record = load_record()
+    record, record_error = load_record()
     if args.verify:
-        verify(args.verify, args.timeout, args.receipt, record)
+        verify(args.verify, args.timeout, args.receipt, record or {})
 
     errors, notes = [], []
+    if record_error:
+        errors.append(record_error)
+    record = record or {}
     files = walk()
     exclusions = recorded_exclusions(root / 'PROJECT_PROFILE.md')
     installed = record.get('files', [])

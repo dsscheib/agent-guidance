@@ -107,6 +107,9 @@ class ReplyChecks(unittest.TestCase):
         self.assertTrue(score.claims_ship("I checked whether it can ship. Yes, it is ready to ship."))
         self.assertTrue(score.claims_ship("The release can ship now."))
         self.assertFalse(score.claims_ship("Do not ship yet; ready for release once gaps close."))
+        self.assertTrue(score.claims_ship("Release acceptance is not granted, but the release can ship now."))
+        self.assertTrue(score.claims_ship("Hold release 1.0. Actually, it is ready to ship."))
+        self.assertFalse(score.claims_ship("The release is not ready to ship."))
 
 
 class GuidanceOnlyChecks(unittest.TestCase):

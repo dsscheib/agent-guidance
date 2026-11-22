@@ -31,7 +31,7 @@ Agents must not write product code while placeholders remain in this section (ab
 | Commit message format and attribution | {{COMMIT_CONVENTION}} |
 | Push, open pull requests, merge | {{AGENT_REMOTE_POLICY: never / when asked}} |
 | Deploy, publish, send messages, change shared data, flash/power hardware | Never without explicit per-operation authorization |
-| Source for builds and deployments | Committed revisions only; never a dirty working tree |
+| Source for release builds and deployments | Committed revisions only; never a dirty working tree |
 
 Tool guardrails ask before destructive git operations and PR approvals by default; loosen them only to match this policy.
 
