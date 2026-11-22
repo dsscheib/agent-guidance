@@ -12,7 +12,7 @@ STAGE_MARKER = '<!-- stage: release -->'
 SKIP_DIRS = {'.git', '__pycache__', 'node_modules', 'target'}
 PLACEHOLDER = re.compile(r'\{\{[^}]+\}\}')
 LINK = re.compile(r'\]\(([^)\s]+)(?:\s+"[^"]*")?\)')
-FENCE = re.compile(r'^(```|~~~).*?^\1[ \t]*$', re.M | re.S)
+FENCE_OPEN = re.compile(r'^ {0,3}(`{3,}|~{3,})(.*)$')
 INLINE_CODE = re.compile(r'`[^`\n]*`')
 DATED = re.compile(r'\b20\d\d-\d\d-\d\d\b')
 NAME = re.compile(r'^[a-z0-9][a-z0-9-]*$')
@@ -84,8 +84,25 @@ def sha256(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def strip_fences(text):
+    out, fence_char, fence_len = [], None, 0
+    for line in text.splitlines():
+        if fence_char is None:
+            m = FENCE_OPEN.match(line)
+            if m and (m.group(1)[0] == '~' or '`' not in m.group(2)):
+                fence_char, fence_len = m.group(1)[0], len(m.group(1))
+                out.append('')
+                continue
+            out.append(line)
+        else:
+            if re.match(rf'^ {{0,3}}{re.escape(fence_char)}{{{fence_len},}}[ \t]*$', line):
+                fence_char, fence_len = None, 0
+            out.append('')
+    return '\n'.join(out)
+
+
 def prose(text):
-    return INLINE_CODE.sub('', FENCE.sub('', text))
+    return INLINE_CODE.sub('', strip_fences(text))
 
 
 def rel(path, base=root):
@@ -825,7 +842,7 @@ def plan_upgrade(manifest, target, patch=None):
     wanted = {e['path']: e for e in wanted_entries}
     have_base = bool(base_commit and package_git('cat-file', '-e', f'{base_commit}^{{commit}}') is not None)
     source = source_identity()
-    rows, diffs, blocked, agents_patch_text = [], [], [], None
+    rows, diffs, blocked, agents_patch_text, merged_texts = [], [], [], None, {}
 
     def base_text(path):
         text = package_git('show', f'{base_commit}:{path}') if have_base else None
@@ -881,6 +898,7 @@ def plan_upgrade(manifest, target, patch=None):
             if merged.returncode == 0:
                 action, note = 'merge', 'project changes kept'
                 diffs.append(unified(path, mine, merged.stdout))
+                merged_texts[path] = merged.stdout
                 if path == 'AGENTS.md':
                     agents_patch_text = merged.stdout
             else:
@@ -902,8 +920,9 @@ def plan_upgrade(manifest, target, patch=None):
     link_warnings = []
     for action, path, _, _ in rows:
         if action in ('keep', 'review', 'conflict', 'merge') and path.endswith('.md') and (target / path).is_file():
+            text = merged_texts[path] if action == 'merge' else (target / path).read_text(errors='replace')
             targets = set()
-            for link in LINK.findall(prose((target / path).read_text(errors='replace'))):
+            for link in LINK.findall(prose(text)):
                 if '://' in link or link.startswith(('#', 'mailto:')):
                     continue
                 resolved = ((target / path).parent / link.split('#')[0]).resolve()
@@ -994,9 +1013,9 @@ def check_upgrade(manifest, target, since='HEAD'):
             sys.exit(f"git {' '.join(args)} failed in {target}: {r.stderr.strip()}")
         return r.stdout
 
-    before_files = [p for p in git('ls-tree', '-r', '--name-only', since).splitlines()]
+    before_files = [p for p in git('ls-tree', '-r', '-z', '--name-only', since).split('\0') if p]
     shown = lambda p: subprocess.run(['git', '-C', str(target), 'show', f'{since}:{p}'], capture_output=True, text=True).stdout
-    now_files = [p for p in git('ls-files', '--cached', '--others', '--exclude-standard').splitlines() if (target / p).is_file()]
+    now_files = [p for p in git('ls-files', '-z', '--cached', '--others', '--exclude-standard').split('\0') if p and (target / p).is_file()]
     now_docs = '\n'.join((target / p).read_text(errors='replace') for p in now_files if p.endswith('.md'))
     problems = []
     open_before, revisions = set(), set()

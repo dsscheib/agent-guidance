@@ -32,7 +32,7 @@ What `--plan-upgrade` does automatically:
 - Maps v3 modules (`production-ops`, `release` -> `release-review`, `release`; retired `data`, `team` dropped).
 - Plans removal of legacy `PACKAGE_MANIFEST.json`, `check_package.py`, untouched retired v3 docs (`DOCUMENTATION.md`, `TESTING_SPEC.md`, `CHANGE_WORKFLOW.md`, etc.), and retired routine skill wrappers (`bootstrap-project`, `final-audit`, `upgrade-guidance`) while automatically adding `scripts/verify.py` and `.guidance.json`.
 - Flags customized retired files or filled-in templates (`PROJECT_PROFILE.md`, `DESIGN_DOC.md`, `docs/OPEN_WORK.md`, etc.) as **review** or **conflict** so you never silently delete or overwrite project rules.
-- Runs 3-way merge on `AGENTS.md` when both sides changed cleanly, keeping any appended sections (such as `agent-team` escalation blocks).
+- Runs 3-way merge on `AGENTS.md` when both sides changed cleanly, keeping any appended sections (such as `agent-team` escalation blocks; v2 installs with local `AGENTS.md` edits report a conflict to merge by hand).
 
 ## 3. Present plan & ask owner in one batch
 Show the plan summary, conflicts, and `review` items side-by-side in your reply with a concrete recommendation for each (for example, merging any local rule from an edited `docs/TESTING_SPEC.md` or `docs/CHANGE_WORKFLOW.md` into `PROJECT_PROFILE.md`, `DESIGN_DOC.md`, or `AGENTS.md` before deleting the retired file). Ask about tool selection (`--tools`), tier/features (`release-review`, `ui-design`), and whether to preserve or retire one-shot scripts. Stop and wait for approval.

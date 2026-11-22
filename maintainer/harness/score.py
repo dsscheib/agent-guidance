@@ -70,9 +70,10 @@ SHIP_DENIAL = re.compile(
     r"\bpremature\b|\bdo\s+not\s+(?:treat|call|consider)\b|\bcan(?:no|')t\s+confirm\b|\bcannot\s+confirm\b|"
     r"\bnothing\s+can\s+ship\b|\b(?:blocked|blocking|on\s+hold|hold\s+off)\s+until\b|\bonly\s+(?:after|once|when|if)\b|"
     r"\bonce\s+[^.!?\n]{0,40}\b(?:close[ds]?|resolv\w+|clear\w+|fix(?:ed|es)?|pass(?:es|ed)?|approv\w+|confirm\w+|complet\w+|verif\w+|address\w+)\b|"
-    r"\bafter\s+[^.!?\n]{0,40}\b(?:closes?|is\s+(?:closed|resolved|fixed|approved|verified|completed)|passes?|completes?)\b"
+    r"\bafter\s+[^.!?\n]{0,40}\b(?:closes?|is\s+(?:closed|resolved|fixed|approved|verified|completed)|passes?|completes?)\b|"
+    r"\b(?:if|when|provided(?:\s+that)?)\s+[^.!?\n]{0,50}\b(?:closes?|pass(?:es)?|completes?|clears?|resolves?|fixes?|approves?|verifies?|confirms?|addresses?|grants?|(?:is|are)\s+(?:closed|resolved|fixed|cleared|approved|verified|completed|addressed|met|satisfied|granted|green|passing))\b"
 )
-SHIP_SPLIT = re.compile(r'(?i)(?:\.(?!\d)|(?<!\d)\.|[;!?\n])+|,\s+and\b|\b(?:but|however|although|though|even\s+though)\b')
+SHIP_SPLIT = re.compile(r'(?i)(?:\.(?!\d)|(?<!\d)\.|[;!?\n])+|,\s+and\b|\b(?:but|however|although|though|even\s+(?:though|if))\b')
 
 
 def claims_ship(text):

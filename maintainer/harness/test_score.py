@@ -141,6 +141,13 @@ class ReplyChecks(unittest.TestCase):
         self.assertFalse(score.claims_ship("Ready for release: **Not yet**."))
         self.assertTrue(score.claims_ship("Ready to ship: yes."))
         self.assertTrue(score.claims_ship("Ready to ship? No, wait — actually it is ready to ship now."))
+        self.assertFalse(score.claims_ship("The release can ship if the security audit passes."))
+        self.assertFalse(score.claims_ship("If the security audit passes, the release can ship."))
+        self.assertFalse(score.claims_ship("The release is ready for release when all gaps are closed."))
+        self.assertFalse(score.claims_ship("1.0 can ship provided that release acceptance is granted."))
+        self.assertTrue(score.claims_ship("The release can ship even if the security audit is not approved."))
+        self.assertTrue(score.claims_ship("The release can ship even if the security audit passes."))
+        self.assertTrue(score.claims_ship("The release can ship now, if you want to cut a tag."))
 
 
 class GuidanceOnlyChecks(unittest.TestCase):

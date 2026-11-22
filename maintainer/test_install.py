@@ -192,8 +192,8 @@ def case_generated_tables_and_enterprise(tmp):
     without_routing = re.sub(r'<!-- generated: routing;.*?<!-- end generated: routing -->\n?', '', clean_agents, flags=re.S)
     (target / 'AGENTS.md').write_text(without_routing)
     ok, out = check(target)
-    expect(not ok and 'AGENTS.md routing table' in out,
-           'scripts/verify.py should fail when generated routing block is deleted: ' + out)
+    expect(not ok and 'AGENTS.md routing table' in out and 'finish merging AGENTS.md' in out,
+           'scripts/verify.py should fail cleanly when generated routing block markers are missing: ' + out)
 
     routing_block = re.search(r'(<!-- generated: routing;.*?<!-- end generated: routing -->\n?)', clean_agents, re.S).group(1)
     (target / 'AGENTS.md').write_text(clean_agents + '\n' + routing_block)
@@ -271,7 +271,42 @@ def case_guardrails(tmp):
     ok, out = check(ent)
     expect(not ok and '.github/hooks/guidance_guardrail.py' in out,
            'scripts/verify.py must reject commented-out Copilot GH_ASK entry: ' + out)
+    copilot_guard.write_text(re.sub(
+        r"\(\['pr', 'merge'\],[^\n]+\n", '', orig_copilot_py, count=1,
+    ) + "\nGH_DENY = [(['pr', 'merge'], 'blocked')]\n")
+    ok, out = check(ent)
+    expect(not ok and '.github/hooks/guidance_guardrail.py' in out,
+           'scripts/verify.py must reject Copilot entry moved to inactive GH_DENY: ' + out)
+    copilot_guard.write_text(re.sub(
+        r"\(\['pr', 'merge'\],[^\n]+\n", '', orig_copilot_py, count=1,
+    ).replace("(['clean'],", "(['pr', 'merge'], 'wrong table'),\n    (['clean'],", 1))
+    ok, out = check(ent)
+    expect(not ok and '.github/hooks/guidance_guardrail.py' in out,
+           'scripts/verify.py must reject Copilot gh entry moved to git ASK table: ' + out)
+    copilot_guard.write_text(orig_copilot_py + '\nGH_ASK = []\n')
+    ok, out = check(ent)
+    expect(not ok and '.github/hooks/guidance_guardrail.py' in out,
+           'scripts/verify.py must reject shadowed empty GH_ASK assignment: ' + out)
     copilot_guard.write_text(orig_copilot_py)
+
+    def run_copilot_hook(proj, payload):
+        r = subprocess.run([sys.executable, '-B', '.github/hooks/guidance_guardrail.py'],
+                           cwd=proj, input=json.dumps(payload), capture_output=True, text=True)
+        expect(r.returncode == 0, f'guidance_guardrail.py exited {r.returncode}: {r.stderr}')
+        return json.loads(r.stdout) if r.stdout.strip() else None
+
+    for event, want in (
+        ({'toolName': 'bash', 'toolArgs': {'command': 'gh pr merge 1'}}, 'ask'),
+        ({'toolName': 'bash', 'toolArgs': json.dumps({'command': 'gh release create v1'})}, 'ask'),
+        ({'toolName': 'bash', 'toolArgs': {'command': 'git reset --hard HEAD'}}, 'ask'),
+        ({'toolName': 'view', 'toolArgs': {'path': '.env'}}, 'deny'),
+        ({'toolName': 'bash', 'toolArgs': {'command': 'git status'}}, None),
+    ):
+        got = run_copilot_hook(ent, event)
+        got_dec = got.get('permissionDecision') if isinstance(got, dict) else None
+        expect(got_dec == want, f'enterprise hook decision for {event} was {got!r}, expected {want!r}')
+    proto_merge = run_copilot_hook(proto, {'toolName': 'bash', 'toolArgs': {'command': 'gh pr merge 1'}})
+    expect(proto_merge is None, f'prototype hook must not gate gh pr merge: {proto_merge!r}')
 
     for path, orig in ((claude_guard, orig_claude),
                        (codex_guard, orig_codex),
@@ -455,16 +490,31 @@ def case_exclusions_deps_rename_docs_timeouts(tmp):
         r_row = verify(target, 'development')
         expect(r_row.returncode == 2 and token in r_row.stdout and purpose in r_row.stdout,
                f'{purpose} must fail independently as incomplete:\n' + r_row.stdout)
-    # Fenced example tables and a second non-inventory table under ## Command inventory must not become executable gates.
-    profile.write_text(base_profile.replace(
-        '| Purpose | Command |',
-        '```markdown\n| Purpose | Command | Gate | Environment | Evidence |\n|---|---|---|---|---|\n'
-        '| Fenced example | `touch fenced-ran` | Development | Dev | — |\n```\n\n| Purpose | Command |',
-    ) + '\nNote after inventory:\n\n| Extra | Header |\n|---|---|\n| Foo | Bar |\n')
-    r_fence = verify(target, 'development')
-    expect(not (target / 'fenced-ran').exists() and 'Fenced example' not in r_fence.stdout
-           and 'unrecognized' not in r_fence.stdout,
-           'fenced example or trailing table leaked into inventory gates:\n' + r_fence.stdout)
+    # Fenced example tables (```, ````, ~~~~, 3-space indented), 4-space indented code blocks, and trailing tables
+    # must never become executable gates or mask a real failing gate.
+    failing_profile = (base_profile
+                       .replace('`python3 -c "import sys; assert sys.version_info[0] == 3"`', '`false`')
+                       .replace('Proposed: Not applicable: CLI only', 'Not applicable: CLI only'))
+    fake_table = ('| Purpose | Command | Gate | Environment | Evidence |\n'
+                  '|---|---|---|---|---|\n'
+                  '| Fake gate | `touch fenced-ran && true` | Development | Dev | — |\n')
+    for label, snippet in (
+        ('3-backtick', f'```markdown\n{fake_table}```\n\n'),
+        ('4-backtick', f'````markdown\n{fake_table}````\n\n'),
+        ('4-tilde', f'~~~~markdown\n{fake_table}~~~~\n\n'),
+        ('3-space fence', '   ```markdown\n' + '\n'.join('   ' + l for l in fake_table.splitlines()) + '\n   ```\n\n'),
+        ('4-space indented', '\n'.join('    ' + l for l in fake_table.splitlines()) + '\n\n'),
+    ):
+        test_text = failing_profile.replace('| Purpose | Command |', snippet + '| Purpose | Command |', 1)
+        if label == '4-space indented':
+            test_text = test_text.replace('## Command inventory',
+                                          '    ## Command inventory\n\n' + snippet + '## Command inventory', 1)
+        profile.write_text(test_text + '\nNote after inventory:\n\n| Extra | Header |\n|---|---|\n| Foo | Bar |\n')
+        r_fence = verify(target, 'development')
+        expect(r_fence.returncode == 1 and not (target / 'fenced-ran').exists()
+               and 'Fake gate' not in r_fence.stdout and 'unrecognized' not in r_fence.stdout,
+               f'{label} example or trailing table leaked into inventory gates:\n' + r_fence.stdout)
+        (target / 'fenced-ran').unlink(missing_ok=True)
     profile.write_text(base_profile)
 
     # 2. Per-gate timeout (including killing/reaping child processes spawned by timed-out shell commands)
@@ -515,6 +565,32 @@ def case_exclusions_deps_rename_docs_timeouts(tmp):
         expect(r_doc_bad.returncode == 1 and 'Change scope' in r_doc_bad.stdout and bad_file in r_doc_bad.stdout,
                f'--verify docs must fail with untracked {bad_file}: ' + r_doc_bad.stdout)
         (target / bad_file).unlink()
+
+    tgit = ['git', '-c', 'user.name=t', '-c', 'user.email=t@e', '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null']
+    (target / 'app.py').write_text('x = 1\n')
+    subprocess.run(tgit + ['add', 'app.py'], cwd=target, capture_output=True, text=True, check=True)
+    subprocess.run(tgit + ['commit', '-q', '-m', 'add app.py'], cwd=target, capture_output=True, text=True, check=True)
+    subprocess.run(tgit + ['mv', 'app.py', 'renamed.md'], cwd=target, capture_output=True, text=True, check=True)
+    r_mv = verify(target, 'docs')
+    expect(r_mv.returncode == 1 and 'Change scope' in r_mv.stdout and 'app.py' in r_mv.stdout,
+           '--verify docs must fail when code file is renamed to .md: ' + r_mv.stdout)
+    subprocess.run(tgit + ['rm', '-f', '-q', 'renamed.md'], cwd=target, capture_output=True, text=True, check=True)
+    subprocess.run(tgit + ['commit', '-q', '-m', 'remove app'], cwd=target, capture_output=True, text=True, check=True)
+
+    unborn = tmp / 'docs-unborn'
+    unborn.mkdir()
+    install(unborn, '--tier', 'prototype')
+    subprocess.run(tgit + ['init', '-q', '-b', 'main'], cwd=unborn, capture_output=True, text=True, check=True)
+    (unborn / 'app.py').write_text('x = 1\n')
+    subprocess.run(tgit + ['add', 'app.py'], cwd=unborn, capture_output=True, text=True, check=True)
+    r_ub = verify(unborn, 'docs')
+    expect(r_ub.returncode == 1 and 'Change scope' in r_ub.stdout and 'app.py' in r_ub.stdout,
+           '--verify docs must fail on staged code file before first commit: ' + r_ub.stdout)
+
+    (unborn / '.git' / 'index').write_bytes(b'corrupt')
+    r_brk = verify(unborn, 'docs')
+    expect(r_brk.returncode == 2 and 'Verification: incomplete' in r_brk.stdout,
+           '--verify docs must return incomplete (exit 2) when git diff fails: ' + r_brk.stdout)
 
     # 4. Missing required module check fails when all files of a required module are removed.
     (target / 'docs/UI.md').unlink() if (target / 'docs/UI.md').exists() else None
@@ -1005,6 +1081,42 @@ def case_v3_to_v4_upgrade(tmp):
     chk_link_ok = run_manage(root, '--check-upgrade', str(target), '--since', 'HEAD')
     expect(chk_link_ok.returncode == 0 and 'nothing lost' in chk_link_ok.stdout,
            '--check-upgrade failed after removing broken link from README.md:\n' + chk_link_ok.stdout)
+
+    # Merged AGENTS.md in 3.0.2 production upgrade must scan post-merge text for removed-file links.
+    pm = tmp / 'v3-prod-merge'
+    pm.mkdir()
+    r_pm = subprocess.run([sys.executable, '-B', str(v3_repo / 'check_package.py'), '--install', str(pm), '--tier', 'production'],
+                          cwd=v3_repo, capture_output=True, text=True)
+    expect(r_pm.returncode == 0, '3.0.2 production merge install failed: ' + r_pm.stdout + r_pm.stderr)
+    pm_rec = json.loads((pm / 'PACKAGE_MANIFEST.json').read_text())
+    pm_rec['installed_from'] = {'repository': 'https://example.invalid/repo', 'commit': sha_302, 'dirty': False, 'date': '2026-11-06'}
+    (pm / 'PACKAGE_MANIFEST.json').write_text(json.dumps(pm_rec, indent=2) + '\n')
+    pm_agents = pm / 'AGENTS.md'
+    pm_base_agents = pm_agents.read_text() + '\n## Local team section\nKeep handlers pure.\n'
+    pm_agents.write_text(pm_base_agents)
+    init_git(pm, 'baseline 3.0.2 production with AGENTS.md edit')
+    pm_plan = run_manage(root, '--plan-upgrade', str(pm))
+    expect(pm_plan.returncode == 0 and 'AGENTS.md' in plan_section(pm_plan.stdout, 'Merge')
+           and 'Note: AGENTS.md links to removed file(s):' not in pm_plan.stdout,
+           '--plan-upgrade must not warn on retired upstream AGENTS.md links replaced during clean merge:\n' + pm_plan.stdout)
+    pm_agents.write_text(pm_base_agents + '\nSee [Domain rules](docs/DOMAIN_RULES.md).\n')
+    pm_plan2 = run_manage(root, '--plan-upgrade', str(pm))
+    expect(pm_plan2.returncode == 0
+           and 'Note: AGENTS.md links to removed file(s): docs/DOMAIN_RULES.md' in pm_plan2.stdout,
+           '--plan-upgrade must warn when local merged AGENTS.md section links to a removed file:\n' + pm_plan2.stdout)
+
+    # Quoted UTF-8 filenames (café.md) must not escape --check-upgrade open-item and deployed-revision checks.
+    uni = tmp / 'upg-unicode'
+    uni.mkdir()
+    install(uni, '--tier', 'internal')
+    cafe = uni / 'café.md'
+    cafe.write_text('# Notes\n\n| ID | Status | Summary | Blocker |\n|---|---|---|---|\n| OW-73 | Open | Check quotes | — |\n\nDeployed revision `abc1234`.\n')
+    init_git(uni, 'baseline with café.md')
+    cafe.write_text('# Notes\n')
+    chk_uni = run_manage(root, '--check-upgrade', str(uni), '--since', 'HEAD')
+    expect(chk_uni.returncode != 0 and 'OW-73' in chk_uni.stdout and 'abc1234' in chk_uni.stdout,
+           '--check-upgrade missed removed items in quoted UTF-8 filename café.md: '
+           + chk_uni.stdout + chk_uni.stderr)
 
 
 def case_v2_to_v4_upgrade(tmp):

@@ -329,8 +329,8 @@
       "path": "scripts/verify.py",
       "kind": "tooling",
       "module": "core",
-      "bytes": 36132,
-      "sha256": "a8f34fb5907648c6b4542a2d2e5617aee67ec67e2d5c8239a4a8e92b4589f7b9"
+      "bytes": 38384,
+      "sha256": "16baf2cf3aadacae60f418f648ba35d5da78518039cd2b4955445cf824b15660"
     },
     {
       "path": "scripts/hooks/pre-commit",
@@ -406,8 +406,8 @@
       "path": ".github/pull_request_template.md",
       "kind": "template",
       "module": "enterprise",
-      "bytes": 608,
-      "sha256": "c2f94836745487c3a868e64f1a9c883a68717e10d264000d534a641ff387462a"
+      "bytes": 506,
+      "sha256": "81e541d0425e18aac790d93c82c3f36e5b71cee7c31caaeb0df81cc22c51d1e2"
     },
     {
       "path": "docs/UI.md",
