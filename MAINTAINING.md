@@ -58,7 +58,7 @@ Tag version 4 when released.
 
 ## Maintenance log
 
-Earlier v1–v3 entries (`DOC-001` to `DOC-117`) are archived at git tag `3.0.2` (`git show 3.0.2:MAINTAINING.md`).
+Earlier v1–v3 entries (`DOC-001` to `DOC-117`) are archived at git tag `3.0.2` (`git show 3.0.2:MAINTAINING.md`); PR #62's v3 autonomy update is archived at commit `ae00e96`.
 
 | ID | Date | Change | Verification |
 |---|---|---|---|
