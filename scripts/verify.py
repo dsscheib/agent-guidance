@@ -19,6 +19,9 @@ POINTER_FILES = ('GEMINI.md', '.github/copilot-instructions.md')
 POINTER_MAX_LINES = 10
 EXCLUDED_ROW = re.compile(r'^\|\s*Excluded guidance\b.*$', re.M)
 GATE_TIMEOUT = re.compile(r'(?i)\btimeout\s*[:=]?\s*(\d+)\s*(s|sec|seconds?|m|min|minutes?|h|hours?)?\b')
+# Gate commands inherit the --verify phases already running above them, so a gate that
+# reruns one of those phases is refused instead of recursing until memory runs out.
+VERIFY_CHAIN = 'GUIDANCE_VERIFY_PHASES'
 GATE_PHASES = {
     'development': {'development'},
     'documentation': {'documentation'},
@@ -380,9 +383,9 @@ def inventory_gates(phase):
     return gates, None
 
 
-def run_gate_command(command, limit):
+def run_gate_command(command, limit, env=None):
     proc = subprocess.Popen(
-        command, shell=True, cwd=root,
+        command, shell=True, cwd=root, env=env,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
         start_new_session=(os.name == 'posix'),
     )
@@ -424,6 +427,14 @@ def dependency_files(limit=10):
 
 def verify(phase, timeout, receipt, record):
     phase = 'documentation' if phase == 'docs' else phase
+    # One "<phase> <project root>" entry per line; another project's verifier may still run.
+    chain = [entry for entry in os.environ.get(VERIFY_CHAIN, '').split('\n') if entry] + [f'{phase} {root}']
+    if chain[-1] in chain[:-1]:
+        shown = ' -> '.join(entry.split(' ', 1)[0] for entry in chain)
+        print(f'Refused: a gate command reran scripts/verify.py --verify {phase} inside itself ({shown}), '
+              'which would repeat until memory runs out. Change that gate so it does not run the same phase.')
+        sys.exit(2)
+    gate_env = dict(os.environ, **{VERIFY_CHAIN: '\n'.join(chain)})
     gates, problem = inventory_gates(phase)
     commit = git('rev-parse', '--short', 'HEAD') or 'no commit'
     dirty = bool(git('status', '--porcelain'))
@@ -439,7 +450,7 @@ def verify(phase, timeout, receipt, record):
             limit = own or timeout
             entry['timeout'] = limit
             started = time.monotonic()
-            rc, stdout, stderr, timed_out = run_gate_command(command, limit)
+            rc, stdout, stderr, timed_out = run_gate_command(command, limit, gate_env)
             if timed_out:
                 source = "this gate's own limit" if own else 'the --timeout default; set a longer limit in its Gate cell, such as "timeout 60m"'
                 entry['status'], entry['detail'] = 'failed', f'timed out after {limit}s ({source})'
