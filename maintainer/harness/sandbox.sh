@@ -73,14 +73,18 @@ run_dir="/run/user/$(id -u)"
 if [ -d "$run_dir" ]; then
   if [ "${SB_KEYRING:-}" = 1 ]; then binds="$binds --bind $run_dir $run_dir"; else binds="$binds --tmpfs $run_dir"; fi
 fi
-# shellcheck disable=SC2086  # $binds and $hides are lists of option words built above.
-exec bwrap --die-with-parent --unshare-pid \
+extra_bwrap=""
+[ "${SB_OFFLINE:-0}" = 1 ] && extra_bwrap="$extra_bwrap --unshare-net"
+fix_bind="--bind"
+[ "${SB_RO_FIX:-0}" = 1 ] && fix_bind="--ro-bind"
+# shellcheck disable=SC2086  # $binds, $hides, and $extra_bwrap are lists of option words built above.
+exec bwrap --die-with-parent --unshare-pid $extra_bwrap \
   --ro-bind / / --dev /dev --proc /proc \
   --tmpfs /tmp \
   $hides \
   --bind "$home" "$H" \
   $binds \
-  --bind "$fix" "$fix" \
+  $fix_bind "$fix" "$fix" \
   --bind "$SB_LOGDIR" "$SB_LOGDIR" \
   --ro-bind "$SB_GUIDANCE" "$SB_GUIDANCE" \
   --clearenv $envs \

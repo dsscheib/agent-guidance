@@ -272,8 +272,8 @@
       "path": "AGENTS.md",
       "kind": "entry",
       "module": "core",
-      "bytes": 6666,
-      "sha256": "49bcc19fb58b9443a04d6d0f996beebcaa7b250e962aac1cc1bd181b5a8fb771"
+      "bytes": 6707,
+      "sha256": "e856513325c321f1784baff8744480aa198e4ca3e23d90ea8cee2776fb37968f"
     },
     {
       "path": "CLAUDE.md",
@@ -329,15 +329,15 @@
       "path": "scripts/verify.py",
       "kind": "tooling",
       "module": "core",
-      "bytes": 28705,
-      "sha256": "a01ee43c6079cbbc7812fd7fd3efbcb2e199b06a8cb54f270c0cdfb7114c6322"
+      "bytes": 30215,
+      "sha256": "3ea917d1444d1b80cb2504d4319d9a48a112d5333ab560c862a9a9dfc38849ab"
     },
     {
       "path": "scripts/hooks/pre-commit",
       "kind": "tooling",
       "module": "core",
-      "bytes": 340,
-      "sha256": "13fd802af3a3354aa365fea7193e6d769e419a2466a16568aca3963d18e35ab7"
+      "bytes": 507,
+      "sha256": "20a2cb355d374729d7c11148da99337fb40590d824283d29538f2bc0eee5e9d7"
     },
     {
       "path": "DESIGN_DOC.md",
@@ -392,8 +392,8 @@
       "path": "docs/procedures/release-readiness.md",
       "kind": "procedure",
       "module": "release",
-      "bytes": 3625,
-      "sha256": "a7e91b3a71077b65c8e20efebfe773cebb3937048a8557798a1170a81b4a36ce"
+      "bytes": 3635,
+      "sha256": "4aac665cf8ee6c869d500f5399ff8e529cb3bad42332da000879a02fac690127"
     },
     {
       "path": "docs/ENTERPRISE.md",

@@ -10,7 +10,7 @@ Earlier v1–v3 work evaluated cheaper/mid-tier models across ~50-file installs;
 
 ### Adopt it when:
 - **You run frontier supervisors with specialist subagents or multiple agent CLIs.** [`AGENTS.md`](../AGENTS.md) and [`PROJECT_PROFILE.md`](../PROJECT_PROFILE.md) give Claude Code, Codex, Antigravity, and Copilot CLI a single instruction source, selective skill wrappers, and matching destructive-command and secret guardrails while preserving project specialist agents.
-- **You need deterministic mechanical checks instead of prose reminders.** `scripts/verify.py --verify` runs your project's configured gates and prints a verbatim `Verification:` summary line, preventing unverified-work claims, enforcing document line/date budgets, and checking `CLAUDE.md` shims and link integrity.
+- **You need deterministic mechanical checks instead of prose reminders.** `scripts/verify.py --verify` runs your project's configured gates and prints a verbatim `Verification:` summary line, making verification status machine-checked instead of self-reported, enforcing document line/date budgets, and checking `CLAUDE.md` shims and link integrity.
 - **Your project has real operational, hardware, or compliance rules.** Separation of duties (`S14`), ticket traceability (`S13`), vulnerable-dependency reporting (`S15`), batched review deployments from committed revisions (`S12`), embedded hardware rules, and vendor acceptance testing (`S16`, `S17`) require explicit policy and guardrails.
 
 ### Skip or strip it down when:

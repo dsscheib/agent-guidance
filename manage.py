@@ -67,6 +67,7 @@ OPEN_ITEM = re.compile(r'^\|\s*([A-Z][A-Z0-9]*-\d+)\s*\|(.*)$', re.M)
 REVISION = re.compile(r'\b(?=[0-9a-f]*\d)(?=[0-9a-f]*[a-f])[0-9a-f]{7,40}\b')
 LEGACY_REFERENCES = {
     'scripts/verify.py': ('PACKAGE_MANIFEST.json', 'check_package.py'),
+    'scripts/hooks/pre-commit': ('PACKAGE_MANIFEST.json',),
 }
 EXCLUDED_ROW = re.compile(r'^\|\s*Excluded guidance\b.*$', re.M)
 _PACKAGED = {}
@@ -643,8 +644,7 @@ def install(manifest, target, force, tier=None, features=(), everything=False, d
         cur_commit = source_identity().get('commit')
         if cur_commit not in (None, '', 'unknown') and prev_commit not in (None, '', 'unknown') and prev_commit != cur_commit:
             sys.exit(f'{target} was installed from {prev_commit[:12]}, but this checkout is {cur_commit[:12]}; '
-                     f'run --plan-upgrade {target} first before adding modules or tools '
-                     '(or pass --force to overwrite with this checkout)')
+                     f'run --plan-upgrade {target} first before adding modules or tools')
     prev_modules = set(previous.get('modules', []))
     if prev_legacy:
         prev_modules = {m for old in prev_modules for m in V3_MODULE_MAP.get(old, ())} & set(manifest['modules'])
@@ -1027,10 +1027,18 @@ def check_upgrade(manifest, target, since='HEAD'):
         for line in set(mine_before.splitlines()) - set(base_lines):
             close = difflib.get_close_matches(line, base_lines, n=1, cutoff=0.6)
             words, old_words = line.split(), (close[0].split() if close else [])
-            runs = [' '.join(words[j1:j2]) for op, _, _, j1, j2 in difflib.SequenceMatcher(None, old_words, words).get_opcodes()
-                    if op in ('insert', 'replace')]
-            runs = [r.strip('-*|# ') for r in runs if len(r.strip('-*|# ')) > 3]
-            if any(flat(r) not in now for r in runs):
+            candidates = []
+            for op, _, _, j1, j2 in difflib.SequenceMatcher(None, old_words, words).get_opcodes():
+                if op not in ('insert', 'replace'):
+                    continue
+                phrase = ' '.join(words[j1:j2]).strip('-*|# ')
+                if len(phrase) > 3:
+                    candidates.append(phrase)
+                elif any(c.isalnum() for c in phrase):
+                    ctx = ' '.join(words[max(0, j1 - 1):min(len(words), j2 + 1)]).strip('-*|# ')
+                    if len(ctx) > 3:
+                        candidates.append(ctx)
+            if any(flat(c) not in now for c in candidates):
                 dropped.append(line)
         if dropped:
             problems.append(f'{path}: {len(dropped)} local change(s) not found verbatim, first: {dropped[0].strip()[:80]}')

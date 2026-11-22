@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 ROOT=$(git rev-parse --show-toplevel)
-if [ -f "$ROOT/scripts/verify.py" ] && [ ! -f "$ROOT/MAINTAINING.md" ]; then
+if [ -f "$ROOT/scripts/verify.py" ] && { [ -f "$ROOT/.guidance.json" ] || [ ! -f "$ROOT/MAINTAINING.md" ] || [ ! -f "$ROOT/manage.py" ] || [ ! -f "$ROOT/PACKAGE_MANIFEST.json" ] || ! grep -q '"repo_only"' "$ROOT/PACKAGE_MANIFEST.json"; }; then
   exec python3 "$ROOT/scripts/verify.py"
 elif [ -f "$ROOT/manage.py" ]; then
   exec python3 "$ROOT/manage.py"

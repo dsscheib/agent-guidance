@@ -14,7 +14,7 @@ Start from the project's adopted tier (see [Tier gate expectations](#tier-gate-e
 
 ## 3. Collect evidence
 1. Run [release-review](release-review.md) on the candidate first unless the user explicitly skips it. Confirmed defects are blockers with [docs/OPEN_WORK.md](../OPEN_WORK.md) IDs; concerns and missing evidence must be resolved or recorded.
-2. Run `python3 scripts/verify.py --verify release --receipt /tmp/release-receipt.json` (writing the receipt outside the repo—or as a CI artifact—so the working tree stays clean) to execute every Development, Release, and Documentation gate in [PROJECT_PROFILE.md](../../PROJECT_PROFILE.md). Run any remaining tier gates and retain raw outputs, exit codes, dates, and environments.
+2. Run `python3 scripts/verify.py --verify release --receipt <outside-repo>/release-receipt.json` (writing the receipt outside the repo—or as a CI artifact—so the working tree stays clean) to execute every Development, Release, and Documentation gate in [PROJECT_PROFILE.md](../../PROJECT_PROFILE.md). Run any remaining tier gates and retain raw outputs, exit codes, dates, and environments.
 3. Keep local suites, target-host qualification, manual checks, and authorizations distinct. An in-progress or partial check is not passed.
 
 ## 4. Update the readiness record and report

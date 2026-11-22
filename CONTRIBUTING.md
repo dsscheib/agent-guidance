@@ -13,7 +13,7 @@ Thanks for contributing to **Reusable Project Guidance**. Maintainer rules, docu
 
 ## Expectations for pull requests
 
-- **Follow package rules:** Read [MAINTAINING.md](MAINTAINING.md) first (`one home per rule`, stack-neutral core, agent-neutral packaged docs, `AGENTS.md` under 6,800 bytes, no dated status sections in registers).
+- **Follow package rules:** Read [MAINTAINING.md](MAINTAINING.md) first (`one home per rule`, stack-neutral core, agent-neutral packaged docs, `AGENTS.md` within its template ceiling, no dated status sections in registers).
 - **Stdlib only:** Keep `manage.py`, `scripts/verify.py`, guardrails, and tests free of third-party Python dependencies (Python 3.11+).
 - **Edit sources, not generated outputs:** For selective skills, edit `docs/procedures/<name>.md` rather than `.agents/skills/` or `.claude/skills/`. For `AGENTS.md` routing/procedure tables, edit `PACKAGE_MANIFEST.json` (`agents_tables`) and sync.
 - **Sync, verify, and add regression tests:** Add tests in `maintainer/test_install.py` or `maintainer/harness/test_score.py` for behavioral changes and run both:

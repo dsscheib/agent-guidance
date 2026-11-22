@@ -2,7 +2,7 @@
 
 Single instruction source for every coding agent and specialist subagent here. Tool files (`CLAUDE.md`, `.claude/`, `.codex/`, `.agents/`, `.github/hooks/`) only point here, activate selective skills, or enforce these rules.
 
-**In the template repository** (`MAINTAINING.md` at the root), follow `MAINTAINING.md` instead of the project workflow below.
+**In the template repository** (`MAINTAINING.md` and `PACKAGE_MANIFEST.json` without `.guidance.json`), follow `MAINTAINING.md` instead of the project workflow below.
 
 Start every task by reading [PROJECT_PROFILE.md](PROJECT_PROFILE.md). If placeholders remain above `## Command inventory`, finish bootstrapping there before writing product code; inspection, questions, and docs-only work may proceed.
 

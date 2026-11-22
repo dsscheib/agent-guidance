@@ -258,6 +258,24 @@ def case_guardrails(tmp):
     ok, out = check(ent)
     expect(not ok and '.claude/settings.json' in out, 'fallback guardrail check must fail when adopted tool file is deleted: ' + out)
 
+    # Copilot enterprise guardrails also require preToolUse hook registration in .github/hooks/guidance.json.
+    ent2 = tmp / 'guard-ent-hook'
+    ent2.mkdir()
+    install(ent2, '--tier', 'enterprise', '--tools', 'copilot')
+    hcfg = ent2 / '.github/hooks/guidance.json'
+    orig_hcfg = hcfg.read_text()
+    hcfg.write_text('{"version": 1, "hooks": {}}\n')
+    ok, out = check(ent2)
+    expect(not ok and 'guidance.json' in out and 'preToolUse' in out,
+           'scripts/verify.py should fail when .github/hooks/guidance.json empties hooks.preToolUse: ' + out)
+    hcfg.unlink()
+    ok, out = check(ent2)
+    expect(not ok and 'guidance.json' in out and 'preToolUse' in out,
+           'scripts/verify.py should fail when .github/hooks/guidance.json is missing: ' + out)
+    hcfg.write_text(orig_hcfg)
+    ok, out = check(ent2)
+    expect(ok, 'scripts/verify.py failed after restoring .github/hooks/guidance.json: ' + out)
+
 
 def case_exclusions_deps_rename_docs_timeouts(tmp):
     target = tmp / 'verify-features'
@@ -340,19 +358,16 @@ def case_exclusions_deps_rename_docs_timeouts(tmp):
            and not (target / 'na-ran').exists() and not (target / 'no-ran').exists(),
            'N/A, No, and escaped Markdown pipes should parse cleanly:\n' + r_clean.stdout)
 
-    profile.write_text(base_profile.replace(
-        '| Guidance integrity |',
-        '| Mixed NA gate | `python3 -c "print(4)"` | Release / N/A | Dev | — |\n'
-        '| Dual cmd | `true` and `false` | Development | Dev | — |\n'
-        '| Empty cmd | `` | Development | Dev | — |\n'
-        '| Trailing op | `true` && false | Development | Dev | — |\n'
-        '| Guidance integrity |',
-    ))
-    r_ambig = verify(target, 'development')
-    expect(r_ambig.returncode == 2 and 'unrecognized or mixed Gate label(s)' in r_ambig.stdout
-           and 'ambiguous Command cell(s)' in r_ambig.stdout and 'Dual cmd' in r_ambig.stdout
-           and 'Empty cmd' in r_ambig.stdout and 'Trailing op' in r_ambig.stdout,
-           'Release / N/A, dual, empty, and trailing-op Command cells must fail as incomplete:\n' + r_ambig.stdout)
+    for purpose, row, token in (
+        ('Mixed NA gate', '| Mixed NA gate | `python3 -c "print(4)"` | Release / N/A | Dev | — |\n', 'unrecognized or mixed Gate label(s)'),
+        ('Dual cmd', '| Dual cmd | `true` and `false` | Development | Dev | — |\n', 'ambiguous Command cell(s)'),
+        ('Empty cmd', '| Empty cmd | `` | Development | Dev | — |\n', 'empty command in backticks'),
+        ('Trailing op', '| Trailing op | `true` && false | Development | Dev | — |\n', 'text outside backticks in Command cell'),
+    ):
+        profile.write_text(base_profile.replace('| Guidance integrity |', row + '| Guidance integrity |'))
+        r_row = verify(target, 'development')
+        expect(r_row.returncode == 2 and token in r_row.stdout and purpose in r_row.stdout,
+               f'{purpose} must fail independently as incomplete:\n' + r_row.stdout)
     profile.write_text(base_profile)
 
     # 2. Per-gate timeout (including killing/reaping child processes spawned by timed-out shell commands)
@@ -524,6 +539,22 @@ def case_tools_and_default_and_broken(tmp):
            and not list(outside.iterdir()),
            '--sync must reject escaping symlink before any write: ' + r_sync_esc.stdout + r_sync_esc.stderr)
 
+    # Installed projects that also happen to have MAINTAINING.md and manage.py (e.g., Django) must run project verify, never project manage.py.
+    django = tmp / 'django-proj'
+    django.mkdir()
+    install(django, '--tier', 'prototype')
+    (django / 'MAINTAINING.md').write_text('# Local maintenance notes\n')
+    (django / 'manage.py').write_text('from pathlib import Path\nPath("project-manage-ran").write_text("ran")\n')
+    (django / 'AGENTS.md').unlink()
+    (django / 'docs/OPEN_WORK.md').write_text('[broken](missing.md)\n')
+    ok, out = check(django)
+    expect(not ok and not (django / 'project-manage-ran').exists() and 'FAIL (project mode)' in out,
+           'scripts/verify.py mistook installed project for template repo or ran project manage.py: ' + out)
+    r_dj_ver = verify(django, 'development')
+    expect('unconfigured template repository' not in (r_dj_ver.stdout + r_dj_ver.stderr)
+           and not (django / 'project-manage-ran').exists(),
+           'scripts/verify.py --verify mistook installed project for template repo: ' + r_dj_ver.stdout + r_dj_ver.stderr)
+
 
 def case_agent_team_interop(tmp):
     if not AGENT_TEAM_BOOTSTRAP.is_file():
@@ -670,7 +701,8 @@ def case_v3_to_v4_upgrade(tmp):
     rec['installed_from'] = {'repository': 'https://example.invalid/repo', 'commit': sha_302, 'dirty': False, 'date': '2026-11-06'}
     (target / 'PACKAGE_MANIFEST.json').write_text(json.dumps(rec, indent=2) + '\n')
     spec = target / 'docs/TESTING_SPEC.md'
-    spec.write_text(spec.read_text() + '\n- Local project rule: always run chaos fuzzing.\n')
+    spec.write_text(spec.read_text() + '\n- Local project rule: always run chaos fuzzing.\n'
+                    '- Owners may not deploy without verification.\n')
     (target / 'docs/OPEN_WORK.md').write_text('# Open work\n\n| ID | Status | Summary | Blocker |\n|---|---|---|---|\n| OW-7 | Open | Ship telemetry | — |\n')
     init_git(target, 'baseline 3.0.2')
 
@@ -700,17 +732,22 @@ def case_v3_to_v4_upgrade(tmp):
     expect((target / 'README.md').is_file() and (target / 'README.md').read_text().startswith('# v3-proj\n'),
            'README.md stub missing after v3->v4 upgrade')
     expect('always run chaos fuzzing' in (target / 'docs/TESTING_SPEC.md').read_text(), 'edited TESTING_SPEC.md was lost by patch')
-    # Complete review by folding the local rule into AGENTS.md and removing retired TESTING_SPEC.md.
+    # Complete review by folding the local rules into AGENTS.md and removing retired TESTING_SPEC.md.
     agents_file = target / 'AGENTS.md'
-    agents_file.write_text(agents_file.read_text() + '\n- Local project rule: always run chaos fuzzing.\n')
+    agents_file.write_text(agents_file.read_text() + '\n- Local project rule: always run chaos fuzzing.\n'
+                           '- Owners may not deploy without verification.\n')
     (target / 'docs/TESTING_SPEC.md').unlink()
     ok, cout = check(target)
     expect(ok, 'scripts/verify.py failed after v3->v4 review fold:\n' + cout)
     chk = run_manage(root, '--check-upgrade', str(target), '--since', 'HEAD')
     expect(chk.returncode == 0 and 'nothing lost' in chk.stdout, 'v3->v4 --check-upgrade failed: ' + chk.stdout + chk.stderr)
-    # Dropping the folded local rule from AGENTS.md must fail --check-upgrade, and conflict markers must fail it too.
+    # Dropping a short prohibition ("not") or the folded local rule from AGENTS.md must fail --check-upgrade, and conflict markers must fail too.
     clean_agents = agents_file.read_text()
-    agents_file.write_text(clean_agents.replace('\n- Local project rule: always run chaos fuzzing.\n', ''))
+    agents_file.write_text(clean_agents.replace('may not deploy', 'may deploy'))
+    chk_not = run_manage(root, '--check-upgrade', str(target), '--since', 'HEAD')
+    expect(chk_not.returncode != 0 and 'local change(s) not found verbatim' in chk_not.stdout,
+           'v3->v4 --check-upgrade missed dropped short prohibition ("not"): ' + chk_not.stdout + chk_not.stderr)
+    agents_file.write_text(clean_agents.replace('\n- Local project rule: always run chaos fuzzing.\n', '\n'))
     chk_drop = run_manage(root, '--check-upgrade', str(target), '--since', 'HEAD')
     expect(chk_drop.returncode != 0 and 'local change(s) not found verbatim' in chk_drop.stdout,
            'v3->v4 --check-upgrade missed dropped folded local rule: ' + chk_drop.stdout + chk_drop.stderr)
@@ -884,8 +921,9 @@ def case_reinstall_dry_run_and_refresh(tmp):
     (cross / '.guidance.json').write_text(json.dumps(cross_meta, indent=2) + '\n')
     r_cross = run_manage(root, '--install', str(cross), '--features', 'ui')
     expect(r_cross.returncode != 0 and '--plan-upgrade' in (r_cross.stdout + r_cross.stderr)
+           and '--force' not in (r_cross.stdout + r_cross.stderr)
            and not (cross / 'docs/UI.md').exists(),
-           'cross-commit --install must refuse and point to --plan-upgrade: ' + r_cross.stdout + r_cross.stderr)
+           'cross-commit --install must refuse and point only to --plan-upgrade: ' + r_cross.stdout + r_cross.stderr)
 
 
 def case_neutrality_and_sync_constants():

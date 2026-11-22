@@ -20,7 +20,7 @@ skipped because they set up or upgrade the guidance itself.
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 import shlex
-import argparse, json, os, re, shutil, subprocess, sys, threading, time
+import argparse, json, os, re, shutil, subprocess, sys, tempfile, threading, time
 
 sys.dont_write_bytecode = True
 HERE = Path(__file__).resolve().parent
@@ -346,19 +346,71 @@ def tree(fx):
     return {'head': git(fx, 'rev-parse', 'HEAD'), 'changed': status.stdout.splitlines()}
 
 
+def run_fixture_cmd(fx, cmd, timeout=120, read_only=False):
+    """Execute one fixture command inside sandbox.sh with empty HOME/tmp, wiped env, and no network."""
+    if not SANDBOX.is_file():
+        return subprocess.CompletedProcess(cmd, 127, '', 'sandbox.sh not found')
+    fx_resolved = Path(fx).resolve()
+    with tempfile.TemporaryDirectory(prefix='guidance-probe-') as d:
+        sb = Path(d)
+        home, logdir, guidance = sb / 'home', sb / 'log', sb / 'guidance'
+        for p in (home, logdir, guidance):
+            p.mkdir()
+        env = {
+            **os.environ,
+            'SB_HOME': str(home),
+            'SB_LOGDIR': str(logdir),
+            'SB_GUIDANCE': str(guidance),
+            'SB_SIGN_IN': '',
+            'SB_TRUST': '0',
+            'SB_KEYRING': '0',
+            'SB_OFFLINE': '1',
+            'SB_RO_FIX': '1' if read_only else '0',
+        }
+        home_path = Path.home()
+        py_prefix = Path(sys.executable).resolve().parent.parent
+        if py_prefix.is_relative_to(home_path) and py_prefix != home_path:
+            default_tools = ' '.join(
+                f'{home_path}/{p}' for p in (
+                    '.local/bin', '.local/share/mise', '.config/mise', '.local/share/uv',
+                    '.local/share/pop-workstation', '.cargo/bin', '.rustup', 'go/bin'))
+            base_tools = env.get('SB_TOOLS', '') or default_tools
+            if str(py_prefix) not in base_tools.split():
+                env['SB_TOOLS'] = f'{base_tools} {py_prefix}'.strip()
+        if not fx_resolved.is_relative_to(REPO):
+            hide = env.get('SB_HIDE', '').split()
+            if str(REPO) not in hide:
+                hide.append(str(REPO))
+            env['SB_HIDE'] = ' '.join(hide)
+        return subprocess.run(
+            [str(SANDBOX), str(fx_resolved), *cmd],
+            capture_output=True, text=True, env=env, stdin=subprocess.DEVNULL, timeout=timeout,
+        )
+
+
 def evidence(fx):
     first = git(fx, 'rev-list', '--max-parents=0', 'HEAD')
     lines = lambda p: len((fx / p).read_text().splitlines()) if (fx / p).is_file() else None
-    tests = subprocess.run([sys.executable, '-m', 'unittest', '-q'], cwd=fx, capture_output=True, text=True,
-                           env={**os.environ, 'PYTHONDONTWRITEBYTECODE': '1'})
+    try:
+        tests = run_fixture_cmd(fx, [sys.executable, '-B', '-m', 'unittest', '-q'], timeout=120)
+        tests_pass = tests.returncode == 0
+        tests_tail = ((tests.stderr or tests.stdout).strip().splitlines() or [''])[-1]
+    except subprocess.TimeoutExpired:
+        tests_pass, tests_tail = False, 'timed out'
     check = None
     if (fx / 'scripts' / 'verify.py').is_file():
-        r = subprocess.run([sys.executable, 'scripts/verify.py'], cwd=fx, capture_output=True, text=True)
-        check = (r.stdout + r.stderr).strip().splitlines()[:12]
+        try:
+            r = run_fixture_cmd(fx, [sys.executable, '-B', 'scripts/verify.py'], timeout=60, read_only=True)
+            check = (r.stdout + r.stderr).strip().splitlines()[:12]
+        except subprocess.TimeoutExpired:
+            check = ['timed out']
     elif (fx / 'check_package.py').is_file():
-        r = subprocess.run([sys.executable, 'check_package.py'], cwd=fx, capture_output=True, text=True)
-        # Keep the problem lines too (an adapter problem has no colon), so a failure can be told from an environment block.
-        check = (r.stdout + r.stderr).strip().splitlines()[:12]
+        try:
+            r = run_fixture_cmd(fx, [sys.executable, '-B', 'check_package.py'], timeout=60, read_only=True)
+            # Keep the problem lines too (an adapter problem has no colon), so a failure can be told from an environment block.
+            check = (r.stdout + r.stderr).strip().splitlines()[:12]
+        except subprocess.TimeoutExpired:
+            check = ['timed out']
     revision = fx / 'review' / 'REVISION'
     return {
         'branch': git(fx, 'branch', '--show-current'),
@@ -369,8 +421,8 @@ def evidence(fx):
         'untracked': git(fx, 'ls-files', '--others', '--exclude-standard').splitlines(),
         'profile_lines': lines('PROJECT_PROFILE.md'),
         'open_work_lines': lines('docs/OPEN_WORK.md'),
-        'tests_pass': tests.returncode == 0,
-        'tests_tail': (tests.stderr.strip().splitlines() or [''])[-1],
+        'tests_pass': tests_pass,
+        'tests_tail': tests_tail,
         'check_package': check,
         'review_revision': revision.read_text().strip() if revision.is_file() else None,
     }

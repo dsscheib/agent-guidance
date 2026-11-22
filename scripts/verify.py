@@ -241,6 +241,23 @@ def check_guardrails(record, errors):
         target = root / rule['path']
         if not target.is_file() or rule['token'] not in target.read_text():
             errors.append(f"{rule['path']} lacks the enterprise guardrail that asks before you {rule['action']}; restore it from the package")
+    if any(r['path'] == '.github/hooks/guidance_guardrail.py' for r in checks):
+        hook_cfg = root / '.github' / 'hooks' / 'guidance.json'
+        if not hook_cfg.is_file():
+            errors.append('.github/hooks/guidance.json is missing for the Copilot preToolUse enterprise guardrail; restore it from the package')
+        else:
+            try:
+                data = json.loads(hook_cfg.read_text())
+            except ValueError:
+                errors.append('.github/hooks/guidance.json is not valid JSON; restore it from the package')
+            else:
+                pre = (data.get('hooks') or {}).get('preToolUse') if isinstance(data, dict) else None
+                registered = isinstance(pre, list) and any(
+                    isinstance(item, dict) and any('guidance_guardrail.py' in str(item.get(k, '')) for k in ('bash', 'powershell'))
+                    for item in pre
+                )
+                if not registered:
+                    errors.append('.github/hooks/guidance.json does not register guidance_guardrail.py under hooks.preToolUse; restore it from the package')
 
 
 def enterprise_notes():
@@ -496,6 +513,17 @@ def placeholders(record):
     return counts
 
 
+def is_template_repo():
+    manifest = root / 'PACKAGE_MANIFEST.json'
+    if (root / '.guidance.json').is_file() or not ((root / 'MAINTAINING.md').is_file() and (root / 'manage.py').is_file() and manifest.is_file()):
+        return False
+    try:
+        data = json.loads(manifest.read_text())
+    except ValueError:
+        return False
+    return isinstance(data, dict) and data.get('package') == 'reusable-project-guidance' and 'repo_only' in data
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--verify', nargs='?', const='development', choices=['development', 'documentation', 'docs', 'release'],
@@ -504,7 +532,7 @@ def main():
     ap.add_argument('--receipt', metavar='FILE', help='write --verify results as JSON')
     ap.add_argument('--require', choices=['code', 'release'], help='fail if placeholders remain at this stage')
     args = ap.parse_args()
-    if (root / 'MAINTAINING.md').is_file() and (root / 'manage.py').is_file():
+    if is_template_repo():
         if args.verify:
             print('This is the unconfigured template repository; run python3 manage.py instead of scripts/verify.py --verify.')
             sys.exit(2)
