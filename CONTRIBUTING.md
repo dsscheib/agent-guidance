@@ -23,4 +23,6 @@ python3 manage.py --sync --update-manifest
 python3 manage.py
 ```
 
+  Note: `run_scenario.py --check` requires a remote `origin` URL (such as a GitHub clone or CI) and intentionally fails in clones whose `origin` is a local filesystem path.
+
 - **No unapproved paid scenario runs:** Keep raw run logs outside the repo; use `python3 maintainer/harness/run.py --dry-run` unless live scenario benchmarking is explicitly planned.

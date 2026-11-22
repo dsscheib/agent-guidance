@@ -291,7 +291,19 @@ def check_guardrails(record, errors):
                     if not isinstance(item, dict) or item.get('type', 'command') != 'command':
                         return False
                     keys = [k for k in ('bash', 'powershell') if k in item and item[k] is not None]
-                    return bool(keys) and all(
+                    if not keys:
+                        return False
+                    if 'matcher' in item and item['matcher'] is not None:
+                        matcher = item['matcher']
+                        if not isinstance(matcher, str) or not matcher.strip():
+                            return False
+                        try:
+                            pat = re.compile(matcher, re.I)
+                        except re.error:
+                            return False
+                        if not all(pat.search(k) for k in keys):
+                            return False
+                    return all(
                         valid_copilot_guardrail_cmd(item[k], item.get('cwd'), expected_target, posix=(k == 'bash'))
                         for k in keys
                     )

@@ -68,6 +68,14 @@ REVISION = re.compile(r'\b(?=[0-9a-f]*\d)(?=[0-9a-f]*[a-f])[0-9a-f]{7,40}\b')
 LEGACY_REFERENCES = {
     'scripts/verify.py': ('PACKAGE_MANIFEST.json', 'check_package.py'),
 }
+PROVENANCE_FILES = {GUIDANCE_FILE, LEGACY_MANIFEST, 'docs/guidance-provenance.json'}
+
+
+def load_json_file(path):
+    try:
+        return json.loads(path.read_text())
+    except ValueError as e:
+        sys.exit(f'{path} is not valid JSON: {e}')
 EXCLUDED_ROW = re.compile(r'^\|\s*Excluded guidance\b.*$', re.M)
 _PACKAGED = {}
 
@@ -461,7 +469,7 @@ def sync_adapters(manifest, errors, target_dir=None, template=True):
         template = False
         for name in (GUIDANCE_FILE, LEGACY_MANIFEST):
             if (base / name).is_file():
-                record = json.loads((base / name).read_text())
+                record = load_json_file(base / name)
                 break
     meta = record.get('installed') or record
     modules = set(manifest.get('modules', {})) if template else set(meta.get('modules') or manifest.get('modules', {}))
@@ -625,7 +633,7 @@ def read_previous_install(target):
     for name in (GUIDANCE_FILE, LEGACY_MANIFEST):
         p = target / name
         if p.is_file():
-            data = json.loads(p.read_text())
+            data = load_json_file(p)
             return data, data.get('installed', {}), name == LEGACY_MANIFEST
     return {}, {}, False
 
@@ -644,6 +652,11 @@ def install(manifest, target, force, tier=None, features=(), everything=False, d
         if cur_commit not in (None, '', 'unknown') and prev_commit not in (None, '', 'unknown') and prev_commit != cur_commit:
             sys.exit(f'{target} was installed from {prev_commit[:12]}, but this checkout is {cur_commit[:12]}; '
                      f'run --plan-upgrade {target} first before adding modules or tools')
+    prev_tier = previous.get('tier')
+    if (tier and prev_tier in manifest.get('tiers', {}) and tier in manifest['tiers']
+            and set(manifest['tiers'][tier]) < set(manifest['tiers'][prev_tier])):
+        sys.exit(f"{target} already has tier '{prev_tier}' installed; --install only adds modules "
+                 f"and cannot downgrade to '{tier}' (higher-tier modules would remain installed)")
     prev_modules = set(previous.get('modules', []))
     if prev_legacy:
         prev_modules = {m for old in prev_modules for m in V3_MODULE_MAP.get(old, ())} & set(manifest['modules'])
@@ -781,12 +794,12 @@ def load_old_manifest(commit, local_record, is_v3, fallback):
 def project_record(target, manifest):
     g = target / GUIDANCE_FILE
     if g.is_file():
-        record = json.loads(g.read_text())
+        record = load_json_file(g)
         modules = set(record.get('installed', {}).get('modules') or v2_modules(manifest['modules']))
         return record, modules, record.get('installed_from', {}).get('commit'), False, g.read_text()
     legacy = target / LEGACY_MANIFEST
     if legacy.is_file():
-        record = json.loads(legacy.read_text())
+        record = load_json_file(legacy)
         modules = set(record.get('installed', {}).get('modules') or v2_modules(record.get('modules') or manifest['modules']))
         return record, modules, record.get('installed_from', {}).get('commit'), True, legacy.read_text()
     sys.exit(f'{target} has neither {GUIDANCE_FILE} nor {LEGACY_MANIFEST}, so it is not a package-layout install. '
@@ -982,7 +995,7 @@ def check_upgrade(manifest, target, since='HEAD'):
         problems.append('Deployed revisions no longer in any document: ' + ', '.join(missing))
 
     deleted = sorted(set(before_files) - set(now_files))
-    code = [p for p in now_files if not p.endswith(('.md', '.json'))]
+    code = [p for p in now_files if not p.endswith('.md') and p not in PROVENANCE_FILES]
     for gone in deleted:
         if gone.endswith('/SKILL.md'):
             continue
@@ -992,7 +1005,10 @@ def check_upgrade(manifest, target, since='HEAD'):
             problems.append(f'{gone} was deleted but {", ".join(users)} still names it')
 
     raw_g, raw_l = shown(GUIDANCE_FILE), shown(LEGACY_MANIFEST)
-    record = json.loads(raw_g or raw_l or '{}')
+    try:
+        record = json.loads(raw_g or raw_l or '{}')
+    except ValueError as e:
+        sys.exit(f'Baseline provenance JSON in {since} is not valid JSON: {e}')
     is_v3 = not raw_g and bool(raw_l)
     commit = record.get('installed_from', {}).get('commit')
     modules = set(record.get('installed', {}).get('modules') or v2_modules(record.get('modules') or manifest['modules']))
@@ -1022,23 +1038,43 @@ def check_upgrade(manifest, target, since='HEAD'):
             continue
         now = flat((target / path).read_text()) if (target / path).is_file() else flat(now_docs)
         base_lines = base.splitlines()
+        mine_lines = mine_before.splitlines()
+        flat_before = flat(mine_before)
         dropped = []
-        for line in set(mine_before.splitlines()) - set(base_lines):
+        for line in set(mine_lines) - set(base_lines):
             close = difflib.get_close_matches(line, base_lines, n=1, cutoff=0.6)
             words, old_words = line.split(), (close[0].split() if close else [])
-            candidates = []
-            for op, _, _, j1, j2 in difflib.SequenceMatcher(None, old_words, words).get_opcodes():
-                if op not in ('insert', 'replace'):
-                    continue
-                phrase = ' '.join(words[j1:j2]).strip('-*|# ')
-                if len(phrase) > 3:
-                    candidates.append(phrase)
-                elif any(c.isalnum() for c in phrase):
-                    ctx = ' '.join(words[max(0, j1 - 1):min(len(words), j2 + 1)]).strip('-*|# ')
-                    if len(ctx) > 3:
-                        candidates.append(ctx)
-            if any(flat(c) not in now for c in candidates):
+            candidates, reinstated = [], []
+            for op, i1, i2, j1, j2 in difflib.SequenceMatcher(None, old_words, words).get_opcodes():
+                if op in ('insert', 'replace'):
+                    phrase = ' '.join(words[j1:j2]).strip('-*|# ')
+                    if len(phrase) > 3:
+                        candidates.append(phrase)
+                    elif any(c.isalnum() for c in phrase):
+                        ctx = ' '.join(words[max(0, j1 - 1):min(len(words), j2 + 1)]).strip('-*|# ')
+                        if len(ctx) > 3:
+                            candidates.append(ctx)
+                elif op == 'delete' and close:
+                    if any(c.isalnum() for c in ' '.join(old_words[i1:i2])):
+                        old_ctx = ' '.join(old_words[max(0, i1 - 1):min(len(old_words), i2 + 1)]).strip('-*|# ')
+                        if len(old_ctx) > 3 and flat(old_ctx) not in flat_before:
+                            reinstated.append(old_ctx)
+                        if 0 < j1 < len(words):
+                            joined = ' '.join(words[j1 - 1:j1 + 1]).strip('-*|# ')
+                            if len(joined) > 3:
+                                candidates.append(joined)
+            if any(flat(c) not in now for c in candidates) or any(flat(rc) in now for rc in reinstated):
                 dropped.append(line)
+        if (target / path).is_file():
+            for line in set(base_lines) - set(mine_lines):
+                if difflib.get_close_matches(line, mine_lines, n=1, cutoff=0.6):
+                    continue
+                stripped = line.strip()
+                if not stripped or stripped.startswith('#') or stripped.startswith('<!--') or set(stripped) <= set('|-: '):
+                    continue
+                phrase = flat(stripped.strip('-*|# '))
+                if len(phrase) > 15 and phrase not in flat_before and phrase in now:
+                    dropped.append(f'local deletion reinstated: {stripped}')
         if dropped:
             problems.append(f'{path}: {len(dropped)} local change(s) not found verbatim, first: {dropped[0].strip()[:80]}')
     if unchecked and not have_commit:

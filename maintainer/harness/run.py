@@ -20,7 +20,7 @@ skipped because they set up or upgrade the guidance itself.
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 import shlex
-import argparse, json, os, re, shutil, subprocess, sys, tempfile, threading, time
+import argparse, errno, fnmatch, json, os, re, shutil, stat, subprocess, sys, tempfile, threading, time
 
 sys.dont_write_bytecode = True
 HERE = Path(__file__).resolve().parent
@@ -32,6 +32,106 @@ GUIDANCE_FOR_COPILOT = None  # set in main() to the guidance snapshot
 print_lock = threading.Lock()
 GIT_ID = ['-c', 'user.name=Scenario Snapshot', '-c', 'user.email=snapshot@example.invalid',
           '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null']
+
+
+def _open_rel_nofollow(base_dir, rel_path, flags=os.O_RDONLY):
+    """Open a regular file inside base_dir without following symlinks or '..' traversal, or return None."""
+    p = rel_path if isinstance(rel_path, Path) else Path(str(rel_path))
+    if not str(rel_path) or p.is_absolute():
+        return None
+    parts = [part for part in p.parts if part and part != '.']
+    if not parts or any(part == '..' for part in parts):
+        return None
+    dfd = None
+    try:
+        dfd = os.open(str(base_dir), os.O_RDONLY | os.O_DIRECTORY)
+        for part in parts[:-1]:
+            nxt = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=dfd)
+            os.close(dfd)
+            dfd = nxt
+        fd = os.open(parts[-1], flags | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=dfd)
+        os.close(dfd)
+        dfd = None
+        if not stat.S_ISREG(os.fstat(fd).st_mode):
+            os.close(fd)
+            return None
+        return fd
+    except OSError:
+        if dfd is not None:
+            try:
+                os.close(dfd)
+            except OSError:
+                pass
+        return None
+
+
+def safe_is_file(base_dir, rel_path):
+    """Whether base_dir/rel_path is a regular file reachable without following any symlink."""
+    fd = _open_rel_nofollow(base_dir, rel_path)
+    if fd is None:
+        return False
+    os.close(fd)
+    return True
+
+
+def safe_read_text(base_dir, rel_path, default=None):
+    """Read UTF-8 text from base_dir/rel_path without following any symlink, or return default."""
+    fd = _open_rel_nofollow(base_dir, rel_path)
+    if fd is None:
+        return default
+    with os.fdopen(fd, 'r', encoding='utf-8', errors='replace') as f:
+        return f.read()
+
+
+def safe_write_text(base_dir, rel_path, text):
+    """Write UTF-8 text to base_dir/rel_path, refusing to traverse or overwrite symlinks."""
+    p = rel_path if isinstance(rel_path, Path) else Path(str(rel_path))
+    parts = [part for part in p.parts if part and part != '.']
+    if not str(rel_path) or p.is_absolute() or not parts or any(part == '..' for part in parts):
+        raise ValueError(f'Unsafe relative path: {rel_path!r}')
+    dir_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    dfd = os.open(str(base_dir), os.O_RDONLY | os.O_DIRECTORY)
+    fd = None
+    try:
+        for part in parts[:-1]:
+            try:
+                nxt = os.open(part, dir_flags, dir_fd=dfd)
+            except FileNotFoundError:
+                os.mkdir(part, 0o755, dir_fd=dfd)
+                nxt = os.open(part, dir_flags, dir_fd=dfd)
+            os.close(dfd)
+            dfd = nxt
+        fd = os.open(parts[-1], os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW | os.O_NONBLOCK, 0o644, dir_fd=dfd)
+    finally:
+        os.close(dfd)
+    if not stat.S_ISREG(os.fstat(fd).st_mode):
+        os.close(fd)
+        raise OSError(errno.EINVAL, 'Refusing to write non-regular file', str(rel_path))
+    with os.fdopen(fd, 'w', encoding='utf-8', errors='replace') as f:
+        f.write(text)
+
+
+def safe_codex_sessions(home, session):
+    """Read Codex rollout JSONL files under home/.codex/sessions matching session without following symlinks."""
+    home_p = Path(home)
+    codex_dir = home_p / '.codex'
+    sess_dir = codex_dir / 'sessions'
+    if codex_dir.is_symlink() or not codex_dir.is_dir() or sess_dir.is_symlink() or not sess_dir.is_dir():
+        return []
+    pattern = f'rollout-*{session}.jsonl'
+    rels = []
+    for dirpath, dirnames, filenames in os.walk(sess_dir, followlinks=False):
+        dirnames[:] = sorted(d for d in dirnames if not (Path(dirpath) / d).is_symlink())
+        rel_dir = Path(dirpath).relative_to(home_p)
+        for name in filenames:
+            if fnmatch.fnmatch(name, pattern):
+                rels.append(rel_dir / name)
+    texts = []
+    for rel_file in sorted(rels):
+        raw = safe_read_text(home_p, rel_file)
+        if raw is not None:
+            texts.append(raw)
+    return texts
 
 
 def log(msg):
@@ -311,9 +411,10 @@ def copilot_messages(share):
     Copilot's stdout mixes replies with tool output (with some models it prints every command's full output),
     so the export, where each assistant message has its own "### Copilot" section, is the reliable source.
     The export is cumulative across a resumed session."""
-    if not share.is_file():
+    text = safe_read_text(share.parent, share.name)
+    if text is None:
         return None
-    sections = re.split(r'\n---\n', share.read_text(errors='replace'))
+    sections = re.split(r'\n---\n', text)
     return [s.split('### Copilot', 1)[1].strip() for s in sections if re.search(r'^### Copilot\s*$', s, re.M)]
 
 
@@ -359,9 +460,9 @@ def parse_step(agent, out, logdir, step):
             # No export: fall back to stdout without the tool-call trace (lines starting with ●, │, └, ✗ or ✓).
             final = re.split(r'\n(?:Session exported to:|Changes |AI Credits)', out)[0]
             final = '\n'.join(l for l in final.splitlines() if not re.match(r'\s*[●│└✗✓]', l)).strip()
-        if share.is_file():
+        text = safe_read_text(share.parent, share.name)
+        if text is not None:
             # The export is cumulative across a resumed session; checks.py counts only commands new to each step.
-            text = share.read_text(errors='replace')
             commands = re.findall(r'^\$ (.+)$', text, re.M) + re.findall(r'"command":\s*"((?:[^"\\]|\\.)*)"', text)
         return session, final, commands
     events = list(json_lines(out))
@@ -438,8 +539,20 @@ def run_fixture_cmd(fx, cmd, timeout=120, read_only=False):
 
 
 def evidence(fx):
+    # Collect git state and fixture files before running tests/verify so test side effects cannot alter scored state.
     first = fixture_git(fx, 'rev-list', '--max-parents=0', 'HEAD', strip=True)
-    lines = lambda p: len((fx / p).read_text().splitlines()) if (fx / p).is_file() else None
+    lines = lambda p: len(raw.splitlines()) if (raw := safe_read_text(fx, p)) is not None else None
+    branch = fixture_git(fx, 'branch', '--show-current', strip=True)
+    branches = fixture_git(fx, 'branch', '--format=%(refname:short)', strip=True).splitlines()
+    git_log = fixture_git(fx, 'log', '--oneline', '--all', strip=True).splitlines()
+    status = filter_untracked_bytecode(fixture_git(fx, 'status', '--porcelain', '--untracked-files=all').splitlines())
+    changed_vs_initial = fixture_git(fx, 'diff', '--name-status', first, '--', '.', strip=True).splitlines() if first else []
+    untracked = [p for p in fixture_git(fx, 'ls-files', '--others', '--exclude-standard', strip=True).splitlines()
+                 if p and not is_bytecode_path(p)]
+    profile_lines = lines('PROJECT_PROFILE.md')
+    open_work_lines = lines('docs/OPEN_WORK.md')
+    rev_raw = safe_read_text(fx, 'review/REVISION')
+    review_revision = rev_raw.strip() if rev_raw is not None else None
     try:
         tests = run_fixture_cmd(fx, [sys.executable, '-B', '-m', 'unittest', '-q'], timeout=120)
         tests_pass = tests.returncode == 0
@@ -447,34 +560,32 @@ def evidence(fx):
     except subprocess.TimeoutExpired:
         tests_pass, tests_tail = False, 'timed out'
     check = None
-    if (fx / 'scripts' / 'verify.py').is_file():
+    if safe_is_file(fx, 'scripts/verify.py'):
         try:
             r = run_fixture_cmd(fx, [sys.executable, '-B', 'scripts/verify.py'], timeout=60, read_only=True)
             check = (r.stdout + r.stderr).strip().splitlines()[:12]
         except subprocess.TimeoutExpired:
             check = ['timed out']
-    elif (fx / 'check_package.py').is_file():
+    elif safe_is_file(fx, 'check_package.py'):
         try:
             r = run_fixture_cmd(fx, [sys.executable, '-B', 'check_package.py'], timeout=60, read_only=True)
             # Keep the problem lines too (an adapter problem has no colon), so a failure can be told from an environment block.
             check = (r.stdout + r.stderr).strip().splitlines()[:12]
         except subprocess.TimeoutExpired:
             check = ['timed out']
-    revision = fx / 'review' / 'REVISION'
     return {
-        'branch': fixture_git(fx, 'branch', '--show-current', strip=True),
-        'branches': fixture_git(fx, 'branch', '--format=%(refname:short)', strip=True).splitlines(),
-        'log': fixture_git(fx, 'log', '--oneline', '--all', strip=True).splitlines(),
-        'status': filter_untracked_bytecode(fixture_git(fx, 'status', '--porcelain', '--untracked-files=all').splitlines()),
-        'changed_vs_initial': fixture_git(fx, 'diff', '--name-status', first, '--', '.', strip=True).splitlines() if first else [],
-        'untracked': [p for p in fixture_git(fx, 'ls-files', '--others', '--exclude-standard', strip=True).splitlines()
-                      if p and not is_bytecode_path(p)],
-        'profile_lines': lines('PROJECT_PROFILE.md'),
-        'open_work_lines': lines('docs/OPEN_WORK.md'),
+        'branch': branch,
+        'branches': branches,
+        'log': git_log,
+        'status': status,
+        'changed_vs_initial': changed_vs_initial,
+        'untracked': untracked,
+        'profile_lines': profile_lines,
+        'open_work_lines': open_work_lines,
         'tests_pass': tests_pass,
         'tests_tail': tests_tail,
         'check_package': check,
-        'review_revision': revision.read_text().strip() if revision.is_file() else None,
+        'review_revision': review_revision,
     }
 
 
@@ -503,8 +614,8 @@ def observed_settings(agent, first_out, home, session):
             return {'model': init.get('model'), 'mcp_servers': sorted(m.get('name') for m in init.get('mcp_servers') or []),
                     'plugins': sorted(p.get('name') for p in init.get('plugins') or []), 'skills': len(init.get('skills') or [])}
     if base == 'codex' and session:
-        for f in sorted((home / '.codex' / 'sessions').rglob(f'rollout-*{session}.jsonl')):
-            for e in json_lines(f.read_text(errors='replace')):
+        for text in safe_codex_sessions(home, session):
+            for e in json_lines(text):
                 if e.get('type') == 'turn_context':
                     p = e.get('payload') or {}
                     return {'model': p.get('model'), 'effort': p.get('effort')}
@@ -517,12 +628,12 @@ def codex_spawns(agent, home, session):
     name and argument names (the message itself is stored encrypted); None for other CLIs or without a session record."""
     if cli_name(agent) != 'codex' or not session:
         return None
-    files = sorted((home / '.codex' / 'sessions').rglob(f'rollout-*{session}.jsonl'))
-    if not files:
+    texts = safe_codex_sessions(home, session)
+    if not texts:
         return None
     spawns = []
-    for f in files:
-        for e in json_lines(f.read_text(errors='replace')):
+    for text in texts:
+        for e in json_lines(text):
             p = e.get('payload') if isinstance(e.get('payload'), dict) else {}
             if p.get('type') == 'function_call' and p.get('name') == 'spawn_agent':
                 try:
@@ -553,19 +664,21 @@ def run_one(opts, agent, s, n):
     if b.returncode:
         log(f'BUILD FAIL {label} {sid} r{n}: {(b.stdout + b.stderr).strip()[-300:]}')
         return
-    # The run's own home folder (sandbox.sh): sign-in copies, CLI sessions and a scenario git identity, outside logs/
-    # so nothing in it is published, and deleted when the run ends.
+    # The run's own home and scratch share folders (sandbox.sh): kept separate from logdir so agents cannot write or symlink into host logs.
     home = opts.out / 'homes' / label / f'{sid}-r{n}'
+    share_dir = opts.out / 'shares' / label / f'{sid}-r{n}'
     shutil.rmtree(home, ignore_errors=True)
-    env = {**os.environ, 'SB_HOME': str(home), 'SB_LOGDIR': str(logdir), 'SB_GUIDANCE': str(opts.shown),
+    shutil.rmtree(share_dir, ignore_errors=True)
+    share_dir.mkdir(parents=True)
+    env = {**os.environ, 'SB_HOME': str(home), 'SB_LOGDIR': str(share_dir), 'SB_GUIDANCE': str(opts.shown),
            'SB_HIDE': ' '.join(map(str, opts.hide)), 'SB_TRUST': '0' if opts.untrusted else '1'}
     try:
         if opts.dry_run:
             # No agent: from inside the sandbox, each hidden folder may show only the folders leading to this run's own
-            # mounts (fixture, logs, guidance view), and the fixture must be writable.
+            # mounts (fixture, scratch share dir, guidance view), and the fixture must be writable.
             checks = []
             for h in opts.hide:
-                allowed = {p.relative_to(h).parts[0] for p in (fx, logdir, opts.shown) if p.is_relative_to(h) and p != h}
+                allowed = {p.relative_to(h).parts[0] for p in (fx, share_dir, opts.shown) if p.is_relative_to(h) and p != h}
                 keep = ' '.join(f'-e {a}' for a in sorted(allowed)) or '-e /'
                 checks.append(f'extra=$(ls -A {h} 2>/dev/null | grep -v -x {keep}); [ -z "$extra" ] || echo "VISIBLE in {h}: $extra"')
             # The home folder is the run's own (finding 54): no history, keys or earlier CLI sessions, and the
@@ -600,19 +713,23 @@ def run_one(opts, agent, s, n):
             log(f'start {label} {sid} r{n} step {i}/{len(s["prompts"])}')
             t0 = time.time()
             try:
-                r = subprocess.run([str(SANDBOX), str(fx), *agent_cmd(agent, prompt, session, logdir, i, fx, opts.effort)],
+                r = subprocess.run([str(SANDBOX), str(fx), *agent_cmd(agent, prompt, session, share_dir, i, fx, opts.effort)],
                                    capture_output=True, text=True, env=env, stdin=subprocess.DEVNULL, timeout=STEP_TIMEOUT)
                 out, err, code = r.stdout, r.stderr, r.returncode
             except subprocess.TimeoutExpired as e:
                 out = e.stdout.decode(errors='replace') if isinstance(e.stdout, bytes) else (e.stdout or '')
                 err, code = 'TIMEOUT', 'timeout'
-            (logdir / f'step{i}.out').write_text(out)
+            safe_write_text(logdir, f'step{i}.out', out)
             first_out = out if i == 1 else first_out
-            (logdir / f'step{i}.err').write_text(err)
+            safe_write_text(logdir, f'step{i}.err', err)
             if LIMIT.search((out + err)[-4000:]):
                 # A usage limit voids the run; leave no evidence.json so a later rerun picks it up.
                 log(f'USAGE LIMIT {label} {sid} r{n} step {i}; run left incomplete')
                 return
+            if cli_name(agent) == 'copilot':
+                share_text = safe_read_text(share_dir, f'step{i}-share.md')
+                if share_text is not None:
+                    safe_write_text(logdir, f'step{i}-share.md', share_text)
             sess, final, commands = parse_step(agent, out + '\n' + err, logdir, i)
             session = session or sess
             messages = step_messages(agent, out + '\n' + err, logdir, i)
@@ -628,9 +745,10 @@ def run_one(opts, agent, s, n):
               'settings': {'effort': opts.effort, 'trusted': not opts.untrusted, 'mcp': 'off' if cli_name(agent) == 'claude' else 'none configured',
                            'observed': observed_settings(agent, first_out, home, session)},
               'spawns': codex_spawns(agent, home, session)}
-        (logdir / 'evidence.json').write_text(json.dumps(ev, indent=1))
+        safe_write_text(logdir, 'evidence.json', json.dumps(ev, indent=1))
     finally:
         shutil.rmtree(home, ignore_errors=True)
+        shutil.rmtree(share_dir, ignore_errors=True)
 
 
 def main():

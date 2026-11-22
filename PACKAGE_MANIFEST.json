@@ -307,8 +307,8 @@
       "path": ".github/hooks/guidance_guardrail.py",
       "kind": "guardrail",
       "module": "core",
-      "bytes": 3998,
-      "sha256": "c644f21d4b9c78f94ee2c1f9b2ebeefca311db6f5405d68e30674790c7de3549"
+      "bytes": 4013,
+      "sha256": "a4a3fc9a5d983a36ea4dc37ed8a068f1ce8fdc1d9e08293704ae38c6dd3ae6aa"
     },
     {
       "path": "PROJECT_PROFILE.md",
@@ -329,8 +329,8 @@
       "path": "scripts/verify.py",
       "kind": "tooling",
       "module": "core",
-      "bytes": 32705,
-      "sha256": "9b2ef0248e94badb9d02c0fcc3dc55e398f927727b18212c6096f6a912c735a1"
+      "bytes": 33282,
+      "sha256": "d93cabd6a6434471f0bc17ba19b91a192575f0fdc86cda00438181fdb0f7b6dd"
     },
     {
       "path": "scripts/hooks/pre-commit",
@@ -406,8 +406,8 @@
       "path": ".github/pull_request_template.md",
       "kind": "template",
       "module": "enterprise",
-      "bytes": 506,
-      "sha256": "81e541d0425e18aac790d93c82c3f36e5b71cee7c31caaeb0df81cc22c51d1e2"
+      "bytes": 608,
+      "sha256": "c2f94836745487c3a868e64f1a9c883a68717e10d264000d534a641ff387462a"
     },
     {
       "path": "docs/UI.md",
