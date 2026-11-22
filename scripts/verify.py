@@ -2,7 +2,7 @@
 """Project-side guidance integrity and gate verification runner."""
 from datetime import date
 from pathlib import Path
-import argparse, json, os, re, subprocess, sys, time
+import argparse, json, os, re, signal, subprocess, sys, time
 
 root = Path(__file__).resolve().parent.parent
 guidance_path = root / '.guidance.json'
@@ -24,7 +24,7 @@ GATE_PHASES = {
     'documentation': {'documentation'},
     'release': {'development', 'release', 'documentation'},
 }
-UNGATED_LABELS = {'—', '–', '-', '--', 'manual', 'none', 'n/a', 'not applicable', 'ungated'}
+UNGATED_LABELS = {'—', '–', '-', '--', 'manual', 'none', 'n/a', 'no', 'not applicable', 'ungated'}
 PROSE_SUFFIXES = {'.md', '.rst'}
 GUIDANCE_RECORDS = ('.guidance.json', 'PACKAGE_MANIFEST.json', 'docs/guidance-provenance.json')
 DEPENDENCY_FILES = re.compile(r'requirements[\w.-]*\.txt|pyproject\.toml|setup\.(py|cfg)|Pipfile(\.lock)?|poetry\.lock|uv\.lock'
@@ -273,8 +273,22 @@ def gate_timeout(gate):
 
 
 def gate_labels(gate):
-    cleaned = GATE_TIMEOUT.sub('', gate.lower())
-    return {p.strip(' ()') for p in re.split(r'[/,;+&]|\band\b', cleaned) if p.strip(' ()')}
+    cleaned = GATE_TIMEOUT.sub('', gate.lower()).strip(' ()')
+    if not cleaned:
+        return set()
+    if cleaned in UNGATED_LABELS:
+        return {cleaned}
+    masked = re.sub(r'\bn/a\b', 'n__a', cleaned)
+    return {'n/a' if p == 'n__a' else p for part in re.split(r'[/,;+&]|\band\b', masked) if (p := part.strip(' ()'))}
+
+
+def split_table_row(line):
+    s = line.strip()
+    if s.startswith('|'):
+        s = s[1:]
+    if s.endswith('|') and not s.endswith('\\|'):
+        s = s[:-1]
+    return [re.sub(r'\\\|', '|', c).strip() for c in re.split(r'(?<!\\)\|', s)]
 
 
 def inventory_gates(phase):
@@ -286,14 +300,14 @@ def inventory_gates(phase):
         start = next(i for i, l in enumerate(lines) if l.strip().lower() == '## command inventory')
     except StopIteration:
         return [], 'no "## Command inventory" section in PROJECT_PROFILE.md'
-    header, gates, bad_gates = None, [], []
+    header, gates, bad_gates, bad_commands = None, [], [], []
     known = GATE_PHASES['release'] | UNGATED_LABELS
     for line in lines[start + 1:]:
         if line.startswith('## '):
             break
         if not line.lstrip().startswith('|'):
             continue
-        cells = [c.strip() for c in line.strip().strip('|').split('|')]
+        cells = split_table_row(line)
         if header is None:
             header = [c.lower() for c in cells]
             continue
@@ -313,6 +327,9 @@ def inventory_gates(phase):
             kind, command = 'gap', None
         elif re.match(r'(?i)\s*(not applicable|n/a)\b', cell):
             kind, command = 'excluded', None
+        elif len(code) > 1 and not PLACEHOLDER.search(cell):
+            bad_commands.append(f"{row.get('purpose', '?')} ({len(code)} backticked commands; use separate rows or one compound command)")
+            kind, command = 'gap', None
         elif code and not PLACEHOLDER.search(cell):
             kind, command = 'run', code[0].strip('`')
         else:
@@ -320,12 +337,42 @@ def inventory_gates(phase):
         gates.append((row.get('purpose', '?'), gate, cell, command, kind))
     if header is None or 'gate' not in header:
         return [], 'the command inventory has no Gate column'
+    problems = []
     if bad_gates:
-        return gates, ('unrecognized or mixed Gate label(s): ' + ', '.join(bad_gates)
-                       + ' — use Development, Release, Documentation, Manual, or —')
+        problems.append('unrecognized or mixed Gate label(s): ' + ', '.join(bad_gates)
+                        + ' — use Development, Release, Documentation, Manual, or —')
+    if bad_commands:
+        problems.append('ambiguous Command cell(s): ' + '; '.join(bad_commands))
+    if problems:
+        return gates, '; '.join(problems)
     if phase == 'documentation' and not gates:
         return [], 'no command inventory row has Documentation in its Gate column'
     return gates, None
+
+
+def run_gate_command(command, limit):
+    proc = subprocess.Popen(
+        command, shell=True, cwd=root,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        start_new_session=(os.name == 'posix'),
+    )
+    try:
+        stdout, stderr = proc.communicate(timeout=limit)
+        return proc.returncode, stdout, stderr, False
+    except subprocess.TimeoutExpired:
+        if os.name == 'posix':
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        else:
+            proc.kill()
+        try:
+            proc.communicate(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+        return None, '', '', True
 
 
 def non_documentation_changes(packaged):
@@ -362,15 +409,15 @@ def verify(phase, timeout, receipt, record):
             limit = own or timeout
             entry['timeout'] = limit
             started = time.monotonic()
-            try:
-                r = subprocess.run(command, shell=True, cwd=root, capture_output=True, text=True, timeout=limit)
-                entry['status'] = 'passed' if r.returncode == 0 else 'failed'
-                entry['exit_code'] = r.returncode
-                entry['output_tail'] = (r.stdout + r.stderr).strip().splitlines()[-5:]
-            except subprocess.TimeoutExpired:
+            rc, stdout, stderr, timed_out = run_gate_command(command, limit)
+            if timed_out:
                 source = "this gate's own limit" if own else 'the --timeout default; set a longer limit in its Gate cell, such as "timeout 60m"'
                 entry['status'], entry['detail'] = 'failed', f'timed out after {limit}s ({source})'
                 entry['output_tail'] = [entry['detail']]
+            else:
+                entry['status'] = 'passed' if rc == 0 else 'failed'
+                entry['exit_code'] = rc
+                entry['output_tail'] = (stdout + stderr).strip().splitlines()[-5:]
             entry['seconds'] = round(time.monotonic() - started, 1)
         results.append(entry)
     files = {e['path'] if isinstance(e, dict) else e for e in record.get('files', [])}

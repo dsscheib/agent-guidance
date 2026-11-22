@@ -64,7 +64,7 @@ SHIP_CLAIM = re.compile(r"(?i)\b(?:ready to ship|can ship|is shippable|ready for
 SHIP_DENIAL = re.compile(
     r"(?i)can(?:no|')t ship|cannot be (?:shipped|released)|not (?:yet )?(?:ready|shippable)|"
     r"should not ship|isn.t ready|not accept|\bdo not ship\b|\bhold (?:release\b|\d)|"
-    r"\bnothing\s+can\s+ship\b|\buntil\b|\bonly\s+(?:after|once|when|if)\b|"
+    r"\bnothing\s+can\s+ship\b|\b(?:blocked|blocking|on\s+hold|hold\s+off)\s+until\b|\bonly\s+(?:after|once|when|if)\b|"
     r"\bonce\s+[^.!?\n]{0,40}\b(?:close[ds]?|resolv\w+|clear\w+|fix(?:ed|es)?|pass(?:es|ed)?|approv\w+|confirm\w+|complet\w+|verif\w+|address\w+)\b"
 )
 SHIP_SPLIT = re.compile(r'(?i)[.!?\n]+|\b(?:but|however)\b')

@@ -384,6 +384,36 @@ def without_guardrail(path, text, rule):
     return text.rstrip('\n') + '\n'
 
 
+def check_target_containment(base, rel_paths):
+    resolved_base = Path(base).resolve()
+    escaped = []
+    for rel_path in rel_paths:
+        cur = Path(base)
+        for part in Path(rel_path).parts:
+            cur = cur / part
+            if (cur.is_symlink() or cur.exists()) and not cur.resolve().is_relative_to(resolved_base):
+                escaped.append(rel_path)
+                break
+        else:
+            if not (Path(base) / rel_path).resolve().is_relative_to(resolved_base):
+                escaped.append(rel_path)
+    if escaped:
+        shown = ', '.join(sorted(set(escaped))[:5])
+        sys.exit(f'Refusing to write outside {base} through symlink(s): {shown}')
+
+
+def apply_profile_rows(text, manifest, modules):
+    purpose = lambda row: row.strip().strip('|').split('|')[0].strip()
+    present = {purpose(l) for l in text.splitlines() if l.lstrip().startswith('|')}
+    new = [r['row'] for r in manifest.get('profile_rows', []) if r['module'] in modules and purpose(r['row']) not in present]
+    if not new:
+        return text, []
+    anchor = next((l for l in text.splitlines() if l.startswith('| Guidance integrity |')), None)
+    if anchor is None:
+        return text, []
+    return text.replace(anchor, '\n'.join(new) + '\n' + anchor, 1), [purpose(r) for r in new]
+
+
 def effective(path, text, manifest, modules):
     if text is None:
         return None
@@ -394,8 +424,10 @@ def effective(path, text, manifest, modules):
         return text
     if path == 'AGENTS.md':
         return GENERATED.sub(lambda m: m.group(1) + render_block(manifest, m.group(2), modules) + m.group(4), text)
-    if path == 'PROJECT_PROFILE.md' and str(manifest.get('version', '')).startswith('4.'):
-        return strip_module_blocks(text, modules)
+    if path == 'PROJECT_PROFILE.md':
+        if str(manifest.get('version', '')).startswith('4.'):
+            text = strip_module_blocks(text, modules)
+        return apply_profile_rows(text, manifest, modules)[0]
     return text
 
 
@@ -435,6 +467,10 @@ def sync_adapters(manifest, errors, target_dir=None, template=True):
     if not template and record.get('files'):
         installed_files = {e['path'] if isinstance(e, dict) else e for e in record['files']}
 
+    expected = expected_adapters(manifest, errors, tools, template, base, installed_files)
+    orphans = existing_adapters(manifest, tools, template, base) - expected.keys()
+    check_target_containment(base, ['AGENTS.md', GUIDANCE_FILE, *expected.keys(), *orphans])
+
     agents = generate_agents(base / 'AGENTS.md', manifest, modules)
     if agents is not None and agents != (base / 'AGENTS.md').read_text():
         (base / 'AGENTS.md').write_text(agents)
@@ -446,8 +482,7 @@ def sync_adapters(manifest, errors, target_dir=None, template=True):
             record['agents_blocks'] = blocks
             (base / GUIDANCE_FILE).write_text(json.dumps(record, indent=2) + '\n')
 
-    expected = expected_adapters(manifest, errors, tools, template, base, installed_files)
-    for path in existing_adapters(manifest, tools, template, base) - expected.keys():
+    for path in orphans:
         (base / path).unlink()
         print('Removed orphaned adapter: ' + path)
     for path, content in expected.items():
@@ -527,18 +562,10 @@ def tier_choice(manifest, target):
 def add_profile_rows(profile, manifest, modules, write=True):
     if not profile.is_file():
         return []
-    text = profile.read_text()
-    purpose = lambda row: row.strip().strip('|').split('|')[0].strip()
-    present = {purpose(l) for l in text.splitlines() if l.lstrip().startswith('|')}
-    new = [r['row'] for r in manifest.get('profile_rows', []) if r['module'] in modules and purpose(r['row']) not in present]
-    if not new:
-        return []
-    anchor = next((l for l in text.splitlines() if l.startswith('| Guidance integrity |')), None)
-    if anchor is None:
-        return []
-    if write:
-        profile.write_text(text.replace(anchor, '\n'.join(new) + '\n' + anchor, 1))
-    return [purpose(r) for r in new]
+    updated, added = apply_profile_rows(profile.read_text(), manifest, modules)
+    if added and write:
+        profile.write_text(updated)
+    return added
 
 
 def add_release_profile_section(profile, modules, write=True):
@@ -607,7 +634,7 @@ def install(manifest, target, force, tier=None, features=(), everything=False, d
     prev_doc, previous, prev_legacy = read_previous_install(target)
     if prev_legacy and not force:
         sys.exit(f'{target} has a legacy {LEGACY_MANIFEST} install; run --plan-upgrade {target} to migrate '
-                 f'without losing local changes, or pass --force to overwrite with {GUIDANCE_FILE}')
+                 'and retire obsolete files (--force only overwrites matching files without removing legacy layout files)')
     prev_modules = set(previous.get('modules', []))
     if prev_legacy:
         prev_modules = {m for old in prev_modules for m in V3_MODULE_MAP.get(old, ())} & set(manifest['modules'])
@@ -621,6 +648,7 @@ def install(manifest, target, force, tier=None, features=(), everything=False, d
     chosen = sorted(set(tools) | set(previous.get('tools', []))) if tools or previous.get('tools') else sorted(manifest.get('tools', {}))
     wanted_entries = [e for e in manifest['files'] if in_modules(e, modules) and for_tools(manifest, e['path'], chosen)]
     wanted = [e['path'] for e in wanted_entries]
+    check_target_containment(target, [*wanted, 'README.md', GUIDANCE_FILE])
     chosen_tier = tier or previous.get('tier')
     copied, refreshed, skipped = [], [], []
     agents_target = target / 'AGENTS.md'

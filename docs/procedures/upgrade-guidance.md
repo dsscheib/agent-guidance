@@ -41,7 +41,7 @@ Show the plan summary, conflicts, and `review` items side-by-side in your reply 
 1. Apply the approved patch: `git apply /tmp/upgrade.patch`.
 2. Resolve each approved `conflict` and `review` item:
    - Fold any surviving custom rule from retired docs into its v4 home (`PROJECT_PROFILE.md`, `DESIGN_DOC.md`, `AGENTS.md`, or `docs/RUNBOOKS.md`), then delete retired files you no longer need.
-   - If upgrading from v3 and `PROJECT_PROFILE.md` still lists retired `profiles/PRODUCTION_OPERATIONS.md` under adopted profiles, remove that plain-text reference.
+   - If upgrading from v2/v3, remove or update links and plain-text references in `PROJECT_PROFILE.md` (and any kept project docs) to retired upstream files (such as `profiles/PRODUCTION_OPERATIONS.md`, `docs/DOCUMENTATION.md`, `docs/TESTING_SPEC.md`, and `docs/procedures/bootstrap-project.md`).
    - Move any dated status sections or bloat out of `PROJECT_PROFILE.md` (limit 250 lines) and `docs/OPEN_WORK.md` (limit 150 lines) into short entries in `docs/RELEASE_NOTES.md`.
    - Ensure `## Command inventory` has explicit commands in backticks or `Not applicable: <reason>` and update `Guidance integrity` to `python3 scripts/verify.py`.
 3. Regenerate project `AGENTS.md` blocks and selective skills if needed (never edits project specialist agent directories):

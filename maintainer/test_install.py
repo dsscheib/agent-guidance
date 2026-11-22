@@ -326,18 +326,45 @@ def case_exclusions_deps_rename_docs_timeouts(tmp):
     expect(r_bad_rel.returncode != 0 and 'unrecognized or mixed Gate label(s)' in r_bad_rel.stdout
            and not (target / 'mixed-ran').exists() and 'Mixed gate' in r_bad_rel.stdout and 'Qualified gate' in r_bad_rel.stdout,
            'Release / Manual and Release (CI only) must report a problem instead of silently skipping:\n' + r_bad_rel.stdout)
+
+    # Atomic ungated labels (N/A, No), escaped Markdown pipes (\|), and ambiguous multi-command cells.
+    profile.write_text(base_profile.replace(
+        '| Guidance integrity |',
+        '| Optional doc check | `python3 -c "open(\'na-ran\', \'w\').write(\'x\')"` | N/A | Dev | — |\n'
+        '| Legacy opt-out | `python3 -c "open(\'no-ran\', \'w\').write(\'x\')"` | No | Dev | — |\n'
+        '| Pipe check | `false \\| true` | Development | Dev | — |\n'
+        '| Guidance integrity |',
+    ))
+    r_clean = verify(target, 'development')
+    expect('passed    Pipe check' in r_clean.stdout and 'unrecognized' not in r_clean.stdout
+           and not (target / 'na-ran').exists() and not (target / 'no-ran').exists(),
+           'N/A, No, and escaped Markdown pipes should parse cleanly:\n' + r_clean.stdout)
+
+    profile.write_text(base_profile.replace(
+        '| Guidance integrity |',
+        '| Mixed NA gate | `python3 -c "print(4)"` | Release / N/A | Dev | — |\n'
+        '| Dual cmd | `true` and `false` | Development | Dev | — |\n'
+        '| Guidance integrity |',
+    ))
+    r_ambig = verify(target, 'development')
+    expect(r_ambig.returncode == 2 and 'unrecognized or mixed Gate label(s)' in r_ambig.stdout
+           and 'ambiguous Command cell(s)' in r_ambig.stdout and 'Dual cmd' in r_ambig.stdout,
+           'Release / N/A and multi-command Command cells must fail as incomplete:\n' + r_ambig.stdout)
     profile.write_text(base_profile)
 
-    # 2. Per-gate timeout
+    # 2. Per-gate timeout (including killing/reaping child processes spawned by timed-out shell commands)
     profile.write_text(profile.read_text()
                        .replace('| Browser / accessibility smoke | Proposed: Not applicable: CLI only | Development |',
                                 '| Browser / accessibility smoke | `python3 -c "import time; time.sleep(1.2)"` | Development, timeout 5s |')
                        .replace('`python3 -c "import sys; assert sys.version_info[0] == 3"`',
-                                '`python3 -c "import time; time.sleep(1.5)"`'))
+                                '`python3 -c "import subprocess, sys; subprocess.Popen([sys.executable, \'-c\', \'import time; time.sleep(1.5); open(\\"timeout-leaked\\", \\"w\\").write(\\"x\\")\']).wait()"`'))
     r_to = subprocess.run([sys.executable, '-B', 'scripts/verify.py', '--verify', 'development', '--timeout', '1'],
                           cwd=target, capture_output=True, text=True)
-    expect('passed    Browser / accessibility smoke' in r_to.stdout and 'timed out after 1s (the --timeout default' in r_to.stdout,
-           'per-gate timeout mismatch:\n' + r_to.stdout)
+    import time
+    time.sleep(1.8)
+    expect('passed    Browser / accessibility smoke' in r_to.stdout and 'timed out after 1s (the --timeout default' in r_to.stdout
+           and not (target / 'timeout-leaked').exists(),
+           'per-gate timeout mismatch or child process survived timeout:\n' + r_to.stdout)
 
     # 3. Documentation mode passes on a clean/doc-only repo, and fails on uncommitted code or .txt changes.
     r_doc = verify(target, 'docs')
@@ -455,6 +482,27 @@ def case_tools_and_default_and_broken(tmp):
            '--tools copilot --sync must remove orphan and keep user-authored skill')
     ok, out = check(copilot_only)
     expect(ok, '--tools copilot check failed after --sync repair: ' + out)
+
+    # Symlink containment: --install and --sync must refuse before mutating anything outside the target.
+    outside = tmp / 'symlink-outside'
+    outside.mkdir()
+    esc_install = tmp / 'symlink-install'
+    esc_install.mkdir()
+    (esc_install / '.claude').symlink_to(outside, target_is_directory=True)
+    r_esc = run_manage(root, '--install', str(esc_install), '--tier', 'prototype', '--tools', 'claude')
+    expect(r_esc.returncode != 0 and 'Refusing to write outside' in (r_esc.stdout + r_esc.stderr)
+           and not list(outside.iterdir()) and not (esc_install / 'AGENTS.md').exists(),
+           '--install must reject escaping symlink before any write: ' + r_esc.stdout + r_esc.stderr)
+
+    esc_sync = tmp / 'symlink-sync'
+    esc_sync.mkdir()
+    install(esc_sync, '--tier', 'production', '--tools', 'claude')
+    shutil.rmtree(esc_sync / '.claude/skills')
+    (esc_sync / '.claude/skills').symlink_to(outside, target_is_directory=True)
+    r_sync_esc = run_manage(root, '--sync', str(esc_sync))
+    expect(r_sync_esc.returncode != 0 and 'Refusing to write outside' in (r_sync_esc.stdout + r_sync_esc.stderr)
+           and not list(outside.iterdir()),
+           '--sync must reject escaping symlink before any write: ' + r_sync_esc.stdout + r_sync_esc.stderr)
 
 
 def case_agent_team_interop(tmp):
@@ -650,6 +698,32 @@ def case_v3_to_v4_upgrade(tmp):
     chk_conflict = run_manage(root, '--check-upgrade', str(target), '--since', 'HEAD')
     expect(chk_conflict.returncode != 0 and 'unresolved merge conflict markers' in chk_conflict.stdout,
            'v3->v4 --check-upgrade must fail on unresolved conflict markers: ' + chk_conflict.stdout + chk_conflict.stderr)
+
+    # Untouched 3.0.2 --tier enterprise PROJECT_PROFILE.md (with installer-inserted profile_rows) must replace cleanly.
+    ent_target = tmp / 'v3-ent'
+    ent_target.mkdir()
+    r_ent = subprocess.run([sys.executable, '-B', str(v3_repo / 'check_package.py'), '--install', str(ent_target), '--tier', 'enterprise'],
+                           cwd=v3_repo, capture_output=True, text=True)
+    expect(r_ent.returncode == 0, '3.0.2 enterprise install failed: ' + r_ent.stdout + r_ent.stderr)
+    ent_rec = json.loads((ent_target / 'PACKAGE_MANIFEST.json').read_text())
+    ent_rec['installed_from'] = {'repository': 'https://example.invalid/repo', 'commit': sha_302, 'dirty': False, 'date': '2026-11-06'}
+    (ent_target / 'PACKAGE_MANIFEST.json').write_text(json.dumps(ent_rec, indent=2) + '\n')
+    init_git(ent_target, 'baseline 3.0.2 enterprise')
+    ent_patch = tmp / 'v3-ent-to-v4.patch'
+    ent_plan = run_manage(root, '--plan-upgrade', str(ent_target), '--patch', str(ent_patch))
+    expect(ent_plan.returncode == 0, 'v3 enterprise -> v4 --plan-upgrade failed: ' + ent_plan.stdout + ent_plan.stderr)
+    expect('PROJECT_PROFILE.md' in plan_section(ent_plan.stdout, 'Replace')
+           and 'PROJECT_PROFILE.md' not in plan_section(ent_plan.stdout, 'Review'),
+           'untouched v3 enterprise PROJECT_PROFILE.md must be replaced, not reviewed:\n' + ent_plan.stdout)
+    ent_applied = subprocess.run(['git', 'apply', str(ent_patch)], cwd=ent_target, capture_output=True, text=True)
+    expect(ent_applied.returncode == 0, 'v3 enterprise -> v4 git apply failed: ' + ent_applied.stderr)
+    ent_sync = run_manage(root, '--sync', str(ent_target))
+    expect(ent_sync.returncode == 0, 'v3 enterprise -> v4 --sync failed: ' + ent_sync.stdout + ent_sync.stderr)
+    ok, eout = check(ent_target)
+    expect(ok, 'scripts/verify.py failed after untouched v3 enterprise -> v4 upgrade:\n' + eout)
+    ent_chk = run_manage(root, '--check-upgrade', str(ent_target), '--since', 'HEAD')
+    expect(ent_chk.returncode == 0 and 'nothing lost' in ent_chk.stdout,
+           'v3 enterprise -> v4 --check-upgrade failed: ' + ent_chk.stdout + ent_chk.stderr)
 
 
 def case_v2_to_v4_upgrade(tmp):

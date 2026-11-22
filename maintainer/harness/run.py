@@ -8,7 +8,7 @@ Agents are CLI names, optionally with a model: claude@claude-haiku-5-5, codex@gp
 copilot@gemini-3.8-flash, agy@gemini-3.8-flash-medium.
 
 --out is required and must be outside this repository: raw runs are bulky and contain local paths
-(docs/DOCUMENTATION.md#document-budget). Results go to OUT/logs/<label>/<scenario>-r<n>/evidence.json
+(see MAINTAINING.md). Results go to OUT/logs/<label>/<scenario>-r<n>/evidence.json
 and fixtures to OUT/fx/<label>/. Finished runs are skipped, so an interrupted batch can be rerun.
 
 By default the current checkout, including uncommitted changes, is copied to OUT/snapshots/<name> and
