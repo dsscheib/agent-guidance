@@ -41,13 +41,14 @@ Show the plan summary, conflicts, and `review` items side-by-side in your reply 
 1. Apply the approved patch: `git apply /tmp/upgrade.patch`.
 2. Resolve each approved `conflict` and `review` item:
    - Fold any surviving custom rule from retired docs into its v4 home (`PROJECT_PROFILE.md`, `DESIGN_DOC.md`, `AGENTS.md`, or `docs/RUNBOOKS.md`), then delete retired files you no longer need.
+   - If upgrading from v3 and `PROJECT_PROFILE.md` still lists retired `profiles/PRODUCTION_OPERATIONS.md` under adopted profiles, remove that plain-text reference.
    - Move any dated status sections or bloat out of `PROJECT_PROFILE.md` (limit 250 lines) and `docs/OPEN_WORK.md` (limit 150 lines) into short entries in `docs/RELEASE_NOTES.md`.
-   - Ensure `COMMAND INVENTORY` has explicit commands in backticks or `Not applicable: <reason>` and update `Guidance integrity` to `python3 scripts/verify.py`.
+   - Ensure `## Command inventory` has explicit commands in backticks or `Not applicable: <reason>` and update `Guidance integrity` to `python3 scripts/verify.py`.
 3. Regenerate project `AGENTS.md` blocks and selective skills if needed (never edits project specialist agent directories):
    ```sh
    python3 /path/to/agent-guidance/manage.py --sync /path/to/project
    ```
-4. If the project tracks `docs/guidance-provenance.json`, append a valid JSON provenance entry recording source commit and owner decisions.
+4. If the project tracks `docs/guidance-provenance.json`, update it in place with the current source commit and owner decisions (keeping a bounded record rather than growing without limit).
 5. Add an `OPEN_WORK.md` item only for unresolved follow-ups, and one brief `docs/RELEASE_NOTES.md` entry.
 
 ## 5. Verify before finishing

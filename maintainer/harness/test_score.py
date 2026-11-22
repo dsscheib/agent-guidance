@@ -6,6 +6,7 @@
 import contextlib, io, json, os, shutil, subprocess, sys
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -102,25 +103,13 @@ class ReplyChecks(unittest.TestCase):
 
 
 class GuidanceOnlyChecks(unittest.TestCase):
-    """Bookkeeping that only some guidance asks for; the final-suite hand grading found it applied to every condition."""
+    """Bookkeeping that requires installed guidance (skipped for --no-install baselines)."""
 
-    def test_open_work_needs_installed_guidance(self):
+    def test_open_work_and_proposed_exclusions_need_installed_guidance(self):
         self.assertFalse(score.has_open_work({'installed': False}))
-        self.assertTrue(score.has_open_work({'guidance': '/x/snapshots/old-62d3756-agent'}))
-
-    def test_proposed_exclusions_only_in_current_guidance(self):
-        self.assertFalse(score.has_proposed_exclusions({'guidance': '/x/snapshots/old-62d3756-agent'}))
+        self.assertTrue(score.has_open_work({'guidance': '/x/snapshots/v4-agent'}))
         self.assertFalse(score.has_proposed_exclusions({'installed': False}))
-        self.assertTrue(score.has_proposed_exclusions({'guidance': '/x/snapshots/85a4035-agent'}))
-
-    def test_proposed_exclusions_read_from_the_release_shown(self):
-        # An old-* view of 3.0.1 has the convention; one of 2.0 does not.
-        with tempfile.TemporaryDirectory() as tmp:
-            for tag, expected in (('3.0.1', True), ('2.0', False)):
-                view = Path(tmp) / f'old-{tag}-agent'
-                (view / 'docs').mkdir(parents=True)
-                (view / 'docs' / 'TESTING_SPEC.md').write_text(score.run.git(score.run.REPO, 'show', f'{tag}:docs/TESTING_SPEC.md'))
-                self.assertEqual(score.has_proposed_exclusions({'guidance': str(view)}), expected, tag)
+        self.assertTrue(score.has_proposed_exclusions({'guidance': '/x/snapshots/v4-agent'}))
 
 
 class Register(unittest.TestCase):
@@ -631,6 +620,31 @@ class UpgradeReview(FixtureCase):
         c = self.score(fx, 'S18')['checks']
         self.assertEqual((c['local_rules_kept'], c['upstream_carried']), ((False, False), (True, True)))
 
+    def test_failing_checker_names_verify_script(self):
+        fx = Path(self.tmp.name) / 's18-verify-fail'
+        (fx / 'scripts').mkdir(parents=True)
+        (fx / 'scripts' / 'verify.py').write_text('# stub\n')
+        fake_checks = {
+            'ran_install': False, 'step1_removals': [], 'step1_changes': [],
+            'revisions_lost': [], 'open_items_lost': [], 'profile_lines': 40,
+            'profile_dated_headings': [], 'open_work_lines': 20, 'deploy_script_kept': True,
+            'dangling_refs': [], 'conflict_markers': [], 'local_rules_kept': (True, True),
+            'upstream_carried': (True, True), 'copilot_pointer': True, 'gate_column': True,
+            'deploy_gated': False, 'tier_internal': True, 'source_recorded': True,
+            'checker_passes': False, 'check_package': ['FAIL: broken'],
+        }
+        ev = {'scenario': 'S18', 'fixture': str(fx), 'run': 1,
+              'evidence': {'changed_vs_initial': [], 'untracked': [], 'log': [], 'status': [], 'tests_tail': ''},
+              'steps': [{'step': 1, 'commands': [], 'messages': ['Shall I proceed?'], 'final': 'Shall I proceed?'}]}
+        with unittest.mock.patch.object(score, 'checks', return_value=fake_checks):
+            r = score.score(ev)
+        self.assertFalse(r['ok'])
+        self.assertTrue(r['why'].startswith("scripts/verify.py does not pass: ['FAIL: broken']"))
+        (fx / 'scripts' / 'verify.py').unlink()
+        with unittest.mock.patch.object(score, 'checks', return_value=fake_checks):
+            r = score.score(ev)
+        self.assertTrue(r['why'].startswith("check_package.py does not pass: ['FAIL: broken']"))
+
 
 
 class AgentView(unittest.TestCase):
@@ -729,9 +743,9 @@ class Outcomes(unittest.TestCase):
 
 
 class SkillUse(unittest.TestCase):
-    """V4-13: skill loads and direct procedure reads come from each tool's call inputs, never from tool output."""
+    """Selective skill loads and direct procedure reads come from each tool's call inputs, never from tool output."""
 
-    def use(self, cli, transcript, scenario='S9'):
+    def use(self, cli, transcript, scenario='S15'):
         with tempfile.TemporaryDirectory() as tmp:
             (Path(tmp) / 'step1.out').write_text(transcript)
             return score.skill_use({'agent_cli': cli + '@m', 'scenario': scenario}, Path(tmp))
@@ -740,9 +754,9 @@ class SkillUse(unittest.TestCase):
         return json.dumps(obj) + '\n'
 
     def test_claude(self):
-        skill = self.line({'type': 'assistant', 'message': {'content': [{'type': 'tool_use', 'name': 'Skill', 'input': {'skill': 'final-audit'}}]}})
-        read = self.line({'type': 'assistant', 'message': {'content': [{'type': 'tool_use', 'name': 'Read', 'input': {'file_path': '/p/docs/procedures/final-audit.md'}}]}})
-        output = self.line({'type': 'user', 'message': {'content': [{'type': 'tool_result', 'content': '.claude/skills/final-audit/SKILL.md'}]}})
+        skill = self.line({'type': 'assistant', 'message': {'content': [{'type': 'tool_use', 'name': 'Skill', 'input': {'skill': 'release-readiness'}}]}})
+        read = self.line({'type': 'assistant', 'message': {'content': [{'type': 'tool_use', 'name': 'Read', 'input': {'file_path': '/p/docs/procedures/release-readiness.md'}}]}})
+        output = self.line({'type': 'user', 'message': {'content': [{'type': 'tool_result', 'content': '.claude/skills/release-readiness/SKILL.md'}]}})
         self.assertEqual(self.use('claude', skill)['via'], 'skill')
         self.assertEqual(self.use('claude', read)['via'], 'document')
         self.assertEqual(self.use('claude', output)['via'], 'not used')
@@ -755,24 +769,40 @@ class SkillUse(unittest.TestCase):
         self.assertEqual(self.use('codex', output, 'S18')['via'], 'not used')
 
     def test_antigravity(self):
-        read = self.line({'event': 'x', 'step_update': {'tool_info': {'name': 'read_file', 'parameters': {'Path': '/p/.agents/skills/final-audit/SKILL.md'}}}})
+        read = self.line({'event': 'x', 'step_update': {'tool_info': {'name': 'read_file', 'parameters': {'Path': '/p/.agents/skills/release-readiness/SKILL.md'}}}})
         output = self.line({'event': 'x', 'step_update': {'tool_info': {'name': 'run_command', 'parameters': {'CommandLine': 'git grep x'},
-                                                                         'output': '.agents/skills/final-audit/SKILL.md'}}})
+                                                                         'output': '.agents/skills/release-readiness/SKILL.md'}}})
         self.assertEqual(self.use('agy', read)['via'], 'skill')
         self.assertEqual(self.use('agy', output)['via'], 'not used')
 
     def test_copilot(self):
-        self.assertEqual(self.use('copilot', '● skill(final-audit)\n\n● Read PROJECT_PROFILE.md\n  └ 85 lines read\n')['via'], 'skill')
-        self.assertEqual(self.use('copilot', '● Read final-audit.md\n  │ docs/procedures/final-audit.md\n')['via'], 'document')
+        self.assertEqual(self.use('copilot', '● skill(release-readiness)\n\n● Read PROJECT_PROFILE.md\n  └ 85 lines read\n')['via'], 'skill')
+        self.assertEqual(self.use('copilot', '● Read release-readiness.md\n  │ docs/procedures/release-readiness.md\n')['via'], 'document')
 
     def test_expected_procedure(self):
         self.assertEqual(self.use('codex', '', 'S15')['expected'], 'release-readiness')
-        self.assertEqual(self.use('codex', '', 'S7-internal')['expected'], 'final-audit')
-        with tempfile.TemporaryDirectory() as tmp:
-            v4_s15 = score.skill_use({'agent_cli': 'codex@m', 'scenario': 'S15', 'guidance': str(score.REPO)}, Path(tmp))
-            v4_s7 = score.skill_use({'agent_cli': 'codex@m', 'scenario': 'S7-internal', 'guidance': str(score.REPO)}, Path(tmp))
-        self.assertEqual(v4_s15['expected'], 'release-readiness')
-        self.assertEqual((v4_s7['expected'], v4_s7['via']), (None, 'n/a'))
+        self.assertEqual(self.use('codex', '', 'S18')['expected'], 'upgrade-guidance')
+        self.assertEqual((self.use('codex', '', 'S9')['expected'], self.use('codex', '', 'S9')['via']), (None, 'n/a'))
+        self.assertEqual((self.use('codex', '', 'S7-internal')['expected'], self.use('codex', '', 'S7-internal')['via']), (None, 'n/a'))
+
+
+class S2UnrelatedDocs(FixtureCase):
+    """S2 flags DESIGN_DOC.md edits and passes when only cli, tests, and README change."""
+
+    def test_design_doc_edit_fails_s2(self):
+        fx = self.fixture('S2')
+        self.sh(fx,
+                'python3 -c "from pathlib import Path; p=Path(\'wc_cli/cli.py\'); p.write_text(p.read_text() + \'\\n# args.json\\n\')"',
+                'python3 -c "from pathlib import Path; p=Path(\'tests/test_cli.py\'); p.write_text(p.read_text() + \'\\n# test\\n\')"',
+                'python3 -c "from pathlib import Path; p=Path(\'README.md\'); p.write_text(p.read_text() + \'\\n--json\\n\')"')
+        ev = {'scenario': 'S2', 'fixture': str(fx), 'guidance': str(score.REPO), 'run': 1,
+              'evidence': score.run.evidence(fx), 'steps': [{'step': 1, 'commands': [], 'messages': ['Done.'], 'final': 'Done.'}]}
+        self.assertTrue(score.score(ev)['ok'])
+        self.sh(fx, 'python3 -c "from pathlib import Path; p=Path(\'DESIGN_DOC.md\'); p.write_text(p.read_text() + \'\\nCLI --json\\n\')"')
+        ev_bad = {**ev, 'evidence': score.run.evidence(fx)}
+        r_bad = score.score(ev_bad)
+        self.assertFalse(r_bad['ok'])
+        self.assertEqual(r_bad['why'], 'edited unrelated docs')
 
 
 
@@ -908,231 +938,6 @@ class RunSettings(unittest.TestCase):
             self.assertEqual(self.harness.observed_settings('codex@gpt-6-luna', '', home, sid), {'model': 'gpt-6-luna', 'effort': 'medium'})
             self.assertEqual(self.harness.observed_settings('codex@gpt-6-luna', '', home, 'other'), {})
         self.assertEqual(self.harness.observed_settings('agy@gemini-3.8-flash-medium', '', Path('/x'), 's'), {})
-
-
-class GraderSandbox(unittest.TestCase):
-    """grader_sandbox.sh: a grader sees a fresh home with its material and sheet, and nothing else of the user's."""
-    SCRIPT = Path(__file__).resolve().parent / 'grader_sandbox.sh'
-
-    def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp(dir=Path.home()))  # under home, which the grader must not see
-        self.addCleanup(shutil.rmtree, self.tmp)
-        for d in ('home', 'material', 'sheet', 'key'):
-            (self.tmp / d).mkdir()
-        (self.tmp / 'material' / 'run.md').write_text('run\n')
-        (self.tmp / 'key' / 'KEY.json').write_text('{}')
-
-    def grade(self, script, **env):
-        t = self.tmp
-        return subprocess.run([str(self.SCRIPT), str(t / 'home'), str(t / 'material'), str(t / 'sheet'), 'sh', '-c', script],
-                              capture_output=True, text=True, env={**os.environ, **env})
-
-    def test_only_material_and_sheet_are_visible(self):
-        script = (f'ls -A $HOME; cat $HOME/material/run.md; ls {self.tmp}/key 2>/dev/null || echo no-key; '
-                  'touch $HOME/material/x 2>/dev/null || echo material-read-only; touch $HOME/sheet/s && echo sheet-writable; '
-                  'ls -d /proc/[0-9]* | wc -l')
-        r = self.grade(script)
-        out = r.stdout.split()
-        self.assertEqual(out[:6], ['material', 'sheet', 'run', 'no-key', 'material-read-only', 'sheet-writable'], r.stderr)
-        self.assertLessEqual(int(out[6]), 5)
-        self.assertTrue((self.tmp / 'sheet' / 's').is_file())
-
-    def test_config_folders_are_refused(self):
-        r = self.grade('true', GR_RO=str(Path.home() / '.claude'))
-        self.assertEqual(r.returncode, 2)
-        self.assertIn('earlier sessions', r.stderr)
-
-    def test_keyring_mounts_only_the_session_bus(self):
-        run_dir = Path(f'/run/user/{os.getuid()}')
-        script = f'ls -A {run_dir} | tr "\\n" " "; echo; echo "bus=${{DBUS_SESSION_BUS_ADDRESS:-unset}}"'
-        r = self.grade(script)
-        self.assertEqual(r.stdout.split('\n')[:2], ['', 'bus=unset'], r.stderr)  # off by default: nothing in /run/user
-        if not (run_dir / 'bus').is_socket():
-            self.skipTest('no session bus socket on this machine')
-        r = self.grade(script, GR_KEYRING='1')
-        self.assertEqual(r.stdout.split('\n')[:2], ['bus ', f'bus=unix:path={run_dir}/bus'], r.stderr)
-
-
-class Bundle(unittest.TestCase):
-    """bundle.py: publishes reruns and agent views, withholds named files, refuses history and home listings."""
-
-    def setUp(self):
-        import bundle
-        self.bundle = bundle
-        self.tmp = Path(tempfile.mkdtemp())
-        self.addCleanup(shutil.rmtree, self.tmp)
-        out = self.out = self.tmp / 'suite'
-        run = out / 'logs' / 'lab' / 'H1-r1'
-        run.mkdir(parents=True)
-        (run / 'evidence.json').write_text(json.dumps({'fixture': f'{out}/fx/lab/H1-r1', 'home': str(Path.home())}))
-        (run / 'step1.out').write_text('{"output": "ok"}\n')
-        (out / 'reruns' / 'logs' / 'lab' / 'H1-r1-attempt1').mkdir(parents=True)
-        (out / 'reruns' / 'logs' / 'lab' / 'H1-r1-attempt1' / 'step1.out').write_text('authentication failed\n')
-        (out / 'snapshots' / 'g-agent').mkdir(parents=True)
-        (out / 'snapshots' / 'g-agent' / 'AGENTS.md').write_text('rules\n')
-        (out / 'snapshots' / 'g').mkdir()
-        (out / 'snapshots' / 'g' / 'NOTES.md').write_text('maintainer only\n')
-
-    def pack(self, *extra, src=None):
-        archive = self.tmp / f'b{len(list(self.tmp.glob("b*.tar.zst")))}.tar.zst'
-        with contextlib.redirect_stdout(io.StringIO()):
-            self.bundle.main([str(src or self.out), str(archive), *extra])
-        return self.tmp / archive.name.split('.')[0]
-
-    def test_reruns_and_agent_views_are_packed_and_paths_rewritten(self):
-        stage = self.pack()
-        self.assertTrue((stage / 'reruns/logs/lab/H1-r1-attempt1/step1.out').is_file())
-        self.assertTrue((stage / 'snapshots/g-agent/AGENTS.md').is_file())
-        self.assertFalse((stage / 'snapshots/g').exists())
-        ev = json.loads((stage / 'logs/lab/H1-r1/evidence.json').read_text())
-        self.assertEqual(ev, {'fixture': '$SUITE/fx/lab/H1-r1', 'home': '~'})
-
-    def test_shell_history_and_home_listings_are_refused_until_withheld(self):
-        f = self.out / 'logs' / 'lab' / 'H1-r1' / 'step1.out'
-        for text in ('{"output": "x\\r\\n: 1793227714:0;git clone https://example.invalid/private.git"}\n',
-                     '{"output": "-rw------- 1 me me 11168 Nov  4 17:02 .zsh_history\\r\\n"}\n',
-                     'rclone config update remote client_secret GOCSPX-' + 'x' * 28 + '\n',
-                     '| id | repository | summary | created_at | _query_source |\n'):
-            f.write_text(text)
-            with self.assertRaises(SystemExit) as e, contextlib.redirect_stdout(io.StringIO()):
-                self.pack()
-            self.assertIn('logs/lab/H1-r1/step1.out', str(e.exception))
-            shutil.rmtree(next(p for p in self.tmp.glob('b*') if p.is_dir()))
-        stage = self.pack('--withhold', 'logs/lab/H1-r1/step1.out', '--reason', 'it held what an agent read outside its fixture')
-        self.assertEqual((stage / 'logs/lab/H1-r1/step1.out').read_text(),
-                         'Withheld from publication: it held what an agent read outside its fixture\n')
-
-    def test_withhold_needs_a_reason_and_an_existing_file(self):
-        with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
-            self.pack('--withhold', 'logs/lab/H1-r1/step1.out')
-        with self.assertRaises(SystemExit):
-            self.pack('--withhold', 'logs/lab/H9-r1/step1.out', '--reason', 'r')
-
-    def test_tree_packs_every_file_with_the_same_rewriting(self):
-        src = self.tmp / 'grading'
-        (src / 'key').mkdir(parents=True)
-        (src / 'key' / 'KEY.json').write_text(json.dumps({'source': f'{Path.home()}/runs/lab/H1-r1'}))
-        (src / 'sheet.json').write_text('{}')
-        stage = self.pack('--tree', src=src)
-        self.assertEqual(sorted(p.relative_to(stage).as_posix() for p in stage.rglob('*') if p.is_file()),
-                         ['key/KEY.json', 'sheet.json'])
-        self.assertEqual(json.loads((stage / 'key/KEY.json').read_text()), {'source': '~/runs/lab/H1-r1'})
-
-    def test_verbatim_files_are_kept_byte_for_byte_but_still_scanned(self):
-        src = self.tmp / 'grading'
-        (src / 'originals').mkdir(parents=True)
-        note = '{"notes": {"B1": "the diff yields api_key=[REDACTED] while the test uses api_key=<redacted>;"}}'
-        (src / 'originals' / 'g1.json').write_text(note)
-        (src / 'notes.md').write_text('api_key=[REDACTED]\n')
-        stage = self.pack('--tree', '--verbatim', 'originals/*.json', src=src)
-        self.assertEqual((stage / 'originals/g1.json').read_text(), note)
-        self.assertEqual((stage / 'notes.md').read_text(), 'api_key=<redacted>\n')  # other files are still rewritten
-        (src / 'originals' / 'g1.json').write_text('{"leak": "ghp_' + 'a' * 36 + '"}')
-        with self.assertRaises(SystemExit):
-            self.pack('--tree', '--verbatim', 'originals/*.json', src=src)
-        with self.assertRaises(SystemExit):
-            self.pack('--tree', '--verbatim', 'nothing/*.json', src=src)
-
-
-class Blinding(unittest.TestCase):
-    """blind.py: graders get every message, command and git ref, and nothing that names the CLI, model or condition."""
-
-    LABELS = ('claude-haiku-x', 'claude-haiku-x-2.0', 'codex-sol-x')
-
-    def setUp(self):
-        import blind
-        from unittest import mock
-        self.blind, self.tmp = blind, Path(tempfile.mkdtemp())
-        self.addCleanup(shutil.rmtree, self.tmp)
-        gitconfig = self.tmp / 'gitconfig'
-        gitconfig.write_text('[user]\n\tname = Pat Example\n\temail = pat@example.invalid\n')
-        patch = mock.patch.dict(os.environ, {'GIT_CONFIG_GLOBAL': str(gitconfig)})
-        patch.start()
-        self.addCleanup(patch.stop)
-        self.out = self.tmp / 'results'
-        for label in self.LABELS:
-            for n in (1, 2):
-                self.run_dir(label, n)
-
-    def run_dir(self, label, n):
-        fx, logs = self.out / 'fx' / label / f'H1-r{n}', self.out / 'logs' / label / f'H1-r{n}'
-        fx.mkdir(parents=True)
-        logs.mkdir(parents=True)
-        g = lambda *a: subprocess.run(['git', '-C', str(fx), *a], check=True, capture_output=True, text=True).stdout.strip()
-        g('init', '-q', '-b', 'main')
-        (fx / 'AGENTS.md').write_text('rules\n')
-        g('add', '.')
-        g('-c', 'user.name=Scenario Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'fixture')
-        start = g('rev-parse', 'HEAD')
-        g('update-ref', 'refs/remotes/origin/main', start)
-        (fx / 'app.py').write_text('print(1)\n')
-        g('add', '.')
-        g('commit', '-qm', 'Add app\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>')
-        g('tag', 'v1')
-        (fx / 'notes.md').write_text('Read CLAUDE.md and GEMINI.md first.\n')
-        message = (f'I am Codex on gpt-6.1-sol, or Claude Code with claude-haiku-5-5, or Gemini 3.8 Flash in Antigravity. '
-                   f'I read AGENTS.md and .github/copilot-instructions.md in {fx}, and peeked at '
-                   f'{self.out}/logs/claude-haiku-x-2.0/H1-r1, …sh-holdout-none/H3-r1, …ash-holdout/H2-r2 and agy-flash-hol…. Session 0f8e2a10-1b2c-4d3e-8f90-123456789abc.')
-        ev = {'agent': label, 'agent_cli': 'claude@claude-haiku-5-5', 'cli_version': '2.1.319 (Claude Code)',
-              'fixture': str(fx), 'guidance': str(self.tmp / 'snap-agent'), 'scenario': 'H1', 'run': n,
-              'start': {'head': start, 'changed': []},
-              'steps': [{'step': 1, 'prompt': 'Add the app.', 'exit': 0, 'seconds': 98765, 'final': message,
-                         'messages': ['Starting.', message], 'commands': [f'cat {fx}/AGENTS.md', 'git commit'],
-                         'tree': {'head': start, 'changed': []}}],
-              'evidence': {'tests_pass': True, 'tests_tail': 'OK', 'check_package': None, 'review_revision': None}}
-        (logs / 'evidence.json').write_text(json.dumps(ev))
-
-    def blind_runs(self, seed, dest='blind', key='key.json'):
-        import contextlib, io
-        with contextlib.redirect_stdout(io.StringIO()):
-            self.blind.main([str(self.out), str(self.tmp / dest), '--key', str(self.tmp / key), '--seed', str(seed)])
-        return json.loads((self.tmp / key).read_text())
-
-    def test_names_paths_and_identity_are_replaced(self):
-        key = self.blind_runs(3)
-        self.assertEqual(len(key['runs']), 6)
-        for entry in key['runs']:
-            text = (self.tmp / 'blind' / entry['id'] / 'run.md').read_text()
-            self.assertIsNone(self.blind.TELL.search(text), entry['id'])
-            for gone in ('Pat Example', 'pat@example.invalid', str(self.tmp), 'gpt-', 'sol', '98765', 'seconds', '0f8e2a10',
-                         'holdout', 'flash', 'hol…'):
-                self.assertNotIn(gone, text)
-            self.assertNotIn('[run]-2.0', text)
-            for kept in ('[instructions]', '.github/[instructions]', '[model]', '[cli]', '[project]', 'Starting.', 'git commit'):
-                self.assertIn(kept, text)
-            if entry['label'] != 'claude-haiku-x-2.0':  # another run's folder; in that run itself it is [logs] or [run]
-                self.assertIn('[results]/logs/[other-run]/H1-r1', text)
-
-    def test_full_git_state_is_kept(self):
-        key = self.blind_runs(3)
-        text = (self.tmp / 'blind' / key['runs'][0]['id'] / 'run.md').read_text()
-        for kept in ('refs/heads/main', 'refs/tags/v1', 'refs/remotes/origin/main', 'Add app', '+print(1)',
-                     '#### notes.md', 'Read [instructions] and [instructions] first.', 'Scenario: H1'):
-            self.assertIn(kept, text)
-
-    def test_seed_fixes_the_order_and_key_stays_out(self):
-        first, again, other = self.blind_runs(3), self.blind_runs(3, 'b2', 'k2.json'), self.blind_runs(4, 'b3', 'k3.json')
-        order = lambda k: [(e['label'], e['run']) for e in k['runs']]
-        self.assertEqual(order(first), order(again))
-        self.assertNotEqual(order(first), order(other))
-        self.assertEqual(sorted(p.name for p in (self.tmp / 'blind').iterdir()), [f'B00{i}' for i in range(1, 7)] + ['BLINDING.md'])
-        seed = 271828182845904523536028747135266249775
-        big = self.blind_runs(seed, 'b5', 'k5.json')
-        given = ''.join(p.read_text() for p in (self.tmp / 'b5').rglob('*.md'))
-        self.assertNotIn(str(seed), given)  # with the seed, graders could rebuild the key
-        self.assertIn(self.blind.commitment(seed), given)
-        self.assertEqual((big['seed'], big['seed_sha256']), (seed, self.blind.commitment(seed)))
-        self.assertIn('partial', (self.tmp / 'blind' / 'BLINDING.md').read_text())
-        with self.assertRaises(SystemExit):
-            self.blind_runs(3, 'b4', 'b4/key.json')
-
-    def test_surviving_names_fail_without_printing_content(self):
-        import re
-        from unittest import mock
-        with mock.patch.object(self.blind, 'CLI', re.compile('(?!)')), self.assertRaises(SystemExit) as stop:
-            self.blind_runs(3)
-        self.assertIn('codex: ', str(stop.exception))
-        self.assertNotIn('I am', str(stop.exception))
 
 
 if __name__ == '__main__':

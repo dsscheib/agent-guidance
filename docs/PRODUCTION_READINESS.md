@@ -25,6 +25,6 @@ Implementation completion: Not evaluated.
 Verification completion: Not evaluated.
 Release acceptance: Not granted.
 
-{{FINAL_AUDIT_SUPPORTED_EXCEPTIONS_REMAINING_BLOCKERS_AND_ACCEPTANCE_DECISION}}
+{{RELEASE_REVIEW_SUPPORTED_EXCEPTIONS_REMAINING_BLOCKERS_AND_ACCEPTANCE_DECISION}}
 
 Update gate mapping in [docs/VERIFICATION_MATRIX.md](VERIFICATION_MATRIX.md). Acceptance does not authorize deployment.

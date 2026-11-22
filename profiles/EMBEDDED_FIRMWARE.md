@@ -7,10 +7,10 @@ Adopt explicitly in [PROJECT_PROFILE.md](../PROJECT_PROFILE.md) before treating 
 - **Toolchains & probes:** Compiler/assembler, linker, build tool, programmer/debug probe, simulator, and EDA/CAD tool versions.
 - **Authoritative hardware sources:** Datasheets, reference manuals, errata revisions, schematics, and mechanical specs.
 
-## Command inventory & `agent-team` hardware kits
-- **Development gates:** Firmware cross-build (report flash/RAM usage against recorded budgets), formatter/static checks, host-side unit tests (hardware-independent logic only), and EDA/CAD rule checks—including `python3 tools/kicad/verify.py --project .` or `FreeCADCmd tools/freecad/inspect_model.py` when `agent-team` kits are installed.
+## Command inventory
+- **Development gates:** Firmware cross-build (report flash/RAM usage against recorded budgets), formatter/static checks, host-side unit tests (hardware-independent logic only), and the project's own EDA/CAD rule checks (for example, ERC/DRC or mechanical verification scripts recorded in the inventory).
 - **Release gates:** BOM/parts availability checks (if configured); substitute device resource budgets (flash, RAM, stack depth, worst-case interrupt latency, power) for server load budgets.
-- **Ungated (manual approval only):** Bench/HIL tests, `fabrication_export.py`, G-code generation, and flashing commands must stay ungated (`—`) so `--verify` never executes them automatically.
+- **Ungated (manual approval only):** Bench/HIL tests, fabrication/Gerber/STEP export scripts, G-code generation, and flashing commands must stay ungated (`—`) so `--verify` never executes them automatically.
 - Propose `Proposed: Not applicable: <reason>` for browser smoke (unless serving a web UI), DB migrations, and server soak.
 
 ## Approval-only actions and hardware evidence

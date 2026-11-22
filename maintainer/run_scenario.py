@@ -52,7 +52,7 @@ def apply(target, spec):
         path.write_text(text.replace(patch['old'], patch['new']))
 
 
-def fill_profile(target, values, strict=True):
+def fill_profile(target, values, strict=True, warn=False):
     """Fill fixture values into PROJECT_PROFILE.md and, when installed, docs/ENTERPRISE.md.
 
     An earlier release's template lacks some placeholders, so strict=False skips values it has no place for."""
@@ -71,6 +71,9 @@ def fill_profile(target, values, strict=True):
     unknown = values.keys() - used
     if unknown and strict:
         raise SystemExit('Fixture profile keys match no PROJECT_PROFILE.md or ENTERPRISE.md placeholder: ' + ', '.join(sorted(unknown)))
+    if unknown and warn:
+        print(f'Warning: skipped fixture profile keys with no placeholder in {target.name}: {", ".join(sorted(unknown))}',
+              file=sys.stderr)
 
 
 def build(scenario, target):
@@ -80,8 +83,7 @@ def build(scenario, target):
         raise SystemExit(f'Target must be empty or absent: {target}')
     target.mkdir(parents=True, exist_ok=True)
     install = scenario.get('install', True)
-    # SCENARIO_OLD_GUIDANCE installs an earlier release into every scenario, for an old-guidance comparison.
-    ref = scenario.get('install_ref') or os.environ.get('SCENARIO_OLD_GUIDANCE')
+    ref = scenario.get('install_ref')
     if install and ref:
         # An earlier release, as a project that adopted it would have it: a shared clone at that commit runs its own installer.
         with tempfile.TemporaryDirectory() as tmp:
@@ -134,7 +136,8 @@ def build(scenario, target):
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(src, dest)
     if install and not scenario.get('install_ref'):  # an earlier adoption's profile is the project's own filled-in file
-        fill_profile(target, values, strict=not ref and scenarios_path == here / 'scenarios.json')
+        fill_profile(target, values, strict=not ref and scenarios_path == here / 'scenarios.json',
+                     warn=not ref and scenarios_path != here / 'scenarios.json')
     apply(target, scenario.get('setup', {}))
     git = ['git', '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null']
     for cmd in (git + ['init', '-q', '-b', 'main'], git + ['add', '-A'], git + ['commit', '-q', '-m', f"Scenario {scenario['id']} fixture"]):

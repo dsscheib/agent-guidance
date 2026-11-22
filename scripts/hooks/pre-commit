@@ -6,4 +6,5 @@ if [ -f "$ROOT/scripts/verify.py" ] && [ ! -f "$ROOT/MAINTAINING.md" ]; then
 elif [ -f "$ROOT/manage.py" ]; then
   exec python3 "$ROOT/manage.py"
 fi
-exec python3 "$ROOT/check_package.py"
+echo "No guidance checker found (expected scripts/verify.py or manage.py in $ROOT)" >&2
+exit 1

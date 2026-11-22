@@ -16,7 +16,7 @@ Mark an area not applicable only with evidence the project lacks it.
 ## 2. Review each area (and delegate to independent reviewers when available)
 Work through every area; never stop after finding the first serious bug.
 
-- **Use `agent-team` read-only reviewers when installed:** Delegate independent risk slices to installed reviewers (`security`, `auditor-advisor`, `hardware-auditor`, `mechanical-auditor`) at comprehensive-audit escalation settings (e.g., `xhigh` or frontier model). Give each reviewer the exact file paths, diffs, and evidence reports to inspect (since Antigravity CLI reviewers have `read_file` only) and verify their findings before accepting them.
+- **Use installed read-only reviewers when available:** Delegate independent risk slices (such as security, architecture, or hardware review) to installed read-only reviewers at your project's highest audit thoroughness/escalation setting. Give each reviewer the exact file paths, diffs, and evidence reports to inspect (some tools restrict read-only reviewers to file reads), and verify their findings before accepting them.
 - **Trace real execution paths**, including indirect calls, scheduled jobs, scripts, and alternate deployment paths—not just the main entry point.
 - **Check failure modes:** interruption, retry, concurrency, partial success, and state left halfway through failure.
 - **Verify claims against code:** Treat recorded passes in `README.md`, `docs/RUNBOOKS.md`, `docs/PRODUCTION_READINESS.md`, `docs/VERIFICATION_MATRIX.md`, and `docs/OPEN_WORK.md` as unverified until underlying evidence confirms them for this candidate.

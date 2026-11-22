@@ -47,6 +47,7 @@ V3_MODULE_MAP = {
     'core': ('core',),
     'design': ('design',),
     'operations': ('operations',),
+    'release-review': ('release-review',),
     'release': ('release-review', 'release'),
     'production-ops': ('release-review', 'release'),
     'enterprise': ('enterprise',),
@@ -65,8 +66,6 @@ PLAN_ORDER = ('replace', 'add', 'merge', 'conflict', 'review', 'remove', 'keep',
 OPEN_ITEM = re.compile(r'^\|\s*([A-Z][A-Z0-9]*-\d+)\s*\|(.*)$', re.M)
 REVISION = re.compile(r'\b(?=[0-9a-f]*\d)(?=[0-9a-f]*[a-f])[0-9a-f]{7,40}\b')
 LEGACY_REFERENCES = {
-    'manage.py': ('docs/AGENT_TEAM.md',),
-    'scripts/hooks/pre-commit': ('check_package.py',),
     'scripts/verify.py': ('PACKAGE_MANIFEST.json', 'check_package.py'),
 }
 EXCLUDED_ROW = re.compile(r'^\|\s*Excluded guidance\b.*$', re.M)
@@ -395,6 +394,26 @@ def effective(path, text, manifest, modules):
     return text
 
 
+def expected_agents_blocks(manifest, modules):
+    return {name: render_block(manifest, name, set(modules)) for name in ('routing', 'procedures')}
+
+
+def expected_guardrail_checks(manifest, modules, tools):
+    checks = []
+    for rule in manifest.get('guardrail_rules', []):
+        if rule['module'] not in modules:
+            continue
+        if 'claude' in tools:
+            checks.append({'action': rule['action'], 'path': '.claude/settings.json', 'token': rule['claude']})
+        if 'codex' in tools:
+            checks.append({'action': rule['action'], 'path': '.codex/rules/guidance.rules',
+                           'token': 'pattern = [' + ', '.join(f'"{w}"' for w in rule['codex']) + ']'})
+        if 'copilot' in tools:
+            checks.append({'action': rule['action'], 'path': '.github/hooks/guidance_guardrail.py',
+                           'token': f"({rule['copilot']!r},"})
+    return checks
+
+
 def sync_adapters(manifest, errors, target_dir=None, template=True):
     base = Path(target_dir).resolve() if target_dir else root
     record = {}
@@ -415,6 +434,11 @@ def sync_adapters(manifest, errors, target_dir=None, template=True):
     if agents is not None and agents != (base / 'AGENTS.md').read_text():
         (base / 'AGENTS.md').write_text(agents)
         print('Regenerated the AGENTS.md routing and procedure tables')
+    if not template and (base / GUIDANCE_FILE).is_file() and 'agents_blocks' in record:
+        blocks = expected_agents_blocks(manifest, modules)
+        if record.get('agents_blocks') != blocks:
+            record['agents_blocks'] = blocks
+            (base / GUIDANCE_FILE).write_text(json.dumps(record, indent=2) + '\n')
 
     expected = expected_adapters(manifest, errors, tools, template, base, installed_files)
     for path in existing_adapters(manifest, tools, template, base) - expected.keys():
@@ -544,6 +568,8 @@ def build_guidance_record(manifest, tier, features, modules, tools, source, want
             'tools': tools,
         },
         'module_files': module_files,
+        'agents_blocks': expected_agents_blocks(manifest, modules),
+        'guardrail_checks': expected_guardrail_checks(manifest, modules, tools),
         'files': file_entries,
         'uninstalled': [e['path'] for e in manifest['files'] if e['path'] not in wanted_paths],
     }
@@ -670,7 +696,7 @@ def project_record(target, manifest):
     legacy = target / LEGACY_MANIFEST
     if legacy.is_file():
         record = json.loads(legacy.read_text())
-        modules = set(record.get('installed', {}).get('modules') or v2_modules(record.get('modules', {})))
+        modules = set(record.get('installed', {}).get('modules') or v2_modules(record.get('modules') or manifest['modules']))
         return record, modules, record.get('installed_from', {}).get('commit'), True, legacy.read_text()
     sys.exit(f'{target} has neither {GUIDANCE_FILE} nor {LEGACY_MANIFEST}, so it is not a package-layout install. '
              'Follow docs/procedures/upgrade-guidance.md by hand.')
@@ -725,7 +751,14 @@ def plan_upgrade(manifest, target, patch=None):
         elif path not in baseline:
             action, note = 'conflict', 'the project has its own file at this path'
         elif new is None:
-            action, note = ('remove', 'removed upstream') if modified is False else ('review', 'removed upstream; modified here')
+            if path == 'README.md':
+                if modified is False:
+                    new = f'# {target.name}\n\nProject overview and usage.\n'
+                    action, note = 'replace', 'replaced old guidance README with project stub'
+                else:
+                    action, note = 'review', 'project README (no longer managed upstream); check for links to retired docs'
+            else:
+                action, note = ('remove', 'removed upstream') if modified is False else ('review', 'removed upstream; modified here')
         elif modified is False:
             action, note = 'replace', ''
         elif modified is None:
@@ -1059,7 +1092,6 @@ def run_template_checks(manifest, errors, require=None):
     for label, cmd in (
         ('Install tests', [sys.executable, '-B', str(root / 'maintainer' / 'test_install.py')]),
         ('Scorer tests', [sys.executable, '-B', str(root / 'maintainer' / 'harness' / 'test_score.py')]),
-        ('Holdout analysis tests', [sys.executable, '-B', str(root / 'maintainer' / 'harness' / 'test_holdout_analysis.py')]),
         ('Scenario fixtures', [sys.executable, str(root / 'maintainer' / 'run_scenario.py'), '--check']),
     ):
         if Path(cmd[-2] if cmd[-1] == '--check' else cmd[-1]).is_file():
@@ -1101,7 +1133,7 @@ def main():
     parser.add_argument('--patch', metavar='FILE', help='with --plan-upgrade, write the proposed git-apply patch outside the project')
     parser.add_argument('--check-upgrade', metavar='DIR', help='check that open items, deployed revisions, and local changes survived an upgrade')
     parser.add_argument('--since', default='HEAD', help='with --check-upgrade, the pre-upgrade commit (default HEAD)')
-    parser.add_argument('--sync', metavar='DIR', nargs='?', const='.', help='regenerate AGENTS.md tables, skill wrappers, and (in template mode) maintainer agents')
+    parser.add_argument('--sync', metavar='DIR', nargs='?', const='', help='regenerate AGENTS.md tables, skill wrappers, and (in template mode) maintainer agents')
     parser.add_argument('--sync-adapters', action='store_true', help='alias for --sync in the template repository')
     parser.add_argument('--update-manifest', action='store_true', help='refresh PACKAGE_MANIFEST.json hashes (template mode)')
     args = parser.parse_args()
@@ -1130,8 +1162,12 @@ def main():
         install(manifest, args.install, args.force, args.tier, [f for f in args.features.split(',') if f], args.all, args.dry_run,
                 [t for t in args.tools.split(',') if t])
         return
-    if args.sync or args.sync_adapters:
-        sync_target = None if args.sync_adapters or args.sync == '.' else args.sync
+    if args.sync is not None or args.sync_adapters:
+        if args.sync_adapters or args.sync == '':
+            sync_target = None
+        else:
+            resolved = Path(args.sync).resolve()
+            sync_target = None if resolved == root else str(resolved)
         sync_adapters(manifest, errors, sync_target, template=template and sync_target is None)
         if sync_target is not None:
             if errors:

@@ -266,8 +266,8 @@
       "path": "AGENTS.md",
       "kind": "entry",
       "module": "core",
-      "bytes": 6548,
-      "sha256": "4559ba3547ee6a2e04ac42c51311567f3fbd64e7e5e9ad3d169e8ea3af29fd81"
+      "bytes": 6556,
+      "sha256": "d6da7512e106f12284717c6ee1dff87630f5c0a879cd74962919d57d19a46012"
     },
     {
       "path": "CLAUDE.md",
@@ -287,8 +287,8 @@
       "path": ".codex/rules/guidance.rules",
       "kind": "guardrail",
       "module": "core",
-      "bytes": 1777,
-      "sha256": "d8932e799201d50f4853d3402c3a5beec5a43175950c7d8c96dbcac1961d2c1d"
+      "bytes": 2118,
+      "sha256": "16e0b495e329f129f57ee9e1fe022850976aace00b40062edece5978a4299ad2"
     },
     {
       "path": ".github/hooks/guidance.json",
@@ -301,8 +301,8 @@
       "path": ".github/hooks/guidance_guardrail.py",
       "kind": "guardrail",
       "module": "core",
-      "bytes": 3546,
-      "sha256": "83e686bcff34dd8d27382776bd2e3fd1a9fb396c884ad39305debf9acd015b38"
+      "bytes": 3998,
+      "sha256": "c644f21d4b9c78f94ee2c1f9b2ebeefca311db6f5405d68e30674790c7de3549"
     },
     {
       "path": "PROJECT_PROFILE.md",
@@ -323,15 +323,15 @@
       "path": "scripts/verify.py",
       "kind": "tooling",
       "module": "core",
-      "bytes": 22812,
-      "sha256": "b31340b7d3de4cc79abfe9cb623f0d9c19f4abab20e4b242ce2165edc2730502"
+      "bytes": 23718,
+      "sha256": "a363b394eb5e32b6c0f695c6615beb893edc7079c03df46f21ad4517fb9829a7"
     },
     {
       "path": "scripts/hooks/pre-commit",
       "kind": "tooling",
       "module": "core",
-      "bytes": 283,
-      "sha256": "bbe8abf537328dc2b65525b2dd145cb56152925eafa89dcc7fc6748c91697d97"
+      "bytes": 340,
+      "sha256": "13fd802af3a3354aa365fea7193e6d769e419a2466a16568aca3963d18e35ab7"
     },
     {
       "path": "DESIGN_DOC.md",
@@ -365,36 +365,36 @@
       "path": "docs/procedures/release-review.md",
       "kind": "procedure",
       "module": "release-review",
-      "bytes": 3611,
-      "sha256": "9126e21a2b75b379ba7f87a724e3bf76ab7e061e1a2a429efcd2a5afc5f9032c"
+      "bytes": 3585,
+      "sha256": "fc70ed677a9837fad01210942dfe03d4d4fa27f3fd2880b898e27e40ac19fa74"
     },
     {
       "path": "docs/VERIFICATION_MATRIX.md",
       "kind": "register",
       "module": "release",
-      "bytes": 1014,
-      "sha256": "e32e1f450cdf0f71522d31584915baf9c46c62c2eb876557a8023e21e21c4324"
+      "bytes": 1100,
+      "sha256": "00835630e57caf34c55f1bd221aa467c7de2d13f9e3ade8f50a7a7c3ca5b2336"
     },
     {
       "path": "docs/PRODUCTION_READINESS.md",
       "kind": "register",
       "module": "release",
-      "bytes": 2060,
-      "sha256": "bfb104522792d0034c651457ba6d7d50f0fcafe1e494d7537ffe13874b9e9cc5"
+      "bytes": 2063,
+      "sha256": "9bb8ad3f2ca7ab99b13857ae9a44e12ecb88b0085bdcd3a1527b8a42b192f7cc"
     },
     {
       "path": "docs/procedures/release-readiness.md",
       "kind": "procedure",
       "module": "release",
-      "bytes": 2296,
-      "sha256": "78594514690f9f16dc4b1d1cd58c85337cee745b61896bed5a66d0133b0054c1"
+      "bytes": 3495,
+      "sha256": "f84f432c37dd5a69074397e29071307a13eaf42b7081748a54077531ea3295d1"
     },
     {
       "path": "docs/ENTERPRISE.md",
       "kind": "policy",
       "module": "enterprise",
-      "bytes": 2511,
-      "sha256": "5258c9f67e4d55242e644b02bdf6e483c18e90731a5e8f1c62db7bac0affe29f"
+      "bytes": 2508,
+      "sha256": "c50e6b5acbddc97c18f07046421751cab8cf5cd6b79cb1f974b5e533ae950ce0"
     },
     {
       "path": ".github/pull_request_template.md",
@@ -414,8 +414,8 @@
       "path": "docs/procedures/ui-design.md",
       "kind": "procedure",
       "module": "ui-design",
-      "bytes": 5360,
-      "sha256": "9f3b3ff83a462a012eeab32b6c0fc7952afe1300e41047e9a71572ae032de586"
+      "bytes": 5434,
+      "sha256": "f7cfd397b719d50f99686bbcd1b735c4c5bcf72e3d1490ec0abeead8234402f4"
     },
     {
       "path": "profiles/SERVER_RENDERED_WEB_GO.md",
@@ -435,8 +435,8 @@
       "path": "profiles/EMBEDDED_FIRMWARE.md",
       "kind": "profile",
       "module": "embedded",
-      "bytes": 2755,
-      "sha256": "75ff688baa7b8c22f08f398ee92550d72d945c438585e7a942bb3e7de334ab10"
+      "bytes": 2703,
+      "sha256": "47f3e745cdd39e99bdb825123e52656eef5a603b52471e8f8b5735b7b6c34576"
     },
     {
       "path": ".agents/skills/release-readiness/SKILL.md",

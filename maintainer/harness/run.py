@@ -13,9 +13,9 @@ and fixtures to OUT/fx/<label>/. Finished runs are skipped, so an interrupted ba
 
 By default the current checkout, including uncommitted changes, is copied to OUT/snapshots/<name> and
 committed there, because the upgrade procedure (S11) expects a clean guidance checkout. --guidance uses
-an existing snapshot instead, for example one built from `main` for a before-and-after comparison.
---no-install builds the fixtures without the package, for a no-guidance baseline; S1 and S11 are
-skipped because they only make sense with guidance.
+an existing snapshot instead, for example one built from an earlier v4 release.
+--no-install builds the fixtures without the package, for a no-guidance baseline; S1, S11, S16, and S18 are
+skipped because they set up or upgrade the guidance itself.
 """
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -28,7 +28,6 @@ REPO = HERE.parent.parent
 SANDBOX = HERE / 'sandbox.sh'
 STEP_TIMEOUT = 25 * 60
 NO_INSTALL_SKIP = {'S1', 'S11', 'S16', 'S18'}  # these set up or upgrade the guidance itself
-OLD_GUIDANCE_SKIP = {'S18'}
 GUIDANCE_FOR_COPILOT = None  # set in main() to the guidance snapshot
 print_lock = threading.Lock()
 GIT_ID = ['-c', 'user.name=Scenario Snapshot', '-c', 'user.email=snapshot@example.invalid',
@@ -85,16 +84,6 @@ def snapshot(out):
         git(tmp, *GIT_ID, 'add', '-A', check=True)
         git(tmp, *GIT_ID, 'commit', '-q', '-m', f'Scenario snapshot of {head}' + (' with uncommitted changes' if dirty else ''), check=True)
         tmp.rename(dest)
-    return dest
-
-
-def old_release(out, ref):
-    """A checkout of an earlier release of this repository, for the agent view under --old-guidance."""
-    dest = out / 'snapshots' / f'old-{ref}'
-    if not (dest / '.git').is_dir():
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        subprocess.run(['git', 'clone', '-q', '--shared', str(REPO), str(dest)], check=True)
-        subprocess.run(['git', '-C', str(dest), '-c', 'advice.detachedHead=false', 'checkout', '-q', ref], check=True)
     return dest
 
 
@@ -429,10 +418,9 @@ def run_one(opts, agent, s, n):
     fx.parent.mkdir(parents=True, exist_ok=True)
     builder = (REPO if opts.no_install else opts.guidance) / 'maintainer' / 'run_scenario.py'
     # Snapshots have no history, so scenarios that install an earlier release (install_ref) take it from this repository.
-    old = {'SCENARIO_OLD_GUIDANCE': opts.old_guidance} if opts.old_guidance else {}
     catalog = ['--scenarios', str(opts.catalog)] if opts.catalog else []
     b = subprocess.run([sys.executable, str(builder), *catalog, sid, str(fx)] + (['--no-install'] if opts.no_install else []),
-                       capture_output=True, text=True, env={**os.environ, 'SCENARIO_HISTORY_REPO': str(REPO), 'SCENARIO_BASELINES': baselines(opts.shown), **old})
+                       capture_output=True, text=True, env={**os.environ, 'SCENARIO_HISTORY_REPO': str(REPO), 'SCENARIO_BASELINES': baselines(opts.shown)})
     if b.returncode:
         log(f'BUILD FAIL {label} {sid} r{n}: {(b.stdout + b.stderr).strip()[-300:]}')
         return
@@ -532,7 +520,6 @@ def main():
     src = ap.add_mutually_exclusive_group()
     src.add_argument('--guidance', type=Path, help='existing committed guidance snapshot to test')
     src.add_argument('--no-install', action='store_true', help='no-guidance baseline')
-    src.add_argument('--old-guidance', metavar='REF', help='install this earlier release (a tag such as 2.0 or 3.0.1) into the current fixtures')
     ap.add_argument('--catalog', type=Path, help='scenario catalog to run instead of the snapshot\'s, such as the private holdout '
                     'set; its fixtures folder sits beside it, and the folder is hidden from agents')
     ap.add_argument('--hide', type=Path, action='append', default=[],
@@ -573,7 +560,7 @@ def main():
             {'type': 'command', 'bash': f'python3 {stop}', 'timeoutSec': 10}]}}, indent=2) + '\n')
         opts.copilot_user_hooks = hooks
     global GUIDANCE_FOR_COPILOT
-    opts.shown = agent_view(old_release(opts.out, opts.old_guidance) if opts.old_guidance else opts.guidance)
+    opts.shown = agent_view(opts.guidance)
     GUIDANCE_FOR_COPILOT = opts.shown
     log(f'guidance: {opts.guidance} ({"not installed" if opts.no_install else git(opts.guidance, "rev-parse", "--short", "HEAD")})')
     all_s = scenarios(opts.guidance, opts.shown, opts.catalog)
@@ -581,10 +568,6 @@ def main():
     ids = opts.scenarios.split(',') if opts.scenarios else sorted(all_s, key=lambda x: (x != 'S12', number(x), x))
     if opts.no_install:
         ids = [i for i in ids if i not in NO_INSTALL_SKIP]
-    if opts.old_guidance:
-        old_installer = opts.shown / ('manage.py' if (opts.shown / 'manage.py').is_file() else 'check_package.py')
-        has_tiers = old_installer.is_file() and '--tier' in old_installer.read_text()
-        ids = [i for i in ids if (has_tiers or not all_s[i].get('variant_of')) and i not in OLD_GUIDANCE_SKIP]
     unknown = [i for i in ids if i not in all_s]
     if unknown:
         ap.error('unknown scenarios: ' + ', '.join(unknown))

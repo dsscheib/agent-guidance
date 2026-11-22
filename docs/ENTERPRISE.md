@@ -1,6 +1,6 @@
 # Enterprise controls
 
-Applies at the Enterprise tier in addition to Production service rules. `scripts/verify.py` reads the ticket ID pattern from the table below.
+Applies at the Enterprise tier in addition to Production tier rules. `scripts/verify.py` reads the ticket ID pattern from the table below.
 
 ## Settings
 | Setting | Value |

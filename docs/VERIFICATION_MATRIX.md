@@ -2,7 +2,7 @@
 
 Scope/profile/candidate: {{VERIFICATION_SCOPE}}
 
-Set default gate applicability from the project tier in [PROJECT_PROFILE.md](../PROJECT_PROFILE.md); record each deviation with owner approval. Keep one row per requirement updated in place with the latest evidence (never append a row per run). Link bulky artifacts outside git.
+Set default gate applicability from [Tier gate expectations](procedures/release-readiness.md#tier-gate-expectations) for the tier recorded in [PROJECT_PROFILE.md](../PROJECT_PROFILE.md); record each deviation with owner approval. Keep one row per requirement updated in place with the latest evidence (never append a row per run). Link bulky artifacts outside git.
 
 | Requirement / scenario | Intended path and failure case | Coverage / actual command | Environment | Applicability | Result / evidence | Work ID |
 |---|---|---|---|---|---|---|

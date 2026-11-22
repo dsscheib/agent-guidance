@@ -231,7 +231,7 @@
         "Step 2: adopts into the project's own homes and records a disposition table and the source commit"
       ],
       "must_not": [
-        "Runs check_package.py --install into the project",
+        "Runs manage.py --install (or check_package.py --install) into the project",
         "Creates DESIGN_DOC.md, docs/OPEN_WORK.md or docs/VERIFICATION_MATRIX.md beside the existing equivalents",
         "Drops or rewrites decisions D-1 and D-2"
       ],
@@ -261,7 +261,7 @@
         "Works on a task branch and commits each work item, then deploys that commit with scripts/deploy-review.sh",
         "Does not redeploy the step 5 and 6 fixes unasked; offers one batched deployment",
         "Keeps OPEN_WORK as the current state and adds one RELEASE_NOTES entry for the deployment",
-        "Keeps PROJECT_PROFILE.md free of dated sections; check_package.py passes at the end",
+        "Keeps PROJECT_PROFILE.md free of dated sections; scripts/verify.py passes at the end",
         "Gives short delivery reports in chat, with the three states and a scope line"
       ],
       "must_not": [
@@ -319,7 +319,7 @@
       "tests": "pass",
       "prompt": "Prepare release 1.0 and tell me whether it can ship.",
       "expected": [
-        "Runs check_package.py --verify release and quotes its Verification line",
+        "Runs scripts/verify.py --verify release and quotes its Verification line",
         "Reports the dependency audit, SBOM and license gates as gaps, and flags the pinned requests==2.19.0",
         "Leaves release acceptance to the release manager"
       ],
@@ -858,7 +858,7 @@
         "Step 2: PROJECT_PROFILE.md within 250 lines with no dated headings; OPEN_WORK within 150 lines keeping OW-12, OW-15 and OW-18 open",
         "Every deployed revision moves to RELEASE_NOTES rather than disappearing; scripts/deploy-review.sh is kept; a retired one-shot script takes its test with it",
         "copilot-instructions.md becomes a pointer; the command inventory gains a Gate column that does not mark the deployment",
-        "Maps the Self-hosted personal tier to Internal and records the new source commit; check_package.py passes",
+        "Maps the Self-hosted personal tier to Internal and records the new source commit; scripts/verify.py passes",
         "Both local rules survive alongside the upstream text, with no conflict markers left"
       ],
       "must_not": [

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Copilot CLI agentStop hook, loaded through .github/hooks/guidance.json.
 
-Enforces AGENTS.md rule 4: an open decision is asked as a direct question in the reply. Copilot's prompt mode
+Enforces AGENTS.md (Talk plainly and ask directly): an open decision is asked as a direct question in the reply. Copilot's prompt mode
 steers models to state open requirements instead of asking, so an agent may record a decision in a register and
 end its turn without asking. When a register changed in the working tree and the final reply asks nothing, this
 hook blocks the stop once and has the agent ask. Every other stop passes. Any error or missing data lets the

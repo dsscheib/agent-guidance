@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Tier-aware install, verifier, selective-skill, agent-team interop, and upgrade tests (v4.0)."""
 from pathlib import Path
-import json, shutil, subprocess, sys, tempfile
+import json, os, re, shutil, subprocess, sys, tempfile
 
 root = Path(__file__).resolve().parent.parent
 manifest = json.loads((root / 'PACKAGE_MANIFEST.json').read_text())
 module_of = {e['path']: e.get('module') for e in manifest['files']}
-AGENT_TEAM_BOOTSTRAP = Path('/home/dsscheib/github/agent-team/bootstrap.py')
+AGENT_TEAM_BOOTSTRAP = Path(os.environ.get('AGENT_TEAM_BOOTSTRAP') or (root.parent / 'agent-team' / 'bootstrap.py'))
 problems = []
 
 
@@ -118,6 +118,9 @@ def case_policy(tmp):
         expect(has_rel_sec == (tier in ('production', 'enterprise')),
                f'policy {tier}: Release qualification profile presence={has_rel_sec}')
         expect('<!-- module:' not in profile, f'policy {tier}: raw module markers left in PROJECT_PROFILE.md')
+        if tier in ('production', 'enterprise'):
+            expect('## Tier gate expectations' in (target / 'docs/procedures/release-readiness.md').read_text(),
+                   f'policy {tier}: release-readiness.md missing Tier gate expectations table')
 
 
 def case_selective_skills_and_sync(tmp):
@@ -153,6 +156,11 @@ def case_selective_skills_and_sync(tmp):
     ok, out = check(ui)
     expect(ok, 'scripts/verify.py failed after manage.py --sync DIR: ' + out)
     expect('## Team note\nKeep handlers pure.' in (ui / 'AGENTS.md').read_text(), '--sync DIR dropped custom AGENTS.md section')
+    # --sync . from inside the project resolves against cwd rather than entering template mode.
+    (ui / '.claude/skills/ui-design/SKILL.md').unlink()
+    r_dot = run_manage(ui, '--sync', '.')
+    expect(r_dot.returncode == 0 and (ui / '.claude/skills/ui-design/SKILL.md').is_file(),
+           '--sync . from project dir did not regenerate missing skill wrapper')
 
 
 def case_generated_tables_and_enterprise(tmp):
@@ -170,6 +178,15 @@ def case_generated_tables_and_enterprise(tmp):
     expect('| License check | `reuse lint` |' in text and text.count('| License check |') == 1, 'owner License check row was overwritten or duplicated')
     agents = (target / 'AGENTS.md').read_text()
     expect('DESIGN_DOC' in agents and 'VERIFICATION_MATRIX' in agents and 'docs/ENTERPRISE' in agents, 'enterprise AGENTS.md missing rows')
+    # Hand-editing a generated AGENTS.md table fails scripts/verify.py until manage.py --sync DIR restores it.
+    (target / 'AGENTS.md').write_text(agents.replace('| Requirement verification status |', '| Tampered row |'))
+    ok, out = check(target)
+    expect(not ok and 'AGENTS.md routing table does not match .guidance.json' in out,
+           'scripts/verify.py should fail on tampered AGENTS.md table: ' + out)
+    r_sync = run_manage(root, '--sync', str(target))
+    expect(r_sync.returncode == 0, 'manage.py --sync failed after table edit: ' + r_sync.stderr)
+    ok, out = check(target)
+    expect(ok, 'scripts/verify.py failed after manage.py --sync repaired table: ' + out)
 
 
 def case_guardrails(tmp):
@@ -306,6 +323,7 @@ def case_tools_and_default_and_broken(tmp):
 
 def case_agent_team_interop(tmp):
     if not AGENT_TEAM_BOOTSTRAP.is_file():
+        print(f'SKIP: agent-team interop test ({AGENT_TEAM_BOOTSTRAP} not found; set AGENT_TEAM_BOOTSTRAP to run)')
         return
     # Order 1: agent-guidance first, then agent-team
     p1 = tmp / 'interop-1'
@@ -340,7 +358,7 @@ def case_agent_team_interop(tmp):
 def case_v4_upgrade(tmp):
     pkg = tmp / 'pkg-v4'
     shutil.copytree(root, pkg, ignore=shutil.ignore_patterns('.git', '__pycache__'))
-    for stub in ('maintainer/test_install.py', 'maintainer/harness/test_score.py', 'maintainer/harness/test_holdout_analysis.py', 'maintainer/run_scenario.py'):
+    for stub in ('maintainer/test_install.py', 'maintainer/harness/test_score.py', 'maintainer/run_scenario.py'):
         p = pkg / stub
         if p.is_file():
             p.write_text('')
@@ -406,13 +424,14 @@ def case_v3_to_v4_upgrade(tmp):
     spec = target / 'docs/TESTING_SPEC.md'
     spec.write_text(spec.read_text() + '\n- Local project rule: always run chaos fuzzing.\n')
     (target / 'docs/OPEN_WORK.md').write_text('# Open work\n\n| ID | Status | Summary | Blocker |\n|---|---|---|---|\n| OW-7 | Open | Ship telemetry | — |\n')
-    (target / 'README.md').write_text('# v3 project\n')
     init_git(target, 'baseline 3.0.2')
 
     patch = tmp / 'v3-to-v4.patch'
     plan = run_manage(root, '--plan-upgrade', str(target), '--patch', str(patch))
     expect(plan.returncode == 0, 'v3->v4 --plan-upgrade failed: ' + plan.stdout + plan.stderr)
     out = plan.stdout
+    expect('README.md' in plan_section(out, 'Replace') and 'README.md' not in plan_section(out, 'Remove'),
+           'untouched v3 README.md must be replaced by stub, not removed:\n' + out)
     expect('docs/DOCUMENTATION.md' in plan_section(out, 'Remove'), 'untouched retired DOCUMENTATION.md should be in Remove:\n' + out)
     expect('PACKAGE_MANIFEST.json' in plan_section(out, 'Remove'), 'PACKAGE_MANIFEST.json should be in Remove:\n' + out)
     expect('check_package.py' in plan_section(out, 'Remove'), 'untouched check_package.py should be in Remove:\n' + out)
@@ -424,6 +443,8 @@ def case_v3_to_v4_upgrade(tmp):
     expect(applied.returncode == 0, 'v3->v4 git apply failed: ' + applied.stderr)
     expect((target / '.guidance.json').is_file() and not (target / 'PACKAGE_MANIFEST.json').exists(), '.guidance.json did not replace PACKAGE_MANIFEST.json')
     expect((target / 'scripts/verify.py').is_file() and not (target / 'check_package.py').exists(), 'scripts/verify.py did not replace check_package.py')
+    expect((target / 'README.md').is_file() and (target / 'README.md').read_text().startswith('# v3-proj\n'),
+           'README.md stub missing after v3->v4 upgrade')
     expect('always run chaos fuzzing' in (target / 'docs/TESTING_SPEC.md').read_text(), 'edited TESTING_SPEC.md was lost by patch')
     # Complete review by folding the local rule into AGENTS.md and removing retired TESTING_SPEC.md.
     agents_file = target / 'AGENTS.md'
@@ -438,6 +459,72 @@ def case_v3_to_v4_upgrade(tmp):
     chk_drop = run_manage(root, '--check-upgrade', str(target), '--since', 'HEAD')
     expect(chk_drop.returncode != 0 and 'local change(s) not found verbatim' in chk_drop.stdout,
            'v3->v4 --check-upgrade missed dropped folded local rule: ' + chk_drop.stdout + chk_drop.stderr)
+
+
+def case_v2_to_v4_upgrade(tmp):
+    v2_repo = tmp / 'v2-src'
+    v2_repo.mkdir()
+    archive = subprocess.run(['git', '-C', str(root), 'archive', '2.0'], capture_output=True)
+    if archive.returncode != 0:
+        problems.append('git archive 2.0 failed (tag 2.0 required): ' + archive.stderr.decode())
+        return
+    subprocess.run(['tar', '-x', '-C', str(v2_repo)], input=archive.stdout, check=True)
+    target = tmp / 'v2-proj'
+    target.mkdir()
+    r = subprocess.run([sys.executable, '-B', str(v2_repo / 'check_package.py'), '--install', str(target)],
+                       cwd=v2_repo, capture_output=True, text=True)
+    expect(r.returncode == 0, '2.0 install failed: ' + r.stdout + r.stderr)
+    sha_20 = subprocess.run(['git', '-C', str(root), 'rev-parse', '2.0'], capture_output=True, text=True, check=True).stdout.strip()
+    rec = json.loads((target / 'PACKAGE_MANIFEST.json').read_text())
+    rec['installed_from'] = {'repository': 'https://example.invalid/repo', 'commit': sha_20, 'dirty': False, 'date': '2026-10-29'}
+    (target / 'PACKAGE_MANIFEST.json').write_text(json.dumps(rec, indent=2) + '\n')
+    (target / 'README.md').write_text('# v2 custom app\n')
+    spec = target / 'docs/TESTING_SPEC.md'
+    spec.write_text(spec.read_text() + '\n- Local v2 rule: keep WAL checkpoints small.\n')
+    (target / 'docs/OPEN_WORK.md').write_text('# Open work\n\n| ID | Status | Summary | Blocker |\n|---|---|---|---|\n| OW-9 | Open | Keep audit trail | — |\n')
+    init_git(target, 'baseline 2.0')
+
+    patch = tmp / 'v2-to-v4.patch'
+    plan = run_manage(root, '--plan-upgrade', str(target), '--patch', str(patch))
+    expect(plan.returncode == 0, 'v2->v4 --plan-upgrade failed: ' + plan.stdout + plan.stderr)
+    out = plan.stdout
+    expect('AGENTS.md' in plan_section(out, 'Replace'), 'v2->v4 must keep and replace AGENTS.md:\n' + out)
+    expect('README.md' in plan_section(out, 'Review') and 'README.md' not in plan_section(out, 'Remove'),
+           'modified v2 README.md must go to Review, never Remove:\n' + out)
+    expect('scripts/verify.py' in plan_section(out, 'Add') and '.guidance.json' in plan_section(out, 'Add'),
+           'v2->v4 must add scripts/verify.py and .guidance.json:\n' + out)
+
+    applied = subprocess.run(['git', 'apply', str(patch)], cwd=target, capture_output=True, text=True)
+    expect(applied.returncode == 0, 'v2->v4 git apply failed: ' + applied.stderr)
+    mods = json.loads((target / '.guidance.json').read_text())['installed']['modules']
+    expect('core' in mods and 'release' in mods and 'enterprise' not in mods, f'v2->v4 modules unexpected: {mods}')
+    expect('# v2 custom app' in (target / 'README.md').read_text(), 'v2->v4 lost customized README.md')
+    agents_file = target / 'AGENTS.md'
+    agents_file.write_text(agents_file.read_text() + '\n- Local v2 rule: keep WAL checkpoints small.\n')
+    (target / 'docs/TESTING_SPEC.md').unlink()
+    ok, cout = check(target)
+    expect(ok, 'scripts/verify.py failed after v2->v4 review fold:\n' + cout)
+    chk = run_manage(root, '--check-upgrade', str(target), '--since', 'HEAD')
+    expect(chk.returncode == 0 and 'nothing lost' in chk.stdout, 'v2->v4 --check-upgrade failed: ' + chk.stdout + chk.stderr)
+
+
+def case_neutrality_and_sync_constants():
+    forbidden = re.compile(r'(?i)\b(?:antigravity|agent-team|xhigh|read_file|view_file|auditor-advisor|'
+                           r'hardware-auditor|mechanical-auditor|ux-designer|frontend-tester|FreeCADCmd)\b'
+                           r'|tools/kicad|fabrication_export\.py')
+    for entry in manifest['files']:
+        path = entry['path']
+        if not path.endswith('.md') or path == 'CLAUDE.md' or path.startswith(('.claude/', '.codex/', '.github/', '.agents/')):
+            continue
+        text = (root / path).read_text()
+        if path == 'AGENTS.md':
+            text = re.sub(r'^Tool files \([^)]*\).*$', '', text, flags=re.M)
+        m = forbidden.search(text)
+        expect(m is None, f'{path}: neutrality leak ({m.group(0)})' if m else '')
+    manage_src = (root / 'manage.py').read_text()
+    verify_src = (root / 'scripts' / 'verify.py').read_text()
+    marker_line = next(l for l in manage_src.splitlines() if l.startswith('SKILL_MARKER = '))
+    expect(marker_line in verify_src, 'scripts/verify.py SKILL_MARKER drifted from manage.py')
 
 
 def table():
@@ -477,13 +564,15 @@ def main():
             case_agent_team_interop,
             case_v4_upgrade,
             case_v3_to_v4_upgrade,
+            case_v2_to_v4_upgrade,
         ):
             case(tmp)
+    case_neutrality_and_sync_constants()
     if problems:
         print('\n'.join(problems))
         sys.exit(1)
     print('Install tests OK: tiers, design policy, selective skills & sync, generated tables & enterprise rows, guardrails, '
-          'exclusions/deps/timeouts/docs mode, walk skips, tools & defaults, agent-team interop, v4 upgrade, and v3->v4 upgrade.')
+          'exclusions/deps/timeouts/docs mode, walk skips, tools & defaults, agent-team interop, v4/v3/v2 upgrades, and neutrality.')
 
 
 if __name__ == '__main__':

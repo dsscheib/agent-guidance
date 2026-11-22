@@ -30,6 +30,6 @@ Creative choices never override these requirements:
 - **Stack contracts:** Follow any adopted stack profile (for example, valid partial-swap DOM and plain-form fallback in server-rendered HTMX apps).
 
 ## 4. Team execution & verification
-- **Delegation (when `agent-team` roles are installed):** Consult `ux-designer` to sharpen flows, hierarchy, and acceptance criteria on substantial changes; delegate implementation to `frontend` (escalating per `AGENTS.md` if complex async/state logic is involved); run live browser, responsive, and accessibility checks via `frontend-tester`.
+- **Delegation (when specialist roles are installed):** Consult any installed UX design specialist to sharpen flows, hierarchy, and acceptance criteria on substantial changes; delegate UI implementation to an installed frontend specialist (escalating per `AGENTS.md` for complex async or state logic); run live browser, responsive, and accessibility checks with an installed browser-testing specialist when available.
 - **Honest verification:** Unit or template-render tests do not verify visual layout, contrast, keyboard focus, or browser behavior. If no browser test harness is configured, record that verification gap in [docs/OPEN_WORK.md](../OPEN_WORK.md) and report it honestly via `scripts/verify.py`.
 - **Local UAT handoff:** Give the user concise local acceptance steps in your chat reply (never in `README.md`), naming the key journeys, states, viewports, and themes to inspect. Batch review-environment deployments after collecting feedback.
