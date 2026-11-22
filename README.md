@@ -81,3 +81,8 @@ Per-tool adapters installed inside projects:
 - `python3 manage.py --update-manifest` — refreshes `PACKAGE_MANIFEST.json` entries and hashes (template mode).
 
 To run checks on every commit, enable the hook: `git config core.hooksPath scripts/hooks`.
+
+## Further reading and benchmark results
+
+- **Adoption guide & v4 overview:** see [maintainer/README.md](maintainer/README.md) for when to adopt (or skip) this package, recommended tier adoption steps, and a map of repository tooling.
+- **Evaluation results:** see [maintainer/RESULTS.md](maintainer/RESULTS.md) for the no-guidance vs. v4 benchmark summary and full per-run log across Claude Code, Codex, and Antigravity.
