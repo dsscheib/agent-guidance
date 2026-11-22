@@ -153,7 +153,7 @@
       },
       {
         "module": "design",
-        "row": "| Architecture, public boundaries (APIs, schemas, file formats), domain terms, invariants, lifecycles | [DESIGN_DOC](DESIGN_DOC.md) | DESIGN_DOC (internal helpers need no entry) |"
+        "row": "| Architecture, public boundaries (service/library APIs, schemas, file formats), domain terms, invariants, lifecycles | [DESIGN_DOC](DESIGN_DOC.md) | DESIGN_DOC (internal helpers and CLI options/output formats stay out) |"
       },
       {
         "module": "design",
@@ -266,8 +266,8 @@
       "path": "AGENTS.md",
       "kind": "entry",
       "module": "core",
-      "bytes": 6414,
-      "sha256": "e8265145a58beeb1992d658cc47df596e1cddc7f3bdffa77d13a4ede39f46d09"
+      "bytes": 6548,
+      "sha256": "4559ba3547ee6a2e04ac42c51311567f3fbd64e7e5e9ad3d169e8ea3af29fd81"
     },
     {
       "path": "CLAUDE.md",
@@ -337,8 +337,8 @@
       "path": "DESIGN_DOC.md",
       "kind": "template",
       "module": "design",
-      "bytes": 2179,
-      "sha256": "e0614ad7037a99f9851555e1de90f617c6fca4c83457d5da40f047b6a690edb9"
+      "bytes": 2219,
+      "sha256": "14db8765bd3e3c318fe5c0a83f2927ff916f767dedb8461541250800cd62e54d"
     },
     {
       "path": "docs/decisions/ADR_TEMPLATE.md",

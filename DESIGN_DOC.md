@@ -13,7 +13,7 @@ Update only the sections your change affects. Descriptive code observations are 
 ## Architecture and public boundaries
 {{MODULES_DEPENDENCIES_BOUNDARIES_AND_STATE_OWNERS}}
 
-Document boundaries between components or with external callers (HTTP/RPC APIs, published library APIs, schemas, file and message formats): validation, permission, error semantics, session expiry, and retry behavior. Keep internal helpers in docstrings/tests and CLI usage in `README.md`. Record durable architecture or dependency tradeoffs as ADRs using [docs/decisions/ADR_TEMPLATE.md](docs/decisions/ADR_TEMPLATE.md).
+Document boundaries between components or with external callers (HTTP/RPC APIs, published library APIs, schemas, file and message formats): validation, permission, error semantics, session expiry, and retry behavior. Keep internal helpers in docstrings/tests and CLI options, usage, and output formats in `README.md` (not here). Record durable architecture or dependency tradeoffs as ADRs using [docs/decisions/ADR_TEMPLATE.md](docs/decisions/ADR_TEMPLATE.md).
 
 | Interface | Inputs / permission | Result / errors | Compatibility / fallback | Implementation |
 |---|---|---|---|---|

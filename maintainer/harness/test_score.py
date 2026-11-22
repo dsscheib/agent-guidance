@@ -768,6 +768,11 @@ class SkillUse(unittest.TestCase):
     def test_expected_procedure(self):
         self.assertEqual(self.use('codex', '', 'S15')['expected'], 'release-readiness')
         self.assertEqual(self.use('codex', '', 'S7-internal')['expected'], 'final-audit')
+        with tempfile.TemporaryDirectory() as tmp:
+            v4_s15 = score.skill_use({'agent_cli': 'codex@m', 'scenario': 'S15', 'guidance': str(score.REPO)}, Path(tmp))
+            v4_s7 = score.skill_use({'agent_cli': 'codex@m', 'scenario': 'S7-internal', 'guidance': str(score.REPO)}, Path(tmp))
+        self.assertEqual(v4_s15['expected'], 'release-readiness')
+        self.assertEqual((v4_s7['expected'], v4_s7['via']), (None, 'n/a'))
 
 
 

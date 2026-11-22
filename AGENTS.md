@@ -21,7 +21,7 @@ Start every task by reading [PROJECT_PROFILE.md](PROJECT_PROFILE.md). If placeho
 1. **Talk plainly and ask directly.** Write briefly like a colleague ("you", everyday words). Ask each blocking decision as a direct question in your reply while continuing independent work; recording it in a file is not asking. Report what happened, not checklists of what did not.
 2. **Own delegation and escalation.** Delegate bounded tasks to installed specialists with non-overlapping file ownership (one writer per file at a time). Follow any `## Model escalation` sections below. Pass explicit file paths or diffs to read-only reviewers (Antigravity CLI reviewers have `read_file` only). Verify delegated output before accepting it. User authorization never passes down to subagents.
 3. **Verify mechanically.** Run `python3 scripts/verify.py --verify` (`--verify release` for release candidates; `--verify docs` for docs-only changes) and quote its `Verification:` line verbatim; never write your own verdict. Missing tooling is a gap, not a pass or an unconfirmed exclusion (only user confirmation removes `Proposed:`).
-4. **Act outward only with authorization, from committed source.** Commit, push, merge, publish, deploy, change live data, or flash/power hardware only as `PROJECT_PROFILE.md` or explicit user approval allows (for that scope only). Build and deploy only from committed revisions. For UI or workflow changes, give local UAT steps in your reply (never in `README.md`), collect feedback, and batch review deployments on one reusable deploy path.
+4. **Follow git policy and act outward only with authorization.** When `PROJECT_PROFILE.md` requires feature branches, create the branch before editing files. Commit, push, merge, publish, deploy, change live data, or flash/power hardware only as `PROJECT_PROFILE.md` or explicit user approval allows (for that scope only). Build and deploy only from committed revisions. For UI or workflow changes, give local UAT steps in your reply (never in `README.md`), collect feedback, and batch review deployments on one reusable deploy path.
 5. **Keep affected docs in sync.** Update only the routing table's "Update after" files in the same change. Only the supervisor updates [docs/OPEN_WORK.md](docs/OPEN_WORK.md) and release records.
 
 ## Routing
@@ -31,7 +31,7 @@ Start every task by reading [PROJECT_PROFILE.md](PROJECT_PROFILE.md). If placeho
 |---|---|---|
 | Any behavior | [PROJECT_PROFILE](PROJECT_PROFILE.md) (Command inventory) | Tests for changed behavior; run `python3 scripts/verify.py --verify` |
 | What users run or see (CLI options, usage, output formats) | [README](README.md) | README usage in the same change (never UAT steps) |
-| Architecture, public boundaries (APIs, schemas, file formats), domain terms, invariants, lifecycles | [DESIGN_DOC](DESIGN_DOC.md) | DESIGN_DOC (internal helpers need no entry) |
+| Architecture, public boundaries (service/library APIs, schemas, file formats), domain terms, invariants, lifecycles | [DESIGN_DOC](DESIGN_DOC.md) | DESIGN_DOC (internal helpers and CLI options/output formats stay out) |
 | Durable architecture or dependency decision | [DESIGN_DOC](DESIGN_DOC.md) | New ADR from [the template](docs/decisions/ADR_TEMPLATE.md) |
 | Deployment, backups, jobs, recovery, secrets, or automation | [docs/RUNBOOKS](docs/RUNBOOKS.md) | docs/RUNBOOKS |
 | A release or review deployment | [docs/RUNBOOKS](docs/RUNBOOKS.md) | One short entry in [docs/RELEASE_NOTES](docs/RELEASE_NOTES.md) |

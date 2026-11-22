@@ -684,7 +684,7 @@ def tool_inputs(logdir, cli):
 
 def skill_use(ev, logdir):
     """Skills loaded and procedures read directly in one run, and how its expected procedure arrived:
-    'skill', 'document' (read from docs/procedures/ without its skill) or 'not used'."""
+    'skill', 'document' (read from docs/procedures/ without its skill), 'not used', or 'n/a'."""
     cli = ev.get('agent_cli', '').partition('@')[0]
     loaded, read = set(), set()
     for x in tool_inputs(logdir, cli):
@@ -692,8 +692,15 @@ def skill_use(ev, logdir):
             loaded.add(x[6:])
         loaded |= set(SKILL_FILE.findall(x))
         read |= set(PROCEDURE_FILE.findall(x))
-    expected = EXPECTED_PROCEDURE.get(base(ev['scenario']), 'final-audit')
-    via = 'skill' if expected in loaded else 'document' if expected in read else 'not used'
+    guidance = ev.get('guidance') or ''
+    g = Path(guidance) if guidance else None
+    v4 = bool(g and g.is_dir() and (g / 'AGENTS.md').is_file() and not (g / 'docs' / 'procedures' / 'final-audit.md').is_file())
+    if v4:
+        expected = {'S11': 'upgrade-guidance', 'S18': 'upgrade-guidance', 'S15': 'release-readiness'}.get(base(ev['scenario']))
+        via = 'n/a' if expected is None else ('skill' if expected in loaded else 'document' if expected in read else 'not used')
+    else:
+        expected = EXPECTED_PROCEDURE.get(base(ev['scenario']), 'final-audit')
+        via = 'skill' if expected in loaded else 'document' if expected in read else 'not used'
     return {'loaded': sorted(loaded), 'read': sorted(read), 'expected': expected, 'via': via}
 
 
@@ -1087,7 +1094,7 @@ def main():
             print(f"| {label} | {len(uses)} | {via} | {sum(bool(u['loaded']) for _, u in uses)} | {shown} |")
             if a.detail:
                 for ev, u in uses:
-                    if u['via'] != 'skill':
+                    if u['via'] not in ('skill', 'n/a'):
                         print(f"|   {ev['scenario']} r{ev['run']}: {u['expected']} {u['via']}" + (f"; read {', '.join(u['read'])}" if u['read'] else '') + ' | | | | |')
         return
     if a.overhead:
