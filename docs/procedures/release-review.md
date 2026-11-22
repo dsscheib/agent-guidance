@@ -1,39 +1,40 @@
 ---
 name: release-review
-description: Run the final release review, a systematic read-only audit of a release candidate across every risk area, before release readiness is decided. Use when asked for a pre-release audit, a final or full release review, or a thorough check of a candidate before it ships. It changes no repository files and touches nothing outside the machine. Not for finishing a single change (final-audit) or filling the readiness record (release-readiness).
+description: Run the final release review, a systematic read-only audit of a release candidate across every risk area, before release readiness is decided. Use when asked for a pre-release audit, a final or full release review, or a thorough check of a candidate before it ships. It changes no repository files and touches nothing outside the machine. Not for filling the readiness record (release-readiness).
 ---
 # Release review procedure
 
-Kind: Procedure. The review looks for defects that the gates and the readiness record can miss. [release-readiness](release-readiness.md) then records its results. The review is read-only: it changes no file in the repository, uses no production system or real data, and makes no external change (AGENTS.md rules 3 and 10). Temporary files and synthetic reproductions go outside the repository.
+Systematic read-only audit to find defects automated gates and checklists miss. Changes no repository files, touches no production system or real data, and makes no external change. Temporary reproductions go outside the repository using synthetic data.
 
 ## 1. Identify the candidate and build the coverage checklist
-Record the commit you review and whether the working tree is clean. Before reviewing anything, write the checklist of areas. Start from this list, then add the project's own areas from DOMAIN_RULES, DESIGN_DOC, SECURITY_PRODUCTION_SPEC and RUNBOOKS, such as each domain invariant or lifecycle:
+Record the commit SHA and whether the working tree is clean. List every applicable area from below plus project-specific areas in `DESIGN_DOC.md`, `docs/RUNBOOKS.md`, or hardware docs:
 
-Authentication; authorization; secrets; domain invariants; concurrency; migrations and schema; backups and restoration; deployment and rollback, including alternate deployment paths; command-line commands; imports and exports; resource limits; dependencies; UI; release evidence.
+Authentication; authorization; secrets; domain invariants; concurrency; migrations and schema; backups and restoration; deployment and rollback (including alternate deployment paths); CLI commands; imports and exports; resource limits; dependencies; UI; hardware/safety (if applicable); release evidence.
 
-Mark an area not applicable only with evidence that the project lacks it, for example no UI code and no UI requirement.
+Mark an area not applicable only with evidence the project lacks it.
 
-## 2. Review each area
-Work through every area, and keep going after serious findings: one defect does not end the review. For each area:
-- **Trace the real execution paths**, including indirect calls, scheduled jobs, scripts and alternate deployment paths, not only the documented entry point.
-- **Check the bad cases**: failure, interruption, retry, concurrency and partial success. Ask what state remains when a step fails halfway.
-- **Compare claims with the code.** Read README, RUNBOOKS, PRODUCTION_READINESS, VERIFICATION_MATRIX and OPEN_WORK against the implementation, git history and the evidence that exists. A recorded pass is unverified until the evidence behind it confirms it for this candidate.
-- **Read what the tests assert and what they leave out.** Passing tests support a conclusion; they do not end the review of an area.
-- **Reproduce suspected defects** where practical, with isolated synthetic data in a temporary folder outside the repository. Never use real data or a production system.
+## 2. Review each area (and delegate to independent reviewers when available)
+Work through every area; never stop after finding the first serious bug.
 
-## 3. Classify the results
-Sort every result into one of three groups, each with the file and line, the path traced, and how you know:
-- **Confirmed defect**: reproduced, or certain from the code. Say what fails and how.
-- **Plausible concern**: the code allows it but you did not reproduce it. Say what would confirm or clear it.
-- **Missing evidence**: a claim or requirement with nothing behind it for this candidate.
+- **Use installed read-only reviewers when available:** Delegate independent risk slices (such as security, architecture, or hardware review) to installed read-only reviewers at your project's highest audit thoroughness/escalation setting. Give each reviewer the exact file paths, diffs, and evidence reports to inspect (some tools restrict read-only reviewers to file reads), and verify their findings before accepting them.
+- **Trace real execution paths**, including indirect calls, scheduled jobs, scripts, and alternate deployment paths—not just the main entry point.
+- **Check failure modes:** interruption, retry, concurrency, partial success, and state left halfway through failure.
+- **Verify claims against code:** Treat recorded passes in `README.md`, `docs/RUNBOOKS.md`, `docs/PRODUCTION_READINESS.md`, `docs/VERIFICATION_MATRIX.md`, and `docs/OPEN_WORK.md` as unverified until underlying evidence confirms them for this candidate.
+- **Read what tests assert and omit:** Passing tests support an area; they never close it.
+- **Reproduce suspected defects** in a temporary directory outside the repo using synthetic data.
 
-Mark each area **reviewed**, **partially reviewed** or **unreviewed**, with concrete limitations such as "no target host to test the restore" or "migration 14 not traced". Never call an area reviewed when you skipped part of it.
+## 3. Classify results and area coverage
+Sort every finding with file, line, traced path, and evidence into:
+- **Confirmed defect:** reproduced or certain from code.
+- **Plausible concern:** allowed by code, not reproduced; state what confirms or clears it.
+- **Missing evidence:** a claim or requirement lacking evidence for this candidate.
 
-## 4. Report
-Give the report in chat, not in a file ([document budget](../DOCUMENTATION.md#document-budget)). Write it plainly:
-1. The candidate commit and whether its tree was clean.
-2. The area table: each area, its status and its limitations.
-3. Confirmed defects, most severe first, then plausible concerns, then missing evidence.
-4. Your recommendation on whether the candidate is ready for release readiness, and each decision you need from the user, as a direct question.
+Mark each checklist area **reviewed**, **partially reviewed**, or **unreviewed** with explicit limits (never mark an area reviewed if part of it was skipped).
 
-Offer to record the findings in OPEN_WORK, and as blockers in the readiness record through [release-readiness](release-readiness.md). Record them only when the user agrees, because the review itself changes nothing.
+## 4. Report in chat (do not write a file)
+1. Candidate commit and clean/dirty tree state.
+2. Area coverage table (area, status, limits).
+3. Findings (confirmed defects most severe first, plausible concerns, missing evidence).
+4. Recommendation on release readiness plus any decisions needed as direct questions.
+
+Offer to record findings in [docs/OPEN_WORK.md](../OPEN_WORK.md) and release blockers through `release-readiness` only once approved.

@@ -1,34 +1,39 @@
-# Technical design template
+# Technical design and domain rules
 
-Kind: Template. Status: Unconfigured. Authority by subject follows the routing table in [AGENTS.md](AGENTS.md). Descriptive code/schema observations are not accepted requirements or proof of testing.
+Update only the sections your change affects. Descriptive code observations are not approved requirements or verification evidence.
 
-## Purpose, users and scope
+## Purpose and scope
 {{PURPOSE_USERS_JOURNEYS_AND_NON_GOALS}}
 
-## Requirement inventory
-| ID | Observable outcome | Status / authority | Iteration | Acceptance evidence |
+## Requirements
+| ID | Outcome and failure behavior | Status / authority | Iteration | Acceptance evidence |
 |---|---|---|---|---|
 | {{REQUIREMENT_ID}} | {{OUTCOME_AND_FAILURE_BEHAVIOR}} | Proposed; {{DECISION_REFERENCE}} | {{ITERATION}} | Not verified |
 
-## Architecture and state ownership
+## Architecture and public boundaries
 {{MODULES_DEPENDENCIES_BOUNDARIES_AND_STATE_OWNERS}}
-Cross-reference [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and domain invariants rather than duplicating policy.
 
-## Public interfaces
-| Interface | Inputs / permission | Result / errors | Compatibility / fallback | Implementation reference |
+Document boundaries between components or with external callers (HTTP/RPC APIs, published library APIs, schemas, file and message formats): validation, permission, error semantics, session expiry, and retry behavior. Keep internal helpers in docstrings/tests and CLI options, usage, and output formats in `README.md` (not here). Record durable architecture or dependency tradeoffs as ADRs using [docs/decisions/ADR_TEMPLATE.md](docs/decisions/ADR_TEMPLATE.md).
+
+| Interface | Inputs / permission | Result / errors | Compatibility / fallback | Implementation |
 |---|---|---|---|---|
-| {{INTERFACE}} | {{VALIDATION_AND_AUTHORIZATION}} | {{STATUS_AND_RESULT}} | {{COMPATIBILITY_AND_FALLBACK}} | Planned; not implemented |
+| {{INTERFACE}} | {{VALIDATION_AND_AUTHORIZATION}} | {{STATUS_AND_RESULT}} | {{COMPATIBILITY_AND_FALLBACK}} | Planned |
 
-List boundaries between components or with external callers: HTTP or RPC APIs, a published library API, file and message formats. A function added inside an existing package or module is not a new boundary; its docstring and tests describe it. Command-line usage, options and output formats live in the README only. For every such boundary, document direct access, validation, permission, result and error semantics, session expiry and retry behavior. Adopted stack profiles add mechanism-specific contracts, such as full-page and fragment variants in the server-rendered web profiles ([Go](profiles/SERVER_RENDERED_WEB_GO.md), [Rust](profiles/SERVER_RENDERED_WEB_RUST.md)).
+## Domain rules and invariants
+{{DOMAIN_TERMS_TYPES_UNITS_AND_INVARIANTS}}
 
-## Persistent model and transitions
-{{IDENTITIES_RELATIONSHIPS_TYPES_UNITS_CONSTRAINTS_AND_LIFECYCLES}}
-Record invariants, transactions, conflict/idempotency contracts and deletion/retention behavior. Reviewed migrations own the existing schema; illustrative DDL cannot replace them.
+Keep internal IDs separate from mutable display names, define exact units/precision/overflow and null/unknown/zero distinctions, and never invent undecided business rules (limits, priorities, retention, conflict handling).
 
-## Security, portability and operations
-{{TRUST_BOUNDARIES_FORMATS_CONFIGURATION_AND_DEPLOYMENT_PROFILE}}
-Reference the authoritative security, portability and runbook guides. List actual supported environments and observed limitations.
+| Operation | Preconditions / permission | Atomic effects & invariants | Failure / retry / idempotency |
+|---|---|---|---|
+| {{OPERATION}} | {{PRECONDITIONS}} | {{EFFECTS_AND_INVARIANTS}} | {{ERROR_AND_CONFLICT_CONTRACT}} |
 
-## Verification and delivery
-{{ADOPTED_SCOPE_DEPENDENCIES_AND_ACCEPTANCE_CRITERIA}}
-Link [docs/VERIFICATION_MATRIX.md](docs/VERIFICATION_MATRIX.md), [docs/OPEN_WORK.md](docs/OPEN_WORK.md) and [docs/ROADMAP.md](docs/ROADMAP.md). Do not rename incomplete committed scope as a future feature. Use the status vocabulary in [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md).
+## Persistent model and migrations
+{{IDENTITIES_RELATIONSHIPS_CONSTRAINTS_AND_LIFECYCLE}}
+
+Version migrations and rehearse schema upgrades on isolated synthetic data; reviewed migrations own the live schema.
+
+## Security and operations
+{{TRUST_BOUNDARIES_CONFIGURATION_AND_LIMITATIONS}}
+
+Keep secrets out of source, command arguments, and logs; link [docs/OPEN_WORK.md](docs/OPEN_WORK.md) for unresolved gaps.

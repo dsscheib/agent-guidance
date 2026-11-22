@@ -1,4 +1,10 @@
 #!/bin/sh
-# Optional, agent-neutral guidance check. Enable with: git config core.hooksPath scripts/hooks
-# Blocks commits with broken internal links, stale skill wrappers or missing nested CLAUDE.md shims.
-exec python3 "$(git rev-parse --show-toplevel)/check_package.py"
+set -e
+ROOT=$(git rev-parse --show-toplevel)
+if [ -f "$ROOT/scripts/verify.py" ] && [ ! -f "$ROOT/MAINTAINING.md" ]; then
+  exec python3 "$ROOT/scripts/verify.py"
+elif [ -f "$ROOT/manage.py" ]; then
+  exec python3 "$ROOT/manage.py"
+fi
+echo "No guidance checker found (expected scripts/verify.py or manage.py in $ROOT)" >&2
+exit 1

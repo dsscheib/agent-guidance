@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Copilot CLI agentStop hook, loaded through .github/hooks/guidance.json.
 
-Prompts the agent to apply AGENTS.md rule 4 when a register changed in the working tree and the final reply
-asks nothing. The hook blocks that stop once so the agent can check if a decision still needs the owner's input.
-Every other stop passes. Any error or missing data lets the stop through, like a hook timeout.
+Prompts the agent to apply AGENTS.md (Talk plainly and ask directly) when a register changed in the working tree
+and the final reply asks nothing. The hook blocks that stop once so the agent can check if a decision still needs
+the owner's input. Every other stop passes. Any error or missing data lets the stop through, like a hook timeout.
 
 It can also run as a user-level hook from ~/.copilot/hooks/ (docs/AGENT_TOOLS.md), which covers sessions that
 start before a project has the package. When both copies run for the same stop, the first claims it and the
@@ -13,9 +13,9 @@ import json, os, re, subprocess, sys, tempfile, time
 
 REGISTER = re.compile(r'(?i)(^|/)(OPEN_WORK|TODO[\w-]*|DECISIONS[\w-]*)\.md$')
 WAIT_SECONDS = 3  # the reply reaches the transcript shortly after the hook starts
-REASON = ('You changed open items in {files} and your reply asks no question. Check them against AGENTS.md rule 4. '
-          'If an unresolved decision needs the owner’s input, ask it directly and say what you completed meanwhile. '
-          'If none needs their input, finish without adding a question.')
+REASON = ('You changed open items in {files} and your reply asks no question. Check them against AGENTS.md '
+          "(Talk plainly and ask directly). If an unresolved decision needs the owner's input, ask it directly "
+          'and say what you completed meanwhile. If none needs their input, finish without adding a question.')
 
 
 def changed_registers(cwd):

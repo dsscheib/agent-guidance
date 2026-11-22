@@ -1,6 +1,7 @@
-# Mirrors AGENTS.md rules 2 and 3: destructive git operations and approvals need confirmation, and in
-# Enterprise projects merges and releases too (the installer leaves those two rules out for other tiers).
-# `git push` is left to rule 3: a prompt cannot tell a push the owner asked for from one they did not,
+# Mirrors AGENTS.md rules (Preserve existing work; Follow git policy and act outward only with authorization):
+# destructive git operations and approvals need confirmation, and in Enterprise projects merges and releases too
+# (the installer leaves those two rules out for other tiers).
+# `git push` is left to AGENTS.md git policy: a prompt cannot tell a push the owner asked for from one they did not,
 # so it only got in the way of authorized pushes.
 # Codex loads project rules only when this project's .codex/ layer is trusted.
 # Loosen only to match the agent git policy adopted in PROJECT_PROFILE.md.
@@ -8,47 +9,47 @@
 prefix_rule(
     pattern = ["git", "reset", "--hard"],
     decision = "prompt",
-    justification = "AGENTS.md rule 2: may discard uncommitted work.",
+    justification = "AGENTS.md (Preserve existing work): may discard uncommitted work.",
 )
 
 prefix_rule(
     pattern = ["git", "clean"],
     decision = "prompt",
-    justification = "AGENTS.md rule 2: may delete untracked work.",
+    justification = "AGENTS.md (Preserve existing work): may delete untracked work.",
 )
 
 prefix_rule(
     pattern = ["git", "branch", "-D"],
     decision = "prompt",
-    justification = "AGENTS.md rule 2: may delete unmerged work.",
+    justification = "AGENTS.md (Preserve existing work): may delete unmerged work.",
 )
 
 prefix_rule(
     pattern = ["git", "rebase"],
     decision = "prompt",
-    justification = "AGENTS.md rule 2: rewrites history.",
+    justification = "AGENTS.md (Preserve existing work): rewrites history.",
 )
 
 prefix_rule(
     pattern = ["git", "checkout", "--"],
     decision = "prompt",
-    justification = "AGENTS.md rule 2: may discard uncommitted work.",
+    justification = "AGENTS.md (Preserve existing work): may discard uncommitted work.",
 )
 
 prefix_rule(
     pattern = ["gh", "pr", "merge"],
     decision = "prompt",
-    justification = "AGENTS.md rule 3: merge only with explicit authorization; never your own work.",
+    justification = "AGENTS.md (Follow git policy and act outward only with authorization): merge only with explicit authorization; never your own work.",
 )
 
 prefix_rule(
     pattern = ["gh", "pr", "review"],
     decision = "prompt",
-    justification = "AGENTS.md rule 3: reviews and approvals belong to the approver, never your own work.",
+    justification = "AGENTS.md (Follow git policy and act outward only with authorization): reviews and approvals belong to the approver, never your own work.",
 )
 
 prefix_rule(
     pattern = ["gh", "release", "create"],
     decision = "prompt",
-    justification = "AGENTS.md rule 3: publish only with explicit authorization.",
+    justification = "AGENTS.md (Follow git policy and act outward only with authorization): publish only with explicit authorization.",
 )

@@ -52,7 +52,7 @@ def apply(target, spec):
         path.write_text(text.replace(patch['old'], patch['new']))
 
 
-def fill_profile(target, values, strict=True):
+def fill_profile(target, values, strict=True, warn=False):
     """Fill fixture values into PROJECT_PROFILE.md and, when installed, docs/ENTERPRISE.md.
 
     An earlier release's template lacks some placeholders, so strict=False skips values it has no place for."""
@@ -71,6 +71,9 @@ def fill_profile(target, values, strict=True):
     unknown = values.keys() - used
     if unknown and strict:
         raise SystemExit('Fixture profile keys match no PROJECT_PROFILE.md or ENTERPRISE.md placeholder: ' + ', '.join(sorted(unknown)))
+    if unknown and warn:
+        print(f'Warning: skipped fixture profile keys with no placeholder in {target.name}: {", ".join(sorted(unknown))}',
+              file=sys.stderr)
 
 
 def build(scenario, target):
@@ -80,8 +83,7 @@ def build(scenario, target):
         raise SystemExit(f'Target must be empty or absent: {target}')
     target.mkdir(parents=True, exist_ok=True)
     install = scenario.get('install', True)
-    # SCENARIO_OLD_GUIDANCE installs an earlier release into every scenario, for an old-guidance comparison.
-    ref = scenario.get('install_ref') or os.environ.get('SCENARIO_OLD_GUIDANCE')
+    ref = scenario.get('install_ref')
     if install and ref:
         # An earlier release, as a project that adopted it would have it: a shared clone at that commit runs its own installer.
         with tempfile.TemporaryDirectory() as tmp:
@@ -96,21 +98,32 @@ def build(scenario, target):
                 result = run(cmd, cwd)
                 if result.returncode:
                     raise SystemExit(f"{' '.join(cmd)} failed: {result.stderr}")
-            result = run([sys.executable, str(old / 'check_package.py'), '--install', str(target)], old)
+            installer = old / ('manage.py' if (old / 'manage.py').is_file() else 'check_package.py')
+            extra = []
+            if not scenario.get('install_ref') and '--tier' in installer.read_text():
+                if scenario.get('tier'):
+                    extra += ['--tier', scenario['tier']]
+                elif '--all' in installer.read_text():
+                    extra += ['--all']
+                if scenario.get('features'):
+                    extra += ['--features', ','.join(scenario['features'])]
+            result = run([sys.executable, str(installer), '--install', str(target), *extra], old)
             if result.returncode:
                 raise SystemExit(result.stdout + result.stderr)
         # The harness shows agents the release as a commit without maintainer/; record that commit, as an install
         # from the agents' checkout would.
         shown = json.loads(os.environ.get('SCENARIO_BASELINES') or '{}').get(ref)
-        if shown:
-            record = json.loads((target / 'PACKAGE_MANIFEST.json').read_text())
+        rec = target / ('.guidance.json' if (target / '.guidance.json').is_file() else 'PACKAGE_MANIFEST.json')
+        if shown and rec.is_file():
+            record = json.loads(rec.read_text())
             record.setdefault('installed_from', {})['commit'] = shown
-            (target / 'PACKAGE_MANIFEST.json').write_text(json.dumps(record, indent=2) + '\n')
+            rec.write_text(json.dumps(record, indent=2) + '\n')
     elif install:
         # A scenario without a tier keeps the 2.x set its fixtures were written against.
         tier = ['--tier', scenario['tier']] if scenario.get('tier') else ['--all']
         tier += ['--features', ','.join(scenario['features'])] if scenario.get('features') else []
-        result = run([sys.executable, str(root / 'check_package.py'), '--install', str(target), *tier], root)
+        installer = root / ('manage.py' if (root / 'manage.py').is_file() else 'check_package.py')
+        result = run([sys.executable, str(installer), '--install', str(target), *tier], root)
         if result.returncode:
             raise SystemExit(result.stdout + result.stderr)
     values = {}
@@ -123,7 +136,8 @@ def build(scenario, target):
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(src, dest)
     if install and not scenario.get('install_ref'):  # an earlier adoption's profile is the project's own filled-in file
-        fill_profile(target, values, strict=not ref)
+        fill_profile(target, values, strict=not ref and scenarios_path == here / 'scenarios.json',
+                     warn=not ref and scenarios_path != here / 'scenarios.json')
     apply(target, scenario.get('setup', {}))
     git = ['git', '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null']
     for cmd in (git + ['init', '-q', '-b', 'main'], git + ['add', '-A'], git + ['commit', '-q', '-m', f"Scenario {scenario['id']} fixture"]):
@@ -141,23 +155,25 @@ def build(scenario, target):
     apply(target, scenario.get('dirty', {}))
 
     problems = []
-    record = target / 'PACKAGE_MANIFEST.json'
+    record = target / ('.guidance.json' if (target / '.guidance.json').is_file() else 'PACKAGE_MANIFEST.json')
     if install and record.is_file():
         source = json.loads(record.read_text()).get('installed_from', {}).get('repository', '')
         if source.startswith('/') or str(root) in record.read_text():
             problems.append(f'installed manifest names a local path as its source: {source}')
     configured = scenario.get('configured', True)
+    verifier = ['scripts/verify.py'] if (target / 'scripts' / 'verify.py').is_file() else ['check_package.py']
     if not install:
-        stray = [p for p in ('check_package.py', 'PACKAGE_MANIFEST.json', 'PROJECT_PROFILE.md') if (target / p).exists()]
+        stray = [p for p in ('check_package.py', 'PACKAGE_MANIFEST.json', '.guidance.json', 'scripts/verify.py', 'PROJECT_PROFILE.md')
+                 if (target / p).exists()]
         if stray:
             problems.append('uninstalled fixture contains package files: ' + ', '.join(stray))
     elif scenario.get('check_fails_with'):
         # The scenario starts from a deliberately failing package check (S28): it must fail for the stated reason.
-        check = run([sys.executable, 'check_package.py'], target)
+        check = run([sys.executable, *verifier], target)
         if check.returncode == 0 or scenario['check_fails_with'] not in check.stdout + check.stderr:
-            problems.append(f"check_package.py should fail with {scenario['check_fails_with']!r}: {(check.stdout + check.stderr).strip()[-200:]}")
+            problems.append(f"{verifier[0]} should fail with {scenario['check_fails_with']!r}: {(check.stdout + check.stderr).strip()[-200:]}")
     elif configured is not None:
-        required = run([sys.executable, 'check_package.py', '--require', 'code'], target)
+        required = run([sys.executable, *verifier, '--require', 'code'], target)
         if configured != (required.returncode == 0):
             problems.append(f"profile should be {'configured' if configured else 'unconfigured'}: {required.stdout.strip().splitlines()[-1]}")
     if scenario.get('tests'):

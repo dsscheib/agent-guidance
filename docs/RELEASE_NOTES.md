@@ -1,8 +1,6 @@
 # Release notes
 
-Kind: Register. Status: Empty. Start fresh in every project; never copy entries from another project.
-
-One entry per release or review deployment, newest first. Keep each entry to about five lines. Link to a release record for detail; do not paste logs or transcripts. Rules: [DOCUMENTATION.md](DOCUMENTATION.md#document-budget).
+One entry per release or review deployment, newest first (about five lines each; never paste logs or transcripts).
 
 ## {{DATE}} — {{RELEASE_NAME}} ({{ENVIRONMENT}})
 - **Commit:** {{COMMIT_SHA}}. **Schema:** {{SCHEMA_VERSION_OR_NONE}}.

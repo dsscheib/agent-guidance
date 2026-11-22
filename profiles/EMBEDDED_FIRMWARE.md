@@ -1,36 +1,22 @@
-# Optional embedded firmware and hardware profile
+# Embedded firmware and hardware profile
 
-Kind: Profile. Status: Not selected. Adopt explicitly in PROJECT_PROFILE.md before treating these rules as binding. It applies to firmware for a microcontroller or processor, and to electronics design files (schematics, boards, parts lists) kept in the same repository. It names no toolchain, language or vendor.
+Adopt explicitly in [PROJECT_PROFILE.md](../PROJECT_PROFILE.md) before treating these rules as binding. Applies to microcontroller/processor firmware and electronics or mechanical design files in the repository.
 
-## Record before implementation
-PROJECT_PROFILE.md's stack row names, from the owner or the repository, never by assumption:
-- Each target: processor or microcontroller part number and variant, clock source, memory sizes, and the board revision it runs on.
-- Toolchain and versions (compiler or assembler, linker, build tool), the flashing or programming tool and debug probe, and any emulator or simulator.
-- The authoritative sources for hardware facts: datasheets, reference manuals and errata by revision, and the schematic that defines pin assignments.
-- Electronics design tool and version, when design files are in the repository.
+## Record in `PROJECT_PROFILE.md` before implementation
+- **Targets:** Exact MCU/processor part number and variant, clock source, flash/RAM limits, and supported board revisions.
+- **Toolchains & probes:** Compiler/assembler, linker, build tool, programmer/debug probe, simulator, and EDA/CAD tool versions.
+- **Authoritative hardware sources:** Datasheets, reference manuals, errata revisions, schematics, and mechanical specs.
 
-## Command inventory for this profile
-Map the inventory's rows to the project; do not invent the commands:
-- **Build:** the cross-build that produces the firmware image. Report image size against the flash and RAM limits recorded in the profile.
-- **Format and static checks:** the formatter, compiler warnings treated as errors where adopted, and a static analyzer.
-- **Unit tests:** host-side tests of hardware-independent logic (parsers, state machines, protocol framing, arithmetic). They do not exercise peripherals, timing or interrupts.
-- **Design checks:** when design files are present, the design tool's electrical and layout rule checks as a Development gate, and a parts-availability check, if the project has one, as a Release gate.
-- **Hardware-in-the-loop or bench tests:** a row without a Gate, run only by a person or with explicit approval, because it flashes or powers hardware.
+## Command inventory
+- **Development gates:** Firmware cross-build (report flash/RAM usage against recorded budgets), formatter/static checks, host-side unit tests (hardware-independent logic only), and the project's own EDA/CAD rule checks (for example, ERC/DRC or mechanical verification scripts recorded in the inventory).
+- **Release gates:** BOM/parts availability checks (if configured); substitute device resource budgets (flash, RAM, stack depth, worst-case interrupt latency, power) for server load budgets.
+- **Ungated (manual approval only):** Bench/HIL tests, fabrication/Gerber/STEP export scripts, G-code generation, and flashing commands must stay ungated (`—`) so `--verify` never executes them automatically.
+- Propose `Proposed: Not applicable: <reason>` for browser smoke (unless serving a web UI), DB migrations, and server soak.
 
-Rows that normally do not apply here, to propose as "Proposed: Not applicable: <reason>" for the owner to decide: browser and accessibility smoke (unless the device serves a web interface), migration and recovery (unless the device keeps persistent data across firmware updates), and performance or soak in the server sense. Propose resource budgets (flash, RAM, stack depth, worst-case interrupt latency, power) as the device's performance budgets instead. Primary journeys are the device's observable behaviors, such as power-on, a command over the serial port or a button press.
-
-## Actions that need explicit approval
-Treat each of these as outward and possibly irreversible under AGENTS.md rule 3, approved for its stated scope only:
-- Flashing or programming any device, including over a bootloader. Flash only an image built from a committed revision, and record that revision and the image checksum.
-- Writing fuses, option bytes, lock or security bits, or replacing a bootloader. These can make a device unrecoverable; state the exact values and the recovery path before asking.
-- Applying power, connecting test equipment, or any work near mains or high-energy circuits.
-- Ordering parts or boards, or sending design files to a fabricator.
-
-## Hardware facts and evidence
-- Take register addresses, bit fields, timing, voltage limits and pinouts from the recorded datasheets, reference manuals and schematic, and cite the document and section. Never invent them; when the sources disagree or are silent, ask (AGENTS.md rule 4).
-- Keep one source of truth for pin assignments. When firmware and the schematic disagree, report it rather than changing either to match.
-- A passing build, host test or simulator run is evidence only of what it exercises. A change to timing, interrupts, peripherals, power modes or memory layout stays unverified until bench evidence exists; record that gap in OPEN_WORK.
-- Design rule checks are necessary, not proof of electrical correctness or safety. Never claim safety or regulatory certification.
+## Approval-only actions and hardware evidence
+- **Never without explicit per-operation approval:** Flashing/programming any device (build from a committed revision only and record revision + image checksum), writing fuses/option bytes/lock bits/bootloaders (state exact values and recovery path first), applying power or connecting equipment near mains/high-energy circuits, or ordering/uploading boards or parts.
+- **Cite datasheets:** Take register addresses, bit fields, timing, voltage limits, and pinouts from recorded datasheets/schematics and cite document + section. Keep one source of truth for pins; report firmware-vs-schematic mismatches instead of silently changing either.
+- **Host tests ≠ bench proof:** Passing builds, host tests, simulators, or ERC/DRC never prove timing, peripheral behavior, electrical correctness, or safety certification. Record unverified hardware behavior in [docs/OPEN_WORK.md](../docs/OPEN_WORK.md).
 
 ## Release
-A firmware release identifies the committed revision, the image and its checksum, the map or listing file, the target and board revisions it supports, and the bench evidence for the changes it contains. A hardware release identifies the design revision, the fabrication outputs and the parts list with the availability check's date.
+Identify the committed revision, image checksum, map/listing file, supported board revisions, and bench evidence (plus design revision, fabrication outputs, and dated BOM availability for hardware releases).

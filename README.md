@@ -1,69 +1,85 @@
-# Reusable project guidance
+# Reusable project guidance (v4)
 
-This package gives coding agents instructions, policies, templates and procedures for starting a new project. It works with Codex, Antigravity, Claude Code, Copilot CLI and any other agent that reads `AGENTS.md`. It is a starting point for a project. It is not evidence of implementation, testing, deployment authorization or release acceptance.
+Lean project instructions, tiers, templates, and deterministic verification built for strong frontier supervisor models coordinating `agent-team` specialists. It works with Claude Code, Codex, Antigravity, Copilot CLI, and any agent that reads `AGENTS.md`. It is a starting point for a project—not evidence of implementation, testing, deployment authorization, or release acceptance.
 
-**Evaluating whether to use this package?** Before adopting it, read the [testing summary and adoption guide](maintainer/README.md) for what 2,000+ benchmark and blinded holdout runs showed about where this guidance helps, where it is overkill, and which tier to pick.
+## Quick start
 
-## Start here
-**Existing project, or one that adopted an earlier version?** Do not use `--install`. Ask your agent to "upgrade the project guidance from `<path to this checkout>`". It follows the [upgrade procedure](docs/procedures/upgrade-guidance.md): it maps each upstream change onto the project's own documents, asks you the policy questions, and records the source commit. The steps below are for new repositories.
+**Existing repository, or upgrading from v2/v3?** Do not overwrite it with `--install`. From a checkout of this repository, read [the upgrade procedure](docs/procedures/upgrade-guidance.md) and run `python3 manage.py --plan-upgrade /path/to/project --patch /tmp/upgrade.patch`.
 
-1. **Install into the new repository.** Pick the project's tier, and any features, then run:
+For a new project:
+
+1. **Install the tier and features your project needs** (from this checkout):
 
    ```sh
-   python3 check_package.py --install /path/to/project --tier internal --features ui --dry-run   # preview
-   python3 check_package.py --install /path/to/project --tier internal --features ui
+   python3 manage.py --install /path/to/project --tier internal --dry-run
+   python3 manage.py --install /path/to/project --tier internal
    ```
 
-   Tiers are `prototype`, `internal`, `production` and `enterprise` (step 3 explains them); features are `ui`, `data`, `stack-go`, `stack-rust` and `embedded` (firmware and electronics design files). Without `--tier`, nothing is installed: the command lists the tiers and what each adds. `--dry-run` lists the modules and files it would copy and writes nothing. `--all` instead of `--tier` installs every module except Enterprise, as version 2 did. `--tools claude,codex,antigravity,copilot` names the agents the project uses, and only their adapters and guardrails are installed and checked; without it every tool's files are installed. Running `--install` again with a higher tier or another feature adds the missing modules without touching existing files; a rerun without `--tier` keeps the project's tier. The Enterprise tier adds `docs/ENTERPRISE.md` (roles, traceability, CI evidence, supply chain), a pull-request template and three release gates in the command inventory.
+   Optional flags:
+   - `--features release-review,ui,ui-design,stack-go,stack-rust,embedded` — opt-in modules (`release-review` adds the deep pre-release audit skill to `prototype`/`internal`; `ui` adds `docs/UI.md`; `ui-design` adds the interactive `ui-design` skill on top of `ui`).
+   - `--tools claude,codex,antigravity,copilot` — install adapters and guardrails only for the agent CLIs you use (default: all).
+   - `--all` — install all standard v2/v3-equivalent modules (everything except `enterprise` and `ui-design`).
 
-   This copies only the packaged files listed in `PACKAGE_MANIFEST.json`, and records this checkout's commit as `installed_from` in the copied manifest so later upgrades know where to start. It skips any file that already exists, and lists those files so you can merge them by hand. `--force` overwrites them; review the result before committing. Maintainer-only files are never copied.
-2. **Bootstrap with your agent.** Ask it to "bootstrap the project guidance". The agent follows the [bootstrap procedure](docs/procedures/bootstrap-project.md): it inspects the repository, proposes the profile values in [PROJECT_PROFILE.md](PROJECT_PROFILE.md), asks you only the decisions it cannot infer, and records what you adopt.
-3. **Confirm the tier.** The tier table in PROJECT_PROFILE.md sets which gates a release needs: Prototype, Internal, Production service or Enterprise product. Each change and each review deployment runs a smaller, fixed set of development gates. A small tool does not inherit production ceremony, and a production service does not lose it.
-4. **Adopt only the profiles you need.** Server-rendered web ([Go](profiles/SERVER_RENDERED_WEB_GO.md) or [Rust](profiles/SERVER_RENDERED_WEB_RUST.md)), [embedded firmware and hardware](profiles/EMBEDDED_FIRMWARE.md) and [production operations](profiles/PRODUCTION_OPERATIONS.md) are optional and bind only once adopted. Exclude guides that do not apply, such as the UI guides for a non-UI project, and record the rationale.
-5. **Fill in the rest as work proceeds.** `python3 check_package.py --require code` must pass before product code is written. `--require release` must pass before the first release. Registers start empty; never copy results or approvals from another project.
+   Running `--install` again never overwrites existing files without `--force`; it writes `.guidance.json`, strips optional sections that do not apply (such as `## Release qualification profile` below `production`), and preserves custom sections appended to `AGENTS.md` (such as an `agent-team` install).
 
-## Agent support
-[AGENTS.md](AGENTS.md) is the single instruction source. Each tool gets a thin adapter:
+2. **Add specialist subagents (recommended):** install [agent-team](https://github.com/dsscheib/agent-team) (`bootstrap.py --project /path/to/project --with-agents-md --apply`) in either order before or after this installer. `manage.py --sync DIR` and `--plan-upgrade` preserve sections appended at the end of `AGENTS.md` and leave project specialist files in `.{claude,codex,github,agents}/agents` alone.
 
-| Agent | Instructions | Procedures as skills | Command guardrails |
-|---|---|---|---|
-| Codex | `AGENTS.md` | `.agents/skills/` | `.codex/rules/guidance.rules` (trusted projects) |
-| Antigravity | `AGENTS.md` | `.agents/skills/` | User-level only: app permission settings, or CLI `~/.gemini/antigravity-cli/settings.json` |
-| Claude Code | `CLAUDE.md`, which imports `AGENTS.md` | `.claude/skills/` | `.claude/settings.json` |
-| Copilot CLI | `AGENTS.md` | `.agents/skills/` and `.claude/skills/` | `.github/hooks/guidance.json` (trusted folders); optional user-level stop hook in `~/.copilot/hooks/` ([setup](docs/AGENT_TOOLS.md#shipped-guardrails)) |
-| Other agents | `AGENTS.md` | Read `docs/procedures/` directly | Optional git hook in `scripts/hooks/` |
+3. **Fill [PROJECT_PROFILE.md](PROJECT_PROFILE.md):** ask your agent to inspect the repo, fill inferable values above `## Command inventory` as `Proposed — inferred from <file>`, mark inapplicable inventory rows `Proposed: Not applicable: <reason>`, ask you the remaining decisions in one batch, and confirm:
 
-**Agent teams.** This package installs no specialist agents. A project can add its own team of project-local specialist agents, written by hand or with a separate team installer; the checker leaves agent files it did not generate alone. In our experience, agent teams can improve the quality of agentic work, though we haven't measured it yet. Whichever agents do the work, the [delegation rules](docs/CHANGE_WORKFLOW.md#delegating-work) apply.
+   ```sh
+   python3 scripts/verify.py --require code
+   ```
 
-[docs/AGENT_TOOLS.md](docs/AGENT_TOOLS.md) explains each adapter, how to keep them in sync, and how to add a tool.
+4. **Verify changes before handoff:**
 
-## What is included
-| Kind | Files | Use |
+   ```sh
+   python3 scripts/verify.py --verify            # development gates
+   python3 scripts/verify.py --verify docs       # docs-only changes
+   python3 scripts/verify.py --verify release    # release candidates
+   ```
+
+## Tiers and gate expectations
+
+Choose the lowest tier whose risks match your project:
+
+| Gate | `prototype` (small / personal experiments) | `internal` (trusted users, data that matters) | `production` (external users or uptime commitments) | `enterprise` (roles, traceability, supply chain) |
+|---|---|---|---|---|
+| Profile + Command inventory | Required | Required | Required | Required |
+| Automated tests + static checks | Smoke tests | Unit/integration + static | Full suite + concurrency | Full + CI receipts |
+| Recovery / backup drill | Not required | Before relying on persistent data | Release gate (isolated fixtures) | Release gate + retention evidence |
+| Pre-release review | Optional (`--features release-review`) | Optional (`--features release-review`) | Included (`release-review` skill) | Included (`release-review` skill) |
+| Readiness + verification matrix | Not required | Not required | Included (`release-readiness` skill) | Included + named role approval |
+| Dependency audit, SBOM, license check | Not required | Report known risks | Report gaps; release gate if tooling exists | Release gate rows added (`enterprise`) |
+
+## Agent support and selective skills
+
+[AGENTS.md](AGENTS.md) holds the compact universal and supervisor rules (plus generated routing and on-demand skill rows for installed modules). Always-on `AGENTS.md` does not load routine procedure skills; only explicit heavy workflows expose `SKILL.md` wrappers when their module is installed:
+
+| Skill | Installed with | Purpose |
 |---|---|---|
-| Entry and adapters | `AGENTS.md`, `CLAUDE.md`, `.agents/`, `.claude/`, `.codex/`, `.github/hooks/` | Agent entry points. Skill wrappers are generated; never edit them by hand |
-| Policy | `docs/ARCHITECTURE.md`, `CHANGE_WORKFLOW.md`, `DOCUMENTATION.md`, `TESTING_SPEC.md`, `SECURITY_PRODUCTION_SPEC.md`, `UX_DESIGN_SPEC.md`, `UI_PATTERNS.md`, `DATA_PORTABILITY.md`, `AGENT_TOOLS.md` | Copy as-is; change only by owner decision |
-| Template | `PROJECT_PROFILE.md`, `DESIGN_DOC.md`, `docs/DOMAIN_RULES.md`, `BRANDING.md`, `RUNBOOKS.md`, review and handoff templates, ADR template | Fill in with project values |
-| Register | `docs/OPEN_WORK.md`, `VERIFICATION_MATRIX.md`, `RELEASE_NOTES.md`, `PRODUCTION_READINESS.md`, `ROADMAP.md`, `SOURCES.md` | Start empty. OPEN_WORK and the matrix are updated in place; RELEASE_NOTES gets one short entry per deployment |
-| Procedure | `docs/procedures/` | Bootstrap, upgrade, final audit, release readiness; exposed as skills |
-| Profile | `profiles/` | Optional stack or tier rules |
-| Tooling | `check_package.py`, `PACKAGE_MANIFEST.json`, `scripts/hooks/pre-commit` | Install, integrity and placeholder checks |
+| `release-review` | `production`, `enterprise`, or `--features release-review` | Deep read-only pre-release audit across risk areas and subagents |
+| `release-readiness` | `production`, `enterprise` | Assembling gate evidence and recording candidate readiness |
+| `ui-design` | `--features ui-design` | Intentional visual direction, typography, layout rhythm, and craft polish |
 
-The instructions are language- and host-neutral. No application routes, entities, data model, credentials, host addresses, product backlog, production results or historical approvals are carried over. Choose your own workload sizes, budgets, soak duration, retention, recovery objectives and supported environments; no inherited number is a universal requirement.
+Per-tool adapters installed inside projects:
+- **Claude Code:** `CLAUDE.md` (`@AGENTS.md`), `.claude/settings.json` (git/PR guardrails + `.env` read deny), `.claude/skills/`.
+- **Codex:** `AGENTS.md`, `.codex/rules/guidance.rules`, `.agents/skills/`.
+- **Antigravity:** `AGENTS.md`, `.agents/skills/` (user-level command rules live outside repos).
+- **Copilot CLI:** `AGENTS.md`, `.github/hooks/guidance.json` + `guidance_guardrail.py`, `.agents/skills/`, `.claude/skills/`.
 
-## Checker
-`check_package.py` detects its mode automatically:
-- **Template mode** applies when `MAINTAINING.md` is present.
-- **Project mode** applies after installation.
+## Commands
 
-| Command | Effect |
-|---|---|
-| `python3 check_package.py` | Checks internal links, generated adapters, nested instruction shims and the [document budget](docs/DOCUMENTATION.md#document-budget) (profile and status sizes, no dated profile sections, pointer-only tool instruction files). In template mode it also checks manifest hashes, unlisted files, empty registers and the maintainer scenario fixtures. In project mode it reports remaining placeholders by stage, and lists absent packaged files unless the profile's Excluded guidance row names them in backticks |
-| `--require code` / `--require release` | Fails if placeholders remain at that stage |
-| `--verify [release]` | Runs the command-inventory rows marked as gates and prints a computed `Verification:` status for agents to quote, names the project's dependency files when the dependency audit is a gap, and fails a rename-only change that also edits guidance documents beyond the rename; `--receipt FILE` saves it as JSON. `--timeout S` limits each gate (default 900 seconds); a gate whose Gate cell says, for example, `timeout 60m` gets that limit instead |
-| `--install DIR --tier T [--features F] [--tools T] [--dry-run] [--force]` | Copies the core plus the modules for a tier and features into a project, with the adapters and guardrails of the named agent tools only (default every tool); rerun to add modules or tools. Without `--tier` it copies nothing and lists the tiers; `--all` instead of `--tier` gives the version 2 set (every module except Enterprise); `--dry-run` previews |
-| `--plan-upgrade DIR [--patch FILE]` | Run from a newer checkout. Compares a package-layout project with the release it installed and with this checkout, and lists each packaged file as replace, add, merge (clean three-way merge that keeps local changes), conflict or review (templates, registers and the profile the project filled in). Writes nothing in the project; `--patch` saves the replace, add, merge and remove changes and the new manifest as a `git apply` patch outside it |
-| `--check-upgrade DIR [--since REV]` | After applying an upgrade, compares the project with its pre-upgrade commit (default `HEAD`) and fails if an open item disappeared or was closed, a deployed revision is no longer in any document, a local change to a packaged policy, procedure or tool file is gone, a deleted file is still named by code, or merge conflict markers remain |
-| `--sync-adapters` | Regenerates the skill wrappers from `docs/procedures/`, and the AGENTS.md routing and procedure tables for the installed modules |
-| `--update-manifest` | Refreshes manifest hashes after a reviewed edit (template mode) |
+**In an installed project** (`scripts/verify.py`, zero repo tooling bloat):
+- `python3 scripts/verify.py` — checks links, `CLAUDE.md` shims, selective skill wrappers, document budgets (`PROJECT_PROFILE.md` <= 250 lines, `docs/OPEN_WORK.md` <= 150 lines, pointer files <= 10 lines), enterprise guardrails/notes, and placeholder counts.
+- `python3 scripts/verify.py --require code` / `--require release` — fails if placeholders remain at that stage.
+- `python3 scripts/verify.py --verify [development|docs|release]` — runs configured command-inventory gates (`timeout 60m` overrides `--timeout 900`; `--receipt FILE` writes JSON) and prints the verbatim `Verification:` summary line.
 
-To run the checks on every commit, for any agent or person, enable the optional hook with `git config core.hooksPath scripts/hooks`.
+**From this template repository** (`manage.py`):
+- `python3 manage.py` — validates templates, links, adapters, budgets, manifest SHA-256 hashes, `test_install.py`, harness scorer tests, and `run_scenario.py --check`.
+- `python3 manage.py --install DIR --tier T [--features ...] [--tools ...] [--dry-run] [--force]` — installs modules into a project and writes `.guidance.json`.
+- `python3 manage.py --sync [DIR]` — regenerates `AGENTS.md` generated tables, selective `SKILL.md` wrappers (skipping repo-only procedures), and maintainer role agents (in template mode).
+- `python3 manage.py --plan-upgrade DIR [--patch FILE]` — plans safe upgrades from v2/v3 (`PACKAGE_MANIFEST.json`) or v4 (`.guidance.json`), auto-removing untouched retired v3 docs and flagging customized ones for review.
+- `python3 manage.py --check-upgrade DIR [--since REV]` — verifies open items, deployed revisions, and local edits survived an upgrade.
+- `python3 manage.py --update-manifest` — refreshes `PACKAGE_MANIFEST.json` entries and hashes (template mode).
+
+To run checks on every commit, enable the hook: `git config core.hooksPath scripts/hooks`.
