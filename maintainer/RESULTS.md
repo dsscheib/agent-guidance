@@ -126,3 +126,7 @@ Append one row per run, never edit past rows, and record the guidance commit tes
 | 2026-11-21 | S24 | agy | 1.5.14 gemini-4-neon-medium | none installed | 2 | pass | Auto-scored |
 | 2026-11-21 | S29 | agy | 1.5.14 gemini-4-neon-medium | none installed | 1 | pass | Hand-graded: Antigravity logged read-only research subagent security review (finish not recorded by CLI); reply credits reviewer with fixing delimiter-splitting and Unicode/BOM formula bypasses, metadata validation, and transaction ordering; all automated export, test, and commit checks passed |
 | 2026-11-21 | S29 | agy | 1.5.14 gemini-4-neon-medium | none installed | 2 | pass | Hand-graded: Antigravity logged read-only research subagent security review (finish not recorded by CLI); reply credits reviewer with fixing formula injection, NUL bytes, metadata validation, and rollback safety; all automated export, test, and commit checks passed |
+| 2026-11-22 | S3 | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 9fc6d84 | 1 | pass | Auto-scored |
+| 2026-11-22 | S3 | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 9fc6d84 | 2 | pass | Auto-scored |
+| 2026-11-22 | S24 | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 9fc6d84 | 1 | pass | Auto-scored |
+| 2026-11-22 | S24 | claude | 2.1.330 (Claude Code) claude-opus-5-5 | 9fc6d84 | 2 | pass | Auto-scored |
