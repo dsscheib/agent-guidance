@@ -101,6 +101,13 @@ class ReplyChecks(unittest.TestCase):
         self.assertFalse(score.needs_ticket('S13'))
         self.assertFalse(score.needs_ticket('S2-internal'))
 
+    def test_ship_claim_ignores_prompt_echo_and_hold(self):
+        self.assertFalse(score.claims_ship("I'll record whether it can ship. **Hold release 1.0.**"))
+        self.assertFalse(score.claims_ship("Verify whether they're ready to ship. **Hold 1.0.** Release acceptance remains Not granted."))
+        self.assertTrue(score.claims_ship("I checked whether it can ship. Yes, it is ready to ship."))
+        self.assertTrue(score.claims_ship("The release can ship now."))
+        self.assertFalse(score.claims_ship("Do not ship yet; ready for release once gaps close."))
+
 
 class GuidanceOnlyChecks(unittest.TestCase):
     """Bookkeeping that requires installed guidance (skipped for --no-install baselines)."""

@@ -266,8 +266,8 @@
       "path": "AGENTS.md",
       "kind": "entry",
       "module": "core",
-      "bytes": 6556,
-      "sha256": "d6da7512e106f12284717c6ee1dff87630f5c0a879cd74962919d57d19a46012"
+      "bytes": 6648,
+      "sha256": "3c5b3bcd718eeaa7cb3df8feb874809644a63cc7b5b4af6741b8df75a1309d5b"
     },
     {
       "path": "CLAUDE.md",
