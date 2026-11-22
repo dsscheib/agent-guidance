@@ -29,6 +29,10 @@ def load():
     return json.loads(scenarios_path.read_text())['scenarios']
 
 
+def load_suites():
+    return json.loads(scenarios_path.read_text()).get('suites', {})
+
+
 def fixture(name):
     return json.loads((fixtures_dir / name / 'fixture.json').read_text())
 
@@ -200,8 +204,14 @@ def cell(text):
 
 def table():
     scenarios = load()
+    suites = load_suites()
     names = sorted(p.name for p in fixtures_dir.iterdir() if (p / 'fixture.json').is_file())
-    lines = ['| Fixture | Contents |', '|---|---|']
+    lines = []
+    if suites:
+        lines += ['| Suite | Count | Scenarios |', '|---|---|---|']
+        lines += [f"| `{name}` | {len(ids)} | {', '.join(f'`{i}`' for i in ids)} |" for name, ids in suites.items()]
+        lines.append('')
+    lines += ['| Fixture | Contents |', '|---|---|']
     lines += [f"| `{n}` | {cell(fixture(n)['description'])} |" for n in names]
     lines += ['', '| # | Fixtures | Prompt | Expected | Must not |', '|---|---|---|---|---|']
     for s in scenarios:
@@ -254,6 +264,14 @@ def main():
         text, start, end = catalog_text()
         if not args.scenarios and text[start:end].strip() != table():
             problems.append('SCENARIOS.md catalog is stale; run maintainer/run_scenario.py --write-table')
+        seen = {}
+        for name, ids in load_suites().items():
+            for sid in ids:
+                if sid not in scenarios:
+                    problems.append(f'Suite {name}: unknown scenario {sid}')
+                if sid in seen:
+                    problems.append(f'Suite {name}: duplicate scenario {sid} (already in {seen[sid]})')
+                seen[sid] = name
         for s in scenarios.values():
             with tempfile.TemporaryDirectory() as tmp:
                 try:

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Run guidance scenarios against agent CLIs, sandboxed, and record evidence (repository-only).
 
-  run.py --out DIR [--agents claude,codex,copilot,agy] [--scenarios S2,S12] [--runs 1,2] [--workers 3]
-         [--guidance PATH | --no-install] [--label NAME]
+  run.py --out DIR [--agents claude,codex,copilot,agy] [--scenarios S2,S12 | --suite phase2] [--runs 1,2]
+         [--workers 3] [--guidance PATH | --no-install] [--label NAME]
 
 Agents are CLI names, optionally with a model: claude@claude-haiku-5-5, codex@gpt-6-luna,
 copilot@gemini-3.8-flash, agy@gemini-3.8-flash-medium.
@@ -161,6 +161,33 @@ def scenarios(guidance, shown=None, catalog=None):
         sub = lambda x: x.replace('{guidance}', str(shown or guidance))
         s['prompts'] = [sub(s['prompt'])] + [sub(f) for f in s.get('followups', [])]
     return {s['id']: s for s in data}
+
+
+def load_suites(guidance, catalog=None):
+    """Named scenario suites from the catalog, or {} when none are defined."""
+    return json.loads((catalog or guidance / 'maintainer' / 'scenarios.json').read_text()).get('suites', {})
+
+
+def select_scenario_ids(all_s, suites, scenarios_arg='', suite_arg='', no_install=False):
+    """Resolve and validate the scenario IDs to run."""
+    if scenarios_arg and suite_arg:
+        raise ValueError('--scenarios and --suite cannot be combined')
+    number = lambda x: int(m.group(1)) if (m := re.match(r'[A-Z]+(\d+)', x)) else 0
+    if suite_arg:
+        if suite_arg not in suites:
+            known = ', '.join(sorted(suites)) or '(none)'
+            raise ValueError(f'unknown suite {suite_arg!r}; choose from {known}')
+        ids = list(suites[suite_arg])
+    elif scenarios_arg:
+        ids = scenarios_arg.split(',')
+    else:
+        ids = sorted(all_s, key=lambda x: (x != 'S12', number(x), x))
+    if no_install:
+        ids = [i for i in ids if i not in NO_INSTALL_SKIP]
+    unknown = [i for i in ids if i not in all_s]
+    if unknown:
+        raise ValueError('unknown scenarios: ' + ', '.join(unknown))
+    return ids
 
 
 # Reasoning effort every CLI accepts. The harness passes one explicitly (V4-18): left to the CLI, it followed the
@@ -508,7 +535,9 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--out', required=True, type=Path, help='results folder outside this repository')
     ap.add_argument('--agents', default='claude,codex,copilot,agy')
-    ap.add_argument('--scenarios', default='', help='comma-separated IDs; default all')
+    sel = ap.add_mutually_exclusive_group()
+    sel.add_argument('--scenarios', default='', help='comma-separated IDs; default all')
+    sel.add_argument('--suite', default='', help='named scenario suite from catalog (e.g. phase1, phase2, phase3)')
     ap.add_argument('--runs', default='1,2')
     ap.add_argument('--workers', type=int, default=3, help='concurrent runs per agent')
     ap.add_argument('--label', help='results folder name; default the agent name (one agent only)')
@@ -564,13 +593,11 @@ def main():
     GUIDANCE_FOR_COPILOT = opts.shown
     log(f'guidance: {opts.guidance} ({"not installed" if opts.no_install else git(opts.guidance, "rev-parse", "--short", "HEAD")})')
     all_s = scenarios(opts.guidance, opts.shown, opts.catalog)
-    number = lambda x: int(m.group(1)) if (m := re.match(r'[A-Z]+(\d+)', x)) else 0
-    ids = opts.scenarios.split(',') if opts.scenarios else sorted(all_s, key=lambda x: (x != 'S12', number(x), x))
-    if opts.no_install:
-        ids = [i for i in ids if i not in NO_INSTALL_SKIP]
-    unknown = [i for i in ids if i not in all_s]
-    if unknown:
-        ap.error('unknown scenarios: ' + ', '.join(unknown))
+    suites = load_suites(opts.guidance, opts.catalog)
+    try:
+        ids = select_scenario_ids(all_s, suites, opts.scenarios, opts.suite, opts.no_install)
+    except ValueError as err:
+        ap.error(str(err))
     pools = {a: ThreadPoolExecutor(max_workers=opts.workers) for a in agents}
     futures = [pools[a].submit(run_one, opts, a, all_s[i], int(n)) for n in opts.runs.split(',') for i in ids for a in agents]
     for f in as_completed(futures):

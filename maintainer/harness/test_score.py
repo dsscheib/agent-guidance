@@ -950,5 +950,34 @@ class RunSettings(unittest.TestCase):
         self.assertEqual(self.harness.observed_settings('agy@gemini-3.8-flash-medium', '', Path('/x'), 's'), {})
 
 
+class Suites(unittest.TestCase):
+    def test_catalog_suites_are_valid_disjoint_and_exclude_legacy_bases(self):
+        all_s = score.run.scenarios(score.run.REPO)
+        suites = score.run.load_suites(score.run.REPO)
+        self.assertEqual(set(suites), {'phase1', 'phase2', 'phase3'})
+        self.assertEqual({k: len(v) for k, v in suites.items()}, {'phase1': 10, 'phase2': 15, 'phase3': 12})
+        combined = [sid for ids in suites.values() for sid in ids]
+        self.assertEqual(len(combined), len(set(combined)))
+        self.assertTrue(set(combined).issubset(all_s))
+        self.assertEqual(set(all_s) - set(combined), {'S2', 'S6', 'S7', 'S10'})
+
+        # Selection honors --suite, --no-install skipping, and rejects unknown or conflicting flags.
+        self.assertEqual(score.run.select_scenario_ids(all_s, suites, suite_arg='phase2'), suites['phase2'])
+        self.assertEqual(score.run.select_scenario_ids(all_s, suites, suite_arg='phase2', no_install=True),
+                         [i for i in suites['phase2'] if i not in score.run.NO_INSTALL_SKIP])
+        with self.assertRaises(ValueError):
+            score.run.select_scenario_ids(all_s, suites, suite_arg='phase9')
+        with self.assertRaises(ValueError):
+            score.run.select_scenario_ids(all_s, suites, scenarios_arg='S2', suite_arg='phase2')
+        # External catalogs without suites still return {}.
+        with tempfile.TemporaryDirectory() as tmp:
+            cat = Path(tmp) / 'scenarios.json'
+            cat.write_text(json.dumps({'scenarios': [{'id': 'H1', 'fixtures': [], 'prompt': 'hi'}]}))
+            self.assertEqual(score.run.load_suites(score.run.REPO, cat), {})
+            r = subprocess.run([sys.executable, str(score.run.HERE / 'run.py'), '--out', str(Path(tmp) / 'o'),
+                                '--scenarios', 'S2', '--suite', 'phase2'], capture_output=True, text=True)
+            self.assertEqual(r.returncode, 2)
+
+
 if __name__ == '__main__':
     unittest.main()

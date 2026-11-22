@@ -519,7 +519,7 @@ def tier_choice(manifest, target):
     return '\n'.join(lines)
 
 
-def add_profile_rows(profile, manifest, modules):
+def add_profile_rows(profile, manifest, modules, write=True):
     if not profile.is_file():
         return []
     text = profile.read_text()
@@ -531,19 +531,23 @@ def add_profile_rows(profile, manifest, modules):
     anchor = next((l for l in text.splitlines() if l.startswith('| Guidance integrity |')), None)
     if anchor is None:
         return []
-    profile.write_text(text.replace(anchor, '\n'.join(new) + '\n' + anchor, 1))
+    if write:
+        profile.write_text(text.replace(anchor, '\n'.join(new) + '\n' + anchor, 1))
     return [purpose(r) for r in new]
 
 
-def add_release_profile_section(profile, modules):
+def add_release_profile_section(profile, modules, write=True):
     if 'release' not in modules or not profile.is_file():
-        return
+        return False
     text = profile.read_text()
     if '## Release qualification profile' in text:
-        return
+        return False
     m = MODULE_BLOCK.search((root / 'PROJECT_PROFILE.md').read_text())
     if m and m.group(1) == 'release':
-        profile.write_text(text.rstrip('\n') + '\n' + m.group(2) + '\n')
+        if write:
+            profile.write_text(text.rstrip('\n') + '\n' + m.group(2) + '\n')
+        return True
+    return False
 
 
 def build_guidance_record(manifest, tier, features, modules, tools, source, wanted_entries, agents_path=None, tracked_blocks=None):
@@ -610,63 +614,88 @@ def install(manifest, target, force, tier=None, features=(), everything=False, d
     wanted_entries = [e for e in manifest['files'] if in_modules(e, modules) and for_tools(manifest, e['path'], chosen)]
     wanted = [e['path'] for e in wanted_entries]
     chosen_tier = tier or previous.get('tier')
-    if dry_run:
-        new = [p for p in wanted + [GUIDANCE_FILE] if force or not (target / p).exists()]
-        print(f"Would install modules: {', '.join(modules)}" + (f' (tier {chosen_tier})' if chosen_tier else '')
-              + f"; tools: {', '.join(chosen)}")
-        print(f'Would copy {len(new)} files into {target}' + (':\n  ' + '\n  '.join(new) if new else '.'))
-        kept = len(wanted) + 1 - len(new)
-        if kept:
-            print(f'Would skip {kept} existing files.')
-        print('Nothing was written (--dry-run).')
-        return
+    copied, refreshed, skipped = [], [], []
+    agents_target = target / 'AGENTS.md'
+    profile_target = target / 'PROJECT_PROFILE.md'
+    profile_rows = []
 
-    copied, skipped = [], []
     for path in wanted:
         dest = target / path
-        if dest.exists() and not force:
-            if path in GUARDRAIL_FILES and prev_modules:
-                package_text = (root / path).read_text()
-                if dest.read_text() == effective(path, package_text, manifest, prev_modules):
-                    new_text = effective(path, package_text, manifest, set(modules))
-                    if new_text != dest.read_text():
-                        dest.write_text(new_text)
-                        copied.append(path)
-                        continue
-            skipped.append(path)
+        if not dest.exists() or force:
+            if not dry_run:
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                raw = packaged_text(manifest, path)
+                eff = effective(path, raw, manifest, set(modules))
+                if eff != raw:
+                    dest.write_text(eff)
+                else:
+                    shutil.copy2(root / path, dest)
+            copied.append(path)
             continue
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        eff = effective(path, packaged_text(manifest, path), manifest, set(modules))
-        if eff != packaged_text(manifest, path):
-            dest.write_text(eff)
-        else:
-            shutil.copy2(root / path, dest)
-        copied.append(path)
+
+        changed = False
+        if path in GUARDRAIL_FILES and prev_modules:
+            package_text = (root / path).read_text()
+            if dest.read_text() == effective(path, package_text, manifest, prev_modules):
+                new_text = effective(path, package_text, manifest, set(modules))
+                if new_text != dest.read_text():
+                    if not dry_run:
+                        dest.write_text(new_text)
+                    changed = True
+        elif path == 'AGENTS.md':
+            agents = generate_agents(dest, manifest, set(modules))
+            if agents is not None and agents != dest.read_text():
+                if not dry_run:
+                    dest.write_text(agents)
+                changed = True
+        elif path == 'PROJECT_PROFILE.md':
+            rel_added = add_release_profile_section(dest, set(modules), write=not dry_run)
+            profile_rows = add_profile_rows(dest, manifest, set(modules), write=not dry_run)
+            changed = bool(rel_added or profile_rows)
+        (refreshed if changed else skipped).append(path)
+
+    if not dry_run and 'PROJECT_PROFILE.md' in copied:
+        add_release_profile_section(profile_target, set(modules))
+        profile_rows = add_profile_rows(profile_target, manifest, set(modules))
 
     if not (target / 'README.md').exists():
-        (target / 'README.md').write_text(f'# {target.name}\n\nProject overview and usage.\n')
+        if not dry_run:
+            (target / 'README.md').write_text(f'# {target.name}\n\nProject overview and usage.\n')
         copied.append('README.md')
 
     record_dest = target / GUIDANCE_FILE
-    source = prev_doc.get('installed_from') if (record_dest.exists() and not force) else source_identity()
-    record = build_guidance_record(manifest, chosen_tier, all_features, modules, chosen, source or source_identity(),
-                                   wanted_entries, agents_path=target / 'AGENTS.md')
-    if not record_dest.exists() or force or chosen_tier != previous.get('tier') or modules != sorted(prev_modules) or chosen != sorted(previous.get('tools', [])):
-        record_dest.write_text(json.dumps(record, indent=2) + '\n')
-        copied.append(GUIDANCE_FILE)
+    record_exists = record_dest.exists()
+    source = prev_doc.get('installed_from') if (record_exists and not force) else source_identity()
+    record = build_guidance_record(
+        manifest, chosen_tier, all_features, modules, chosen, source or source_identity(),
+        wanted_entries, agents_path=None if (dry_run and not agents_target.exists()) else agents_target)
+    record_changed = (not record_exists or force or chosen_tier != previous.get('tier')
+                      or modules != sorted(prev_modules) or chosen != sorted(previous.get('tools', [])))
+    if record_changed:
+        if not dry_run:
+            record_dest.write_text(json.dumps(record, indent=2) + '\n')
+        (copied if (not record_exists or force) else refreshed).append(GUIDANCE_FILE)
     else:
         skipped.append(GUIDANCE_FILE)
 
-    agents = generate_agents(target / 'AGENTS.md', manifest, set(modules))
-    if agents is not None and agents != (target / 'AGENTS.md').read_text():
-        (target / 'AGENTS.md').write_text(agents)
-    add_release_profile_section(target / 'PROJECT_PROFILE.md', set(modules))
-    added = add_profile_rows(target / 'PROJECT_PROFILE.md', manifest, set(modules))
-    if added:
-        print('Added command-inventory rows: ' + ', '.join(added))
+    if dry_run:
+        print(f"Would install modules: {', '.join(modules)}" + (f' (tier {chosen_tier})' if chosen_tier else '')
+              + f"; tools: {', '.join(chosen)}")
+        print(f'Would copy {len(copied)} files into {target}' + (':\n  ' + '\n  '.join(copied) if copied else '.'))
+        if refreshed:
+            print(f'Would refresh {len(refreshed)} existing files in place:\n  ' + '\n  '.join(refreshed))
+        if skipped:
+            print(f'Would skip {len(skipped)} unchanged existing files.')
+        print('Nothing was written (--dry-run).')
+        return
+
+    if profile_rows:
+        print('Added command-inventory rows: ' + ', '.join(profile_rows))
     print(f"Installed modules: {', '.join(modules)}" + (f" (tier {chosen_tier})" if chosen_tier else '')
           + f"; tools: {', '.join(manifest['tools'][t]['name'] for t in chosen)}")
     print(f'Copied {len(copied)} files into {target}.')
+    if refreshed:
+        print(f'Refreshed {len(refreshed)} existing files in place:\n  ' + '\n  '.join(refreshed))
     if skipped:
         print('Skipped existing files (merge by hand or rerun with --force):\n  ' + '\n  '.join(skipped))
     print('Next: fill PROJECT_PROFILE.md above "## Command inventory", then run: python3 scripts/verify.py --require code')

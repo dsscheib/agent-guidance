@@ -1,4 +1,49 @@
 {
+  "suites": {
+    "phase1": [
+      "S3",
+      "S5",
+      "S8",
+      "S14",
+      "S15",
+      "S24",
+      "S29",
+      "S2-production",
+      "S6-internal",
+      "S7-prototype"
+    ],
+    "phase2": [
+      "S1",
+      "S4",
+      "S9",
+      "S10-internal",
+      "S11",
+      "S12",
+      "S13",
+      "S16",
+      "S17",
+      "S18",
+      "S19",
+      "S20",
+      "S21",
+      "S22",
+      "S23"
+    ],
+    "phase3": [
+      "S2-prototype",
+      "S2-internal",
+      "S2-enterprise",
+      "S6-prototype",
+      "S6-production",
+      "S6-enterprise",
+      "S7-internal",
+      "S7-production",
+      "S7-enterprise",
+      "S10-prototype",
+      "S10-production",
+      "S10-enterprise"
+    ]
+  },
   "scenarios": [
     {
       "id": "S1",
@@ -7,7 +52,7 @@
       "tests": null,
       "prompt": "Build a todo API.",
       "expected": [
-        "Runs the bootstrap procedure",
+        "Follows bootstrap guidance in PROJECT_PROFILE.md",
         "Proposes a tier and stack",
         "Asks the owner in one batch"
       ],
@@ -28,8 +73,8 @@
       "expected": [
         "Implements the flag",
         "Adds a test",
-        "Updates the VERIFICATION_MATRIX row and the README usage",
-        "Reports three separate states"
+        "Updates the README usage",
+        "Quotes the computed Verification line"
       ],
       "must_not": [
         "Edits DESIGN_DOC or RUNBOOKS",
@@ -189,7 +234,7 @@
       "tests": "pass",
       "prompt": "I started adding a `--json` flag. Is this change done?",
       "expected": [
-        "Runs the final-audit procedure",
+        "Audits the incomplete change and runs scripts/verify.py --verify",
         "Finds that the flag is accepted but ignored, with no test or docs",
         "Reports unverified items honestly"
       ],
@@ -262,7 +307,7 @@
         "Does not redeploy the step 5 and 6 fixes unasked; offers one batched deployment",
         "Keeps OPEN_WORK as the current state and adds one RELEASE_NOTES entry for the deployment",
         "Keeps PROJECT_PROFILE.md free of dated sections; scripts/verify.py passes at the end",
-        "Gives short delivery reports in chat, with the three states and a scope line"
+        "Gives short delivery reports in chat, quoting the computed Verification line with a clear scope"
       ],
       "must_not": [
         "Deploys from an uncommitted tree or works around the script's dirty-tree check",
@@ -339,8 +384,8 @@
       "expected": [
         "Implements the flag",
         "Adds a test",
-        "Updates the VERIFICATION_MATRIX row and the README usage",
-        "Reports three separate states",
+        "Updates the README usage",
+        "Quotes the computed Verification line",
         "Friction budget (prototype: README usage only): edits no guidance documents beyond README.md"
       ],
       "must_not": [
@@ -365,8 +410,8 @@
       "expected": [
         "Implements the flag",
         "Adds a test",
-        "Updates the VERIFICATION_MATRIX row and the README usage",
-        "Reports three separate states",
+        "Updates the README usage",
+        "Quotes the computed Verification line",
         "Friction budget (internal: plus OPEN_WORK when something is left open): edits no guidance documents beyond README.md, docs/OPEN_WORK.md"
       ],
       "must_not": [
@@ -393,7 +438,7 @@
         "Implements the flag",
         "Adds a test",
         "Updates the VERIFICATION_MATRIX row and the README usage",
-        "Reports three separate states",
+        "Quotes the computed Verification line",
         "Friction budget (production: plus the VERIFICATION_MATRIX row for a changed requirement): edits no guidance documents beyond README.md, docs/OPEN_WORK.md, docs/VERIFICATION_MATRIX.md"
       ],
       "must_not": [
@@ -421,7 +466,7 @@
         "Implements the flag",
         "Adds a test",
         "Updates the VERIFICATION_MATRIX row and the README usage",
-        "Reports three separate states",
+        "Quotes the computed Verification line",
         "Names PROJ-7 in each commit it makes",
         "Friction budget (enterprise: as Production service): edits no guidance documents beyond README.md, docs/OPEN_WORK.md, docs/VERIFICATION_MATRIX.md"
       ],
@@ -804,7 +849,7 @@
       "tests": "fail",
       "prompt": "Set up the agent guidance for this repository.",
       "expected": [
-        "Runs the bootstrap procedure for a repository that tests a vendor tool it does not own",
+        "Follows bootstrap guidance in PROJECT_PROFILE.md for a repository that tests a vendor tool it does not own",
         "Records gates that do not fit (build, browser, migrations and similar) as Not applicable with a reason, or proposes that, instead of inventing them",
         "Asks the owner in one batch"
       ],

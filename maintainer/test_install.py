@@ -581,6 +581,51 @@ def case_v2_to_v4_upgrade(tmp):
     expect(chk.returncode == 0 and 'nothing lost' in chk.stdout, 'v2->v4 --check-upgrade failed: ' + chk.stdout + chk.stderr)
 
 
+def case_reinstall_dry_run_and_refresh(tmp):
+    target = tmp / 'reinstall'
+    target.mkdir()
+    install(target, '--tier', 'prototype')
+    agents = target / 'AGENTS.md'
+    agents.write_text(agents.read_text() + '\n## Custom team rule\nKeep handlers pure.\n')
+
+    # Customize one guardrail file; leave the remaining guardrails, AGENTS.md, PROJECT_PROFILE.md, and .guidance.json unmodified.
+    claude_cfg = target / '.claude/settings.json'
+    custom_claude = claude_cfg.read_text() + '\n'
+    claude_cfg.write_text(custom_claude)
+    before_guidance = (target / '.guidance.json').read_text()
+    before_agents = agents.read_text()
+    before_profile = (target / 'PROJECT_PROFILE.md').read_text()
+    before_codex = (target / '.codex/rules/guidance.rules').read_text()
+
+    dry = run_manage(root, '--install', str(target), '--tier', 'enterprise', '--dry-run')
+    expect(dry.returncode == 0 and 'Nothing was written' in dry.stdout, '--dry-run upgrade failed: ' + dry.stdout + dry.stderr)
+    expect((target / '.guidance.json').read_text() == before_guidance and agents.read_text() == before_agents
+           and (target / 'PROJECT_PROFILE.md').read_text() == before_profile
+           and (target / '.codex/rules/guidance.rules').read_text() == before_codex
+           and not (target / 'docs/ENTERPRISE.md').exists(), '--dry-run modified project files')
+
+    dry_refresh = plan_section(dry.stdout, 'Would refresh')
+    dry_copy = plan_section(dry.stdout, 'Would copy')
+    for path in ('AGENTS.md', 'PROJECT_PROFILE.md', '.guidance.json', '.codex/rules/guidance.rules', '.github/hooks/guidance_guardrail.py'):
+        expect(path in dry_refresh, f'--dry-run should list {path} under Would refresh:\n{dry.stdout}')
+    expect('.claude/settings.json' not in dry_refresh, f'--dry-run should keep customized .claude/settings.json skipped:\n{dry.stdout}')
+    expect('docs/ENTERPRISE.md' in dry_copy, f'--dry-run should list docs/ENTERPRISE.md under Would copy:\n{dry.stdout}')
+
+    live = install(target, '--tier', 'enterprise')
+    live_refresh = plan_section(live.stdout, 'Refreshed')
+    live_skipped = plan_section(live.stdout, 'Skipped existing files')
+    for path in ('AGENTS.md', 'PROJECT_PROFILE.md', '.guidance.json', '.codex/rules/guidance.rules', '.github/hooks/guidance_guardrail.py'):
+        expect(path in live_refresh and path not in live_skipped,
+               f'reinstall should report {path} under Refreshed rather than Skipped:\n{live.stdout}')
+    expect('.claude/settings.json' in live_skipped and claude_cfg.read_text() == custom_claude,
+           f'reinstall should skip and preserve customized .claude/settings.json:\n{live.stdout}')
+    expect('## Custom team rule\nKeep handlers pure.' in agents.read_text()
+           and 'docs/ENTERPRISE' in agents.read_text(), 'reinstall dropped custom section or failed to refresh AGENTS.md table')
+    expect('## Release qualification profile' in (target / 'PROJECT_PROFILE.md').read_text()
+           and '| Dependency audit |' in (target / 'PROJECT_PROFILE.md').read_text(),
+           'reinstall failed to refresh PROJECT_PROFILE.md')
+
+
 def case_neutrality_and_sync_constants():
     forbidden = re.compile(r'(?i)\b(?:antigravity|agent-team|xhigh|read_file|view_file|auditor-advisor|'
                            r'hardware-auditor|mechanical-auditor|ux-designer|frontend-tester|FreeCADCmd)\b'
@@ -638,6 +683,7 @@ def main():
             case_v4_upgrade,
             case_v3_to_v4_upgrade,
             case_v2_to_v4_upgrade,
+            case_reinstall_dry_run_and_refresh,
         ):
             case(tmp)
     case_neutrality_and_sync_constants()
