@@ -310,3 +310,15 @@ Append one row per run, never edit past rows, and record the guidance commit tes
 | 2026-11-22 | S16 | codex | codex-cli 0.171.0 gpt-6.2-sol | 8f1fc48-agent | 2 | pass | Auto-scored |
 | 2026-11-22 | S18 | codex | codex-cli 0.171.0 gpt-6.2-sol | 8f1fc48-agent | 1 | fail | Auto-scored: tier not mapped to Internal |
 | 2026-11-22 | S18 | codex | codex-cli 0.171.0 gpt-6.2-sol | 8f1fc48-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S2-production | agy | 1.5.14 gemini-4-neon-medium | b2dc8ea-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S2-production | agy | 1.5.14 gemini-4-neon-medium | b2dc8ea-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S7-prototype | agy | 1.5.14 gemini-4-neon-medium | b2dc8ea-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S7-prototype | agy | 1.5.14 gemini-4-neon-medium | b2dc8ea-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S2-production | claude | 2.1.330 (Claude Code) claude-opus-5-5 | b2dc8ea-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S2-production | claude | 2.1.330 (Claude Code) claude-opus-5-5 | b2dc8ea-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S7-prototype | claude | 2.1.330 (Claude Code) claude-opus-5-5 | b2dc8ea-agent | 1 | fail | Auto-scored: did not record the unverified browser checks |
+| 2026-11-22 | S7-prototype | claude | 2.1.330 (Claude Code) claude-opus-5-5 | b2dc8ea-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S2-production | codex | codex-cli 0.171.0 gpt-6.2-sol | b2dc8ea-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S2-production | codex | codex-cli 0.171.0 gpt-6.2-sol | b2dc8ea-agent | 2 | pass | Auto-scored |
+| 2026-11-22 | S7-prototype | codex | codex-cli 0.171.0 gpt-6.2-sol | b2dc8ea-agent | 1 | pass | Auto-scored |
+| 2026-11-22 | S7-prototype | codex | codex-cli 0.171.0 gpt-6.2-sol | b2dc8ea-agent | 2 | pass | Auto-scored |
