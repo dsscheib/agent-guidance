@@ -60,5 +60,5 @@ Show the plan summary, conflicts, and `review` items side-by-side in your reply 
    ```sh
    python3 /path/to/agent-guidance/manage.py --check-upgrade /path/to/project --since <pre-upgrade-commit>
    ```
-   Confirm no open items disappeared or closed silently, no deployed revision disappeared, no local customization or script reference was dropped, and no conflict markers remain.
+   Confirm `--check-upgrade` passes (checking open items, deployed revisions, deleted-script references, `.md` conflict markers, and local edits to `AGENTS.md` and guidance docs); review filled project docs (`PROJECT_PROFILE.md`, `DESIGN_DOC.md`, runbooks, and registers) directly in `git diff` so no project customization is lost.
 3. Validate JSON files and report changed files, checks run, remaining owner actions, and any unverified areas plainly.

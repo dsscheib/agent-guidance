@@ -8,9 +8,9 @@
       "S15",
       "S24",
       "S29",
-      "S2-production",
+      "S2-internal",
       "S6-internal",
-      "S7-prototype"
+      "S7-internal"
     ],
     "phase2": [
       "S1",
@@ -31,12 +31,12 @@
     ],
     "phase3": [
       "S2-prototype",
-      "S2-internal",
+      "S2-production",
       "S2-enterprise",
       "S6-prototype",
       "S6-production",
       "S6-enterprise",
-      "S7-internal",
+      "S7-prototype",
       "S7-production",
       "S7-enterprise",
       "S10-prototype",

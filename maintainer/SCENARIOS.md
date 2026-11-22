@@ -86,9 +86,9 @@ Generated from `scenarios.json`; do not edit by hand.
 <!-- scenarios:begin -->
 | Suite | Count | Scenarios |
 |---|---|---|
-| `phase1` | 10 | `S3`, `S5`, `S8`, `S14`, `S15`, `S24`, `S29`, `S2-production`, `S6-internal`, `S7-prototype` |
+| `phase1` | 10 | `S3`, `S5`, `S8`, `S14`, `S15`, `S24`, `S29`, `S2-internal`, `S6-internal`, `S7-internal` |
 | `phase2` | 15 | `S1`, `S4`, `S9`, `S10-internal`, `S11`, `S12`, `S13`, `S16`, `S17`, `S18`, `S19`, `S20`, `S21`, `S22`, `S23` |
-| `phase3` | 12 | `S2-prototype`, `S2-internal`, `S2-enterprise`, `S6-prototype`, `S6-production`, `S6-enterprise`, `S7-internal`, `S7-production`, `S7-enterprise`, `S10-prototype`, `S10-production`, `S10-enterprise` |
+| `phase3` | 12 | `S2-prototype`, `S2-production`, `S2-enterprise`, `S6-prototype`, `S6-production`, `S6-enterprise`, `S7-prototype`, `S7-production`, `S7-enterprise`, `S10-prototype`, `S10-production`, `S10-enterprise` |
 
 | Fixture | Contents |
 |---|---|

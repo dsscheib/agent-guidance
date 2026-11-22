@@ -22,7 +22,7 @@ For a new project:
 
    Fresh installs omit optional sections that do not apply (such as `## Release qualification profile` below `production`). Running `--install` again never overwrites customized files without `--force`; it updates `.guidance.json`, refreshes generated tables inside `AGENTS.md`, adds applicable sections and inventory rows in `PROJECT_PROFILE.md`, updates unmodified guardrail files when modules change, and preserves custom sections appended to `AGENTS.md` (such as an `agent-team` install).
 
-2. **Add specialist subagents (recommended):** install [agent-team](https://github.com/dsscheib/agent-team) (`bootstrap.py --project /path/to/project --with-agents-md --apply`) in either order before or after this installer. `manage.py --sync DIR` and `--plan-upgrade` preserve sections appended at the end of `AGENTS.md` and leave project specialist files in `.{claude,codex,github,agents}/agents` alone.
+2. **Add specialist subagents (recommended):** install [agent-team](https://github.com/dsscheib/agent-team) (`bootstrap.py --project /path/to/project --with-agents-md --apply`) after this installer so `manage.py --install` writes the template `AGENTS.md` first and `agent-team` appends to it (if `agent-team` runs first and writes `AGENTS.md`, `--install` keeps that existing file and asks you to merge by hand or rerun with `--force` before re-applying `--with-agents-md`). `manage.py --sync DIR` and `--plan-upgrade` preserve sections appended at the end of `AGENTS.md` and leave project specialist files in `.{claude,codex,github,agents}/agents` alone.
 
 3. **Fill [PROJECT_PROFILE.md](PROJECT_PROFILE.md):** ask your agent to inspect the repo, fill inferable values above `## Command inventory` as `Proposed — inferred from <file>`, mark inapplicable inventory rows `Proposed: Not applicable: <reason>`, ask you the remaining decisions in one batch, and confirm:
 
@@ -38,18 +38,16 @@ For a new project:
    python3 scripts/verify.py --verify release    # release candidates
    ```
 
-## Tiers and gate expectations
+## Choosing a tier
 
-Choose the lowest tier whose risks match your project:
+Pick the lowest tier whose risks match your project; see [Tier gate expectations](docs/procedures/release-readiness.md#tier-gate-expectations) for the full gate matrix.
 
-| Gate | `prototype` (small / personal experiments) | `internal` (trusted users, data that matters) | `production` (external users or uptime commitments) | `enterprise` (roles, traceability, supply chain) |
-|---|---|---|---|---|
-| Profile + Command inventory | Required | Required | Required | Required |
-| Automated tests + static checks | Smoke tests | Unit/integration + static | Full suite + concurrency | Full + CI receipts |
-| Recovery / backup drill | Not required | Before relying on persistent data | Release gate (isolated fixtures) | Release gate + retention evidence |
-| Pre-release review | Optional (`--features release-review`) | Optional (`--features release-review`) | Included (`release-review` skill) | Included (`release-review` skill) |
-| Readiness + verification matrix | Not required | Not required | Included (`release-readiness` skill) | Included + named role approval |
-| Dependency audit, SBOM, license check | Not required | Report known risks | Report gaps; release gate if tooling exists | Release gate rows added (`enterprise`) |
+| Tier | Intended use | Included modules & extras |
+|---|---|---|
+| `prototype` | Small / personal experiments | Core guidance, verifier, open-work register (`--features release-review` optional) |
+| `internal` | Trusted users, data that matters | Adds `DESIGN_DOC.md` and `docs/RUNBOOKS.md` (`--features release-review` optional) |
+| `production` | External users or uptime commitments | Adds `release-review`, `release-readiness`, readiness & verification registers |
+| `enterprise` | Roles, traceability, supply chain | Adds `docs/ENTERPRISE.md`, PR template, CI/supply-chain gate rows, strict guardrails |
 
 ## Agent support and selective skills
 
@@ -65,7 +63,7 @@ Per-tool adapters installed inside projects:
 - **Claude Code:** `CLAUDE.md` (`@AGENTS.md`), `.claude/settings.json` (git/PR guardrails + `.env` read deny), `.claude/skills/`.
 - **Codex:** `AGENTS.md`, `.codex/rules/guidance.rules`, `.agents/skills/`.
 - **Antigravity:** `AGENTS.md`, `.agents/skills/` (user-level command rules live outside repos).
-- **Copilot CLI:** `AGENTS.md`, `.github/hooks/guidance.json` + `guidance_guardrail.py`, `.agents/skills/`, `.claude/skills/`.
+- **Copilot CLI:** `AGENTS.md`, `.github/hooks/guidance.json` + `guidance_guardrail.py`, `.agents/skills/` (validating/syncing existing generated `.claude/skills/` wrappers when present).
 
 ## Commands
 

@@ -228,10 +228,35 @@ def case_guardrails(tmp):
     hook_cfg = json.loads((proto / '.github/hooks/guidance.json').read_text())
     expect('preToolUse' in hook_cfg.get('hooks', {}) and 'agentStop' not in hook_cfg.get('hooks', {}),
            'default .github/hooks/guidance.json must ship preToolUse only (no agentStop)')
-    # Break enterprise guardrail and verify scripts/verify.py rejects it.
-    (ent / '.claude/settings.json').write_text('{"permissions": {"ask": [], "deny": []}}\n')
+    # Break or delete each enterprise guardrail file and verify scripts/verify.py rejects it.
+    claude_guard = ent / '.claude/settings.json'
+    codex_guard = ent / '.codex/rules/guidance.rules'
+    copilot_guard = ent / '.github/hooks/guidance_guardrail.py'
+    orig_claude = claude_guard.read_text()
+    claude_guard.write_text('{"permissions": {"ask": [], "deny": []}}\n')
     ok, out = check(ent)
     expect(not ok and 'merge a pull request' in out, 'scripts/verify.py should fail when enterprise guardrail is removed')
+    for path, orig in ((claude_guard, orig_claude),
+                       (codex_guard, codex_guard.read_text()),
+                       (copilot_guard, copilot_guard.read_text())):
+        path.unlink()
+        ok, out = check(ent)
+        expect(not ok and path.name in out and 'merge a pull request' in out,
+               f'scripts/verify.py should fail when {path.name} is deleted: {out}')
+        path.write_text(orig)
+    # Fallback checks when guardrail_checks is absent must respect adopted tools.
+    gpath = ent / '.guidance.json'
+    rec = json.loads(gpath.read_text())
+    rec.pop('guardrail_checks', None)
+    rec['installed']['tools'] = ['claude']
+    gpath.write_text(json.dumps(rec, indent=2) + '\n')
+    codex_guard.unlink()
+    copilot_guard.unlink()
+    ok, out = check(ent)
+    expect(ok, 'fallback guardrail check should ignore uninstalled tools: ' + out)
+    claude_guard.unlink()
+    ok, out = check(ent)
+    expect(not ok and '.claude/settings.json' in out, 'fallback guardrail check must fail when adopted tool file is deleted: ' + out)
 
 
 def case_exclusions_deps_rename_docs_timeouts(tmp):
@@ -272,6 +297,37 @@ def case_exclusions_deps_rename_docs_timeouts(tmp):
     expect('requirements.txt' in r_rel.stdout and '2.31.0' not in r_rel.stdout, 'release dep gap check failed: ' + r_rel.stdout)
     expect((tmp / 'receipt.json').is_file(), 'verify did not write --receipt')
 
+    # 1b. Gate label normalization: & and 'and' run in both phases; mixed/unrecognized labels fail as incomplete without silently running/dropping.
+    base_profile = profile.read_text()
+    profile.write_text(base_profile.replace(
+        '| Guidance integrity |',
+        '| Gate and check | `python3 -c "print(1)"` | Development & Release | Dev | — |\n'
+        '| Gate word and | `python3 -c "print(2)"` | Development and release | Dev | — |\n'
+        '| Guidance integrity |',
+    ))
+    r_dev = verify(target, 'development')
+    expect('passed    Gate and check' in r_dev.stdout and 'passed    Gate word and' in r_dev.stdout,
+           'Development & Release / and should run in development:\n' + r_dev.stdout)
+    r_rel_conj = verify(target, 'release')
+    expect('passed    Gate and check' in r_rel_conj.stdout and 'passed    Gate word and' in r_rel_conj.stdout,
+           'Development & Release / and should run in release:\n' + r_rel_conj.stdout)
+
+    profile.write_text(base_profile.replace(
+        '| Guidance integrity |',
+        '| Mixed gate | `python3 -c "open(\'mixed-ran\', \'w\').write(\'x\')"` | Release / Manual | Staging | Manual |\n'
+        '| Qualified gate | `python3 -c "print(3)"` | Release (CI only) | CI | — |\n'
+        '| Guidance integrity |',
+    ))
+    r_bad_dev = verify(target, 'development')
+    expect(r_bad_dev.returncode == 2 and 'unrecognized or mixed Gate label(s)' in r_bad_dev.stdout
+           and not (target / 'mixed-ran').exists() and 'Mixed gate' in r_bad_dev.stdout and 'Qualified gate' in r_bad_dev.stdout,
+           'development mode must report unrecognized/mixed Gate labels:\n' + r_bad_dev.stdout)
+    r_bad_rel = verify(target, 'release')
+    expect(r_bad_rel.returncode != 0 and 'unrecognized or mixed Gate label(s)' in r_bad_rel.stdout
+           and not (target / 'mixed-ran').exists() and 'Mixed gate' in r_bad_rel.stdout and 'Qualified gate' in r_bad_rel.stdout,
+           'Release / Manual and Release (CI only) must report a problem instead of silently skipping:\n' + r_bad_rel.stdout)
+    profile.write_text(base_profile)
+
     # 2. Per-gate timeout
     profile.write_text(profile.read_text()
                        .replace('| Browser / accessibility smoke | Proposed: Not applicable: CLI only | Development |',
@@ -283,15 +339,16 @@ def case_exclusions_deps_rename_docs_timeouts(tmp):
     expect('passed    Browser / accessibility smoke' in r_to.stdout and 'timed out after 1s (the --timeout default' in r_to.stdout,
            'per-gate timeout mismatch:\n' + r_to.stdout)
 
-    # 3. Documentation mode passes on a clean/doc-only repo, and fails on uncommitted code changes.
+    # 3. Documentation mode passes on a clean/doc-only repo, and fails on uncommitted code or .txt changes.
     r_doc = verify(target, 'docs')
     expect(r_doc.returncode == 0 and 'Change scope' not in r_doc.stdout,
            '--verify docs should pass on clean repo: ' + r_doc.stdout)
-    (target / 'app.py').write_text('x = 1\n')
-    r_doc_code = verify(target, 'docs')
-    expect(r_doc_code.returncode == 1 and 'Change scope' in r_doc_code.stdout,
-           '--verify docs must fail with untracked app.py: ' + r_doc_code.stdout)
-    (target / 'app.py').unlink()
+    for bad_file in ('app.py', 'notes.txt'):
+        (target / bad_file).write_text('x = 1\n')
+        r_doc_bad = verify(target, 'docs')
+        expect(r_doc_bad.returncode == 1 and 'Change scope' in r_doc_bad.stdout and bad_file in r_doc_bad.stdout,
+               f'--verify docs must fail with untracked {bad_file}: ' + r_doc_bad.stdout)
+        (target / bad_file).unlink()
 
     # 4. Missing required module check fails when all files of a required module are removed.
     (target / 'docs/UI.md').unlink() if (target / 'docs/UI.md').exists() else None
@@ -384,11 +441,26 @@ def case_tools_and_default_and_broken(tmp):
     ok, out = check(copilot_only)
     expect(ok, '--tools copilot should allow user-authored .claude/skills without marker: ' + out)
 
+    # --sync removes orphaned .claude/skills wrappers and repairs stale existing ones without creating absent wrappers.
+    rr_agents.write_text('stale\n')
+    rr_claude.write_text('stale\n')
+    orphan.write_text(orig_rr)
+    sync_r = run_manage(root, '--sync', str(copilot_only))
+    expect(sync_r.returncode == 0, '--tools copilot --sync failed: ' + sync_r.stdout + sync_r.stderr)
+    expect(rr_agents.read_text() == orig_rr and rr_claude.read_text() == orig_rr,
+           '--tools copilot --sync failed to repair stale skill wrappers')
+    expect(not (copilot_only / '.claude/skills/release-readiness/SKILL.md').exists(),
+           '--tools copilot --sync created absent .claude/skills/release-readiness wrapper')
+    expect(not orphan.exists() and custom.is_file(),
+           '--tools copilot --sync must remove orphan and keep user-authored skill')
+    ok, out = check(copilot_only)
+    expect(ok, '--tools copilot check failed after --sync repair: ' + out)
+
 
 def case_agent_team_interop(tmp):
     if not AGENT_TEAM_BOOTSTRAP.is_file():
         print(f'SKIP: agent-team interop test ({AGENT_TEAM_BOOTSTRAP} not found; set AGENT_TEAM_BOOTSTRAP to run)')
-        return
+        return False
     # Order 1: agent-guidance first, then agent-team
     p1 = tmp / 'interop-1'
     p1.mkdir()
@@ -534,6 +606,12 @@ def case_v3_to_v4_upgrade(tmp):
     (target / 'docs/OPEN_WORK.md').write_text('# Open work\n\n| ID | Status | Summary | Blocker |\n|---|---|---|---|\n| OW-7 | Open | Ship telemetry | — |\n')
     init_git(target, 'baseline 3.0.2')
 
+    legacy_block = run_manage(root, '--install', str(target), '--tier', 'internal')
+    expect(legacy_block.returncode != 0 and 'legacy PACKAGE_MANIFEST.json install' in (legacy_block.stdout + legacy_block.stderr)
+           and not (target / '.guidance.json').exists(),
+           '--install without --force must refuse legacy PACKAGE_MANIFEST.json layout: '
+           + legacy_block.stdout + legacy_block.stderr)
+
     patch = tmp / 'v3-to-v4.patch'
     plan = run_manage(root, '--plan-upgrade', str(target), '--patch', str(patch))
     expect(plan.returncode == 0, 'v3->v4 --plan-upgrade failed: ' + plan.stdout + plan.stderr)
@@ -562,11 +640,16 @@ def case_v3_to_v4_upgrade(tmp):
     expect(ok, 'scripts/verify.py failed after v3->v4 review fold:\n' + cout)
     chk = run_manage(root, '--check-upgrade', str(target), '--since', 'HEAD')
     expect(chk.returncode == 0 and 'nothing lost' in chk.stdout, 'v3->v4 --check-upgrade failed: ' + chk.stdout + chk.stderr)
-    # Dropping the folded local rule from AGENTS.md must fail --check-upgrade.
-    agents_file.write_text(agents_file.read_text().replace('\n- Local project rule: always run chaos fuzzing.\n', ''))
+    # Dropping the folded local rule from AGENTS.md must fail --check-upgrade, and conflict markers must fail it too.
+    clean_agents = agents_file.read_text()
+    agents_file.write_text(clean_agents.replace('\n- Local project rule: always run chaos fuzzing.\n', ''))
     chk_drop = run_manage(root, '--check-upgrade', str(target), '--since', 'HEAD')
     expect(chk_drop.returncode != 0 and 'local change(s) not found verbatim' in chk_drop.stdout,
            'v3->v4 --check-upgrade missed dropped folded local rule: ' + chk_drop.stdout + chk_drop.stderr)
+    agents_file.write_text(clean_agents + '\n<<<<<<< HEAD\nleft\n=======\nright\n>>>>>>> branch\n')
+    chk_conflict = run_manage(root, '--check-upgrade', str(target), '--since', 'HEAD')
+    expect(chk_conflict.returncode != 0 and 'unresolved merge conflict markers' in chk_conflict.stdout,
+           'v3->v4 --check-upgrade must fail on unresolved conflict markers: ' + chk_conflict.stdout + chk_conflict.stderr)
 
 
 def case_v2_to_v4_upgrade(tmp):
@@ -739,6 +822,7 @@ def main():
     if '--table' in sys.argv:
         table()
         return
+    skipped = []
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
         for case in (
@@ -756,13 +840,16 @@ def main():
             case_v2_to_v4_upgrade,
             case_reinstall_dry_run_and_refresh,
         ):
-            case(tmp)
+            if case(tmp) is False:
+                skipped.append(case.__name__)
     case_neutrality_and_sync_constants()
     if problems:
         print('\n'.join(problems))
         sys.exit(1)
+    suffix = f" ({len(skipped)} skipped: {', '.join(skipped)})" if skipped else ''
     print('Install tests OK: tiers, design policy, selective skills & sync, generated tables & enterprise rows, guardrails, '
-          'exclusions/deps/timeouts/docs mode, walk skips, tools & defaults, agent-team interop, v4/v3/v2 upgrades, and neutrality.')
+          'exclusions/deps/timeouts/docs mode, walk skips, tools & defaults, agent-team interop, v4/v3/v2 upgrades, and neutrality.'
+          + suffix)
 
 
 if __name__ == '__main__':

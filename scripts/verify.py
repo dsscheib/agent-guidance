@@ -24,7 +24,8 @@ GATE_PHASES = {
     'documentation': {'documentation'},
     'release': {'development', 'release', 'documentation'},
 }
-PROSE_SUFFIXES = {'.md', '.txt', '.rst'}
+UNGATED_LABELS = {'—', '–', '-', '--', 'manual', 'none', 'n/a', 'not applicable', 'ungated'}
+PROSE_SUFFIXES = {'.md', '.rst'}
 GUIDANCE_RECORDS = ('.guidance.json', 'PACKAGE_MANIFEST.json', 'docs/guidance-provenance.json')
 DEPENDENCY_FILES = re.compile(r'requirements[\w.-]*\.txt|pyproject\.toml|setup\.(py|cfg)|Pipfile(\.lock)?|poetry\.lock|uv\.lock'
                               r'|package(-lock)?\.json|yarn\.lock|pnpm-lock\.yaml|go\.(mod|sum)|Cargo\.(toml|lock)'
@@ -217,20 +218,24 @@ def check_agents_tables(record, errors):
 def check_guardrails(record, errors):
     checks = record.get('guardrail_checks')
     if checks is None:
-        modules = set((record.get('installed') or record).get('modules') or ())
+        meta = record.get('installed') or record
+        modules = set(meta.get('modules') or ())
         if 'enterprise' not in modules:
             return
-        checks = [
-            {'action': 'merge a pull request', 'path': '.claude/settings.json', 'token': 'Bash(gh pr merge:*)'},
-            {'action': 'publish a release', 'path': '.claude/settings.json', 'token': 'Bash(gh release create:*)'},
-            {'action': 'merge a pull request', 'path': '.codex/rules/guidance.rules', 'token': 'pattern = ["gh", "pr", "merge"]'},
-            {'action': 'publish a release', 'path': '.codex/rules/guidance.rules', 'token': 'pattern = ["gh", "release", "create"]'},
-            {'action': 'merge a pull request', 'path': '.github/hooks/guidance_guardrail.py', 'token': "(['pr', 'merge'],"},
-            {'action': 'publish a release', 'path': '.github/hooks/guidance_guardrail.py', 'token': "(['release', 'create'],"},
+        tools = set(meta.get('tools') or ())
+        fallback = [
+            ('claude', 'merge a pull request', '.claude/settings.json', 'Bash(gh pr merge:*)'),
+            ('claude', 'publish a release', '.claude/settings.json', 'Bash(gh release create:*)'),
+            ('codex', 'merge a pull request', '.codex/rules/guidance.rules', 'pattern = ["gh", "pr", "merge"]'),
+            ('codex', 'publish a release', '.codex/rules/guidance.rules', 'pattern = ["gh", "release", "create"]'),
+            ('copilot', 'merge a pull request', '.github/hooks/guidance_guardrail.py', "(['pr', 'merge'],"),
+            ('copilot', 'publish a release', '.github/hooks/guidance_guardrail.py', "(['release', 'create'],"),
         ]
+        checks = [{'action': action, 'path': path, 'token': token}
+                  for tool, action, path, token in fallback if not tools or tool in tools]
     for rule in checks:
         target = root / rule['path']
-        if target.is_file() and rule['token'] not in target.read_text():
+        if not target.is_file() or rule['token'] not in target.read_text():
             errors.append(f"{rule['path']} lacks the enterprise guardrail that asks before you {rule['action']}; restore it from the package")
 
 
@@ -269,7 +274,7 @@ def gate_timeout(gate):
 
 def gate_labels(gate):
     cleaned = GATE_TIMEOUT.sub('', gate.lower())
-    return {p.strip(' ()') for p in re.split(r'[/,;]', cleaned) if p.strip(' ()')}
+    return {p.strip(' ()') for p in re.split(r'[/,;+&]|\band\b', cleaned) if p.strip(' ()')}
 
 
 def inventory_gates(phase):
@@ -281,7 +286,8 @@ def inventory_gates(phase):
         start = next(i for i, l in enumerate(lines) if l.strip().lower() == '## command inventory')
     except StopIteration:
         return [], 'no "## Command inventory" section in PROJECT_PROFILE.md'
-    header, gates = None, []
+    header, gates, bad_gates = None, [], []
+    known = GATE_PHASES['release'] | UNGATED_LABELS
     for line in lines[start + 1:]:
         if line.startswith('## '):
             break
@@ -296,7 +302,10 @@ def inventory_gates(phase):
         row = dict(zip(header, cells))
         gate = row.get('gate', '').lower()
         labels = gate_labels(gate)
-        if not labels or not (labels & GATE_PHASES[phase]) or not (labels <= GATE_PHASES['release']):
+        if not labels or labels - known or (labels & GATE_PHASES['release'] and not (labels <= GATE_PHASES['release'])):
+            bad_gates.append(f"{row.get('purpose', '?')} ({row.get('gate', '').strip() or 'empty'})")
+            continue
+        if not (labels & GATE_PHASES[phase]):
             continue
         cell = row.get('command', '')
         code = INLINE_CODE.findall(cell)
@@ -311,6 +320,9 @@ def inventory_gates(phase):
         gates.append((row.get('purpose', '?'), gate, cell, command, kind))
     if header is None or 'gate' not in header:
         return [], 'the command inventory has no Gate column'
+    if bad_gates:
+        return gates, ('unrecognized or mixed Gate label(s): ' + ', '.join(bad_gates)
+                       + ' — use Development, Release, Documentation, Manual, or —')
     if phase == 'documentation' and not gates:
         return [], 'no command inventory row has Documentation in its Gate column'
     return gates, None

@@ -264,9 +264,12 @@ def expected_adapters(manifest, errors, tools=None, template=False, base=root, i
                 errors.append(f'{srel}: frontmatter needs name matching the filename and a description')
                 continue
             for adapter in manifest['adapters']:
-                if tools is not None and not for_tools(manifest, adapter['dir'] + '/', tools):
-                    continue
-                expected[f"{adapter['dir']}/{name}/SKILL.md"] = render_skill(srel, name, description)
+                adir = adapter['dir']
+                wpath = f'{adir}/{name}/SKILL.md'
+                if tools is not None and not for_tools(manifest, adir + '/', tools):
+                    if not (adir == '.claude/skills' and 'copilot' in tools and (base / wpath).is_file()):
+                        continue
+                expected[wpath] = render_skill(srel, name, description)
     if include_maintainer_roles:
         agents = expected_agents(manifest, errors, tools, active_roles(manifest, True), base)
         foreign = [p for p in agents if (base / p).is_file()
@@ -296,9 +299,11 @@ def generated_agents(manifest, tools=None, template=False, base=root):
 def existing_adapters(manifest, tools=None, template=False, base=root):
     found = set()
     for adapter in manifest['adapters']:
-        if tools is not None and not for_tools(manifest, adapter['dir'] + '/', tools):
-            continue
-        d = base / adapter['dir']
+        adir = adapter['dir']
+        if tools is not None and not for_tools(manifest, adir + '/', tools):
+            if not (adir == '.claude/skills' and 'copilot' in tools):
+                continue
+        d = base / adir
         if d.is_dir():
             for p in d.glob('*/SKILL.md'):
                 if template or SKILL_MARKER in p.read_text(errors='replace'):
@@ -600,6 +605,9 @@ def install(manifest, target, force, tier=None, features=(), everything=False, d
     if not target.is_dir() or target == root:
         sys.exit(f'Install target must be an existing directory other than this package: {target}')
     prev_doc, previous, prev_legacy = read_previous_install(target)
+    if prev_legacy and not force:
+        sys.exit(f'{target} has a legacy {LEGACY_MANIFEST} install; run --plan-upgrade {target} to migrate '
+                 f'without losing local changes, or pass --force to overwrite with {GUIDANCE_FILE}')
     prev_modules = set(previous.get('modules', []))
     if prev_legacy:
         prev_modules = {m for old in prev_modules for m in V3_MODULE_MAP.get(old, ())} & set(manifest['modules'])

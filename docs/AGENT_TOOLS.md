@@ -19,7 +19,7 @@ Never put a unique rule only in a tool adapter.
 | Command guardrails | `.codex/rules/*.rules` (`prefix_rule`) when trusted | User-level settings only (app preset or `~/.gemini/antigravity-cli/settings.json`) | `permissions` in `.claude/settings.json` | `preToolUse` in `.github/hooks/*.json` when trusted | Optional `scripts/hooks/pre-commit` |
 
 ## Rules for maintaining adapters
-- **Keep AGENTS.md lean.** Template `AGENTS.md` ceiling is 6,800 bytes (installed tiers run ~4.7–6.1 KB). Move detailed playbooks into routed files or on-demand procedures.
+- **Keep AGENTS.md lean.** Template `AGENTS.md` ceiling is 6,800 bytes (installed tiers run ~4.8–6.2 KB). Move detailed playbooks into routed files or on-demand procedures.
 - **Don't add a second always-on file.** Never duplicate `AGENTS.md` in `GEMINI.md` or `.github/copilot-instructions.md` (`scripts/verify.py` fails if either exceeds a 10-line pointer to `AGENTS.md`).
 - **Generate selective skill wrappers only for heavy procedures.** Only packaged procedures (`release-review`, `release-readiness`, `ui-design`) generate `SKILL.md` wrappers; repo-only procedures like `upgrade-guidance.md` do not. Edit `docs/procedures/<name>.md` and run `python3 manage.py --sync [DIR]`. Wrappers in `.agents/skills/` and `.claude/skills/` are byte-identical so Copilot CLI never sees divergent copies.
 - **Install only adopted tools.** `manage.py --install DIR --tools claude,codex` records `installed.tools` in `.guidance.json`. `scripts/verify.py`, `--sync DIR`, and `--plan-upgrade` ignore unconfigured tools and only enforce the `CLAUDE.md` shim rule when Claude Code is active.
@@ -38,9 +38,11 @@ This package installs no specialist agents into projects (`agent-team` or hand-a
 - **`scripts/hooks/pre-commit`** runs `python3 scripts/verify.py` inside installed projects or `python3 manage.py` inside the template repo when `git config core.hooksPath scripts/hooks` is enabled.
 
 ## Sources
-Checked 2026-10-27 to 2026-11-13:
+Checked 2026-10-27:
 - Codex skills & rules: <https://learn.chatgpt.com/docs/build-skills>, <https://learn.chatgpt.com/docs/agent-configuration/rules>
 - Antigravity rules, permissions, subagents & skills: <https://antigravity.google/docs/rules>, <https://antigravity.google/docs/permissions?tab=cli>, <https://antigravity.google/docs/subagents>, <https://codelabs.developers.google.com/antigravity-cli-hands-on>, <https://codelabs.developers.google.com/getting-started-with-antigravity-skills>
-- Antigravity CLI 1.4.12 (`~/.gemini/antigravity-cli/settings.json` `permissions.ask` precedence verified 2026-11-05)
 - Claude Code: <https://docs.claude.com/en/docs/claude-code>
-- Copilot CLI 1.0.105 custom instructions, skills & hooks: <https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions>, <https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-skills>, <https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-hooks-reference>
+
+Checked 2026-11-05 against Antigravity CLI 1.4.12 (`~/.gemini/antigravity-cli/settings.json` `permissions.ask` precedence verified by live prompt) and 2026-11-13 (agent subagents & CLI behavior).
+
+Checked 2026-10-29 against Copilot CLI 1.0.105 custom instructions, skills & hooks: <https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions>, <https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-skills>, <https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-hooks-reference>, <https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/use-hooks>

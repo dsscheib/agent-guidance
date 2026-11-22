@@ -17,7 +17,7 @@ Applies at the Enterprise tier in addition to Production tier rules. `scripts/ve
 | Approver | {{APPROVERS}} | Code review approval and merging to the default branch |
 | Release manager | {{RELEASE_MANAGER}} | Release acceptance for an identified candidate and environment |
 
-- **An agent never approves, merges, or accepts work (its own or anyone else's).** Prepare the change and evidence, then stop; the tool guardrails ask before `gh pr merge`, `gh pr review`, and `gh release create`, and `scripts/verify.py` fails if those rules are removed.
+- **An agent never approves, merges, or accepts work (its own or anyone else's).** Prepare the change and evidence, then stop; the tool guardrails ask before `gh pr review`, `gh pr merge`, and `gh release create`, and `scripts/verify.py` fails if the enterprise `gh pr merge` or `gh release create` rules are removed.
 - When asked to approve, merge, or accept, name which role decides and what evidence they need, and stop there.
 - Keep `CODEOWNERS` and branch protection enforced on the hosting service; `scripts/verify.py` reports if `CODEOWNERS` is missing.
 
