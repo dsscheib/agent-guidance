@@ -546,7 +546,7 @@ def add_release_profile_section(profile, modules):
         profile.write_text(text.rstrip('\n') + '\n' + m.group(2) + '\n')
 
 
-def build_guidance_record(manifest, tier, features, modules, tools, source, wanted_entries, agents_path=None):
+def build_guidance_record(manifest, tier, features, modules, tools, source, wanted_entries, agents_path=None, tracked_blocks=None):
     required = set(manifest['tiers'].get(tier or '', [])) | {
         m for f in features for m in manifest['features'].get(f, [])}
     module_files = {
@@ -560,7 +560,9 @@ def build_guidance_record(manifest, tier, features, modules, tools, source, want
         sha = hashlib.sha256(eff.encode()).hexdigest() if eff is not None else e.get('sha256')
         file_entries.append({'path': e['path'], 'kind': e.get('kind', ''), 'sha256': sha})
     blocks = expected_agents_blocks(manifest, modules)
-    if agents_path is not None and Path(agents_path).is_file():
+    if tracked_blocks is not None:
+        blocks = {k: v for k, v in blocks.items() if k in tracked_blocks}
+    elif agents_path is not None and Path(agents_path).is_file():
         present = {m.group(2) for m in GENERATED.finditer(Path(agents_path).read_text(errors='replace'))}
         blocks = {k: v for k, v in blocks.items() if k in present}
     return {
@@ -726,7 +728,7 @@ def plan_upgrade(manifest, target, patch=None):
     wanted = {e['path']: e for e in wanted_entries}
     have_base = bool(base_commit and package_git('cat-file', '-e', f'{base_commit}^{{commit}}') is not None)
     source = source_identity()
-    rows, diffs, blocked = [], [], []
+    rows, diffs, blocked, agents_patch_text = [], [], [], None
 
     def base_text(path):
         text = package_git('show', f'{base_commit}:{path}') if have_base else None
@@ -782,11 +784,15 @@ def plan_upgrade(manifest, target, patch=None):
             if merged.returncode == 0:
                 action, note = 'merge', 'project changes kept'
                 diffs.append(unified(path, mine, merged.stdout))
+                if path == 'AGENTS.md':
+                    agents_patch_text = merged.stdout
             else:
                 hunks = merged.returncode if merged.returncode > 0 else '?'
                 action, note = 'conflict', f'{hunks} conflicting hunk(s) with local changes'
         if action in ('replace', 'add', 'remove'):
             diffs.append(unified(path, mine, new))
+            if path == 'AGENTS.md' and action in ('replace', 'add'):
+                agents_patch_text = new
         if action in ('replace', 'add', 'remove', 'merge'):
             parent = next(p for p in [file, *file.parents] if p.exists())
             if not os.access(parent if parent.is_dir() else parent.parent, os.W_OK):
@@ -795,7 +801,13 @@ def plan_upgrade(manifest, target, patch=None):
 
     installed = record.get('installed') or {'tier': None, 'features': []}
     features = [f for f in (installed.get('features') or []) if f in manifest['features']]
-    proposed = build_guidance_record(manifest, installed.get('tier'), features, sorted(modules), sorted(tools), source, wanted_entries)
+    tracked = None
+    if isinstance(record.get('agents_blocks'), dict):
+        tracked = set(record['agents_blocks'].keys())
+        if agents_patch_text is not None:
+            tracked |= {m.group(2) for m in GENERATED.finditer(agents_patch_text)}
+    proposed = build_guidance_record(manifest, installed.get('tier'), features, sorted(modules), sorted(tools),
+                                     source, wanted_entries, tracked_blocks=tracked)
     proposed_text = json.dumps(proposed, indent=2) + '\n'
     if is_v3:
         rows.append(('remove', LEGACY_MANIFEST, 'manifest', f'replaced by {GUIDANCE_FILE}'))

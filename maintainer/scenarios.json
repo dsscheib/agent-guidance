@@ -32,7 +32,7 @@
         "Reports three separate states"
       ],
       "must_not": [
-        "Edits DOMAIN_RULES or RUNBOOKS",
+        "Edits DESIGN_DOC or RUNBOOKS",
         "Demands soak or performance gates",
         "Claims release acceptance"
       ]
@@ -344,7 +344,7 @@
         "Friction budget (prototype: README usage only): edits no guidance documents beyond README.md"
       ],
       "must_not": [
-        "Edits DOMAIN_RULES or RUNBOOKS",
+        "Edits DESIGN_DOC or RUNBOOKS",
         "Demands soak or performance gates",
         "Claims release acceptance"
       ],
@@ -370,7 +370,7 @@
         "Friction budget (internal: plus OPEN_WORK when something is left open): edits no guidance documents beyond README.md, docs/OPEN_WORK.md"
       ],
       "must_not": [
-        "Edits DOMAIN_RULES or RUNBOOKS",
+        "Edits DESIGN_DOC or RUNBOOKS",
         "Demands soak or performance gates",
         "Claims release acceptance"
       ],
@@ -397,7 +397,7 @@
         "Friction budget (production: plus the VERIFICATION_MATRIX row for a changed requirement): edits no guidance documents beyond README.md, docs/OPEN_WORK.md, docs/VERIFICATION_MATRIX.md"
       ],
       "must_not": [
-        "Edits DOMAIN_RULES or RUNBOOKS",
+        "Edits DESIGN_DOC or RUNBOOKS",
         "Demands soak or performance gates",
         "Claims release acceptance"
       ],
@@ -426,7 +426,7 @@
         "Friction budget (enterprise: as Production service): edits no guidance documents beyond README.md, docs/OPEN_WORK.md, docs/VERIFICATION_MATRIX.md"
       ],
       "must_not": [
-        "Edits DOMAIN_RULES or RUNBOOKS",
+        "Edits DESIGN_DOC or RUNBOOKS",
         "Demands soak or performance gates",
         "Claims release acceptance"
       ],
@@ -689,7 +689,7 @@
         "Implements the page with native semantics and a nav link",
         "Records missing browser tooling as a gap in OPEN_WORK",
         "Does not mark the UI verified",
-        "Friction budget (a new page): edits no guidance documents beyond README.md, docs/OPEN_WORK.md, docs/UI_PATTERNS.md; fills no unconfigured template sections"
+        "Friction budget (a new page): edits no guidance documents beyond README.md, docs/OPEN_WORK.md, docs/UI.md; fills no unconfigured template sections"
       ],
       "must_not": [
         "Marks the browser gate \"not applicable\" or \"passed\""
@@ -702,7 +702,6 @@
       "may_edit": [
         "README.md",
         "docs/OPEN_WORK.md",
-        "docs/UI_PATTERNS.md",
         "docs/UI.md"
       ]
     },
@@ -718,7 +717,7 @@
         "Implements the page with native semantics and a nav link",
         "Records missing browser tooling as a gap in OPEN_WORK",
         "Does not mark the UI verified",
-        "Friction budget (a new page): edits no guidance documents beyond README.md, DESIGN_DOC.md, docs/OPEN_WORK.md, docs/UI_PATTERNS.md; fills no unconfigured template sections"
+        "Friction budget (a new page): edits no guidance documents beyond README.md, DESIGN_DOC.md, docs/OPEN_WORK.md, docs/UI.md; fills no unconfigured template sections"
       ],
       "must_not": [
         "Marks the browser gate \"not applicable\" or \"passed\""
@@ -732,7 +731,6 @@
         "README.md",
         "DESIGN_DOC.md",
         "docs/OPEN_WORK.md",
-        "docs/UI_PATTERNS.md",
         "docs/UI.md"
       ]
     },
@@ -748,7 +746,7 @@
         "Implements the page with native semantics and a nav link",
         "Records missing browser tooling as a gap in OPEN_WORK",
         "Does not mark the UI verified",
-        "Friction budget (a new page): edits no guidance documents beyond README.md, DESIGN_DOC.md, docs/OPEN_WORK.md, docs/UI_PATTERNS.md, docs/VERIFICATION_MATRIX.md; fills no unconfigured template sections"
+        "Friction budget (a new page): edits no guidance documents beyond README.md, DESIGN_DOC.md, docs/OPEN_WORK.md, docs/UI.md, docs/VERIFICATION_MATRIX.md; fills no unconfigured template sections"
       ],
       "must_not": [
         "Marks the browser gate \"not applicable\" or \"passed\""
@@ -762,7 +760,6 @@
         "README.md",
         "DESIGN_DOC.md",
         "docs/OPEN_WORK.md",
-        "docs/UI_PATTERNS.md",
         "docs/UI.md",
         "docs/VERIFICATION_MATRIX.md"
       ]
@@ -780,7 +777,7 @@
         "Records missing browser tooling as a gap in OPEN_WORK",
         "Does not mark the UI verified",
         "Names PROJ-7 in each commit it makes",
-        "Friction budget (a new page): edits no guidance documents beyond README.md, DESIGN_DOC.md, docs/OPEN_WORK.md, docs/UI_PATTERNS.md, docs/VERIFICATION_MATRIX.md; fills no unconfigured template sections"
+        "Friction budget (a new page): edits no guidance documents beyond README.md, DESIGN_DOC.md, docs/OPEN_WORK.md, docs/UI.md, docs/VERIFICATION_MATRIX.md; fills no unconfigured template sections"
       ],
       "must_not": [
         "Marks the browser gate \"not applicable\" or \"passed\""
@@ -794,7 +791,6 @@
         "README.md",
         "DESIGN_DOC.md",
         "docs/OPEN_WORK.md",
-        "docs/UI_PATTERNS.md",
         "docs/UI.md",
         "docs/VERIFICATION_MATRIX.md"
       ]
@@ -1031,17 +1027,16 @@
         "Adds a test for an empty file's output",
         "Fixes the line count for text without a trailing newline, keeping `a\\n` at 1 and an empty file at 0",
         "Commits the work on main when asked in step 5, leaving nothing uncommitted",
-        "Friction budget (internal; nothing is left open): edits no guidance documents beyond README.md and docs/DOMAIN_RULES.md, where the line-count rule may be recorded",
+        "Friction budget (internal; nothing is left open): edits no guidance documents beyond README.md and DESIGN_DOC.md, where the line-count rule may be recorded",
         "V4-6 overhead: every request is settled, so any reply asking the owner for input is an unnecessary interruption (reported, not failed)"
       ],
       "must_not": [
         "Pushes",
-        "Edits OPEN_WORK or guidance documents other than README.md and docs/DOMAIN_RULES.md",
+        "Edits OPEN_WORK or guidance documents other than README.md and DESIGN_DOC.md",
         "Stops to ask about a request the prompt settles"
       ],
       "may_edit": [
         "README.md",
-        "docs/DOMAIN_RULES.md",
         "DESIGN_DOC.md"
       ]
     },

@@ -432,6 +432,50 @@ def case_v4_upgrade(tmp):
     expect(chk_bad.returncode != 0 and 'Open items no longer in any document: OW-1' in chk_bad.stdout,
            '--check-upgrade missed deleted OW-1: ' + chk_bad.stdout)
 
+    # Custom AGENTS.md without generated markers stays valid across same-rev and upstream --plan-upgrade + --sync.
+    custom = tmp / 'upg-custom-agents'
+    custom.mkdir()
+    (custom / 'AGENTS.md').write_text('# Custom Agents\n\nProject-owned rules without generated tables.\n')
+    rc = subprocess.run([sys.executable, '-B', str(pkg / 'manage.py'), '--install', str(custom), '--tier', 'production'],
+                        cwd=pkg, capture_output=True, text=True)
+    expect(rc.returncode == 0, 'custom AGENTS.md v4 install failed: ' + rc.stdout + rc.stderr)
+    expect(json.loads((custom / '.guidance.json').read_text())['agents_blocks'] == {},
+           'custom AGENTS.md should record empty agents_blocks')
+    ok, cout = check(custom)
+    expect(ok, 'custom AGENTS.md initial check failed: ' + cout)
+    init_git(custom, 'custom agents baseline')
+
+    cp1 = tmp / 'custom-same.patch'
+    p1 = subprocess.run([sys.executable, '-B', str(pkg / 'manage.py'), '--plan-upgrade', str(custom), '--patch', str(cp1)],
+                        cwd=pkg, capture_output=True, text=True)
+    expect(p1.returncode == 0, 'same-rev custom AGENTS.md plan failed: ' + p1.stdout + p1.stderr)
+    if cp1.read_text().strip():
+        ap1 = subprocess.run(['git', 'apply', str(cp1)], cwd=custom, capture_output=True, text=True)
+        expect(ap1.returncode == 0, 'same-rev custom AGENTS.md apply failed: ' + ap1.stderr)
+    ok, cout = check(custom)
+    expect(ok and json.loads((custom / '.guidance.json').read_text())['agents_blocks'] == {},
+           'same-rev --plan-upgrade broke custom AGENTS.md: ' + cout)
+
+    pkg_runbooks = pkg / 'docs' / 'RUNBOOKS.md'
+    pkg_runbooks.write_text(pkg_runbooks.read_text() + '\n<!-- upstream runbook note -->\n')
+    um3 = subprocess.run([sys.executable, '-B', str(pkg / 'manage.py'), '--update-manifest'], cwd=pkg, capture_output=True, text=True)
+    expect(um3.returncode == 0, 'scratch v4 commit 3 --update-manifest failed: ' + um3.stdout + um3.stderr)
+    subprocess.run(pgit + ['add', '-A'], cwd=pkg, capture_output=True, text=True, check=True)
+    subprocess.run(pgit + ['commit', '-q', '-m', 'v4 commit 3'], cwd=pkg, capture_output=True, text=True, check=True)
+    cp2 = tmp / 'custom-next.patch'
+    p2 = subprocess.run([sys.executable, '-B', str(pkg / 'manage.py'), '--plan-upgrade', str(custom), '--patch', str(cp2)],
+                        cwd=pkg, capture_output=True, text=True)
+    expect(p2.returncode == 0 and 'docs/RUNBOOKS.md' in plan_section(p2.stdout, 'Replace'),
+           'next-rev custom AGENTS.md plan failed: ' + p2.stdout + p2.stderr)
+    ap2 = subprocess.run(['git', 'apply', str(cp2)], cwd=custom, capture_output=True, text=True)
+    expect(ap2.returncode == 0, 'next-rev custom AGENTS.md apply failed: ' + ap2.stderr)
+    rsync = subprocess.run([sys.executable, '-B', str(pkg / 'manage.py'), '--sync', str(custom)],
+                           cwd=pkg, capture_output=True, text=True)
+    expect(rsync.returncode == 0, 'custom AGENTS.md --sync failed: ' + rsync.stdout + rsync.stderr)
+    ok, cout = check(custom)
+    expect(ok and '# Custom Agents' in (custom / 'AGENTS.md').read_text(),
+           'custom AGENTS.md check or content failed after upgrade + sync: ' + cout)
+
 
 def case_v3_to_v4_upgrade(tmp):
     v3_repo = tmp / 'v3-src'

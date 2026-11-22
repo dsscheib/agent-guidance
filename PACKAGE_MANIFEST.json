@@ -407,15 +407,15 @@
       "path": "docs/UI.md",
       "kind": "template",
       "module": "ui",
-      "bytes": 1587,
-      "sha256": "39f92b9417cf54f17235b498dc64385b3d56cbec25b691648614b8c562e3fd11"
+      "bytes": 1592,
+      "sha256": "ae29f9f395bc72c0ac2f2a22a643a9231a1335bd03f38679be15677fe54cc557"
     },
     {
       "path": "docs/procedures/ui-design.md",
       "kind": "procedure",
       "module": "ui-design",
-      "bytes": 4874,
-      "sha256": "18ff6fa97d183b6824eec93ff74cca6f9a614fbd5f21afd4b6264a18038aecce"
+      "bytes": 4731,
+      "sha256": "16b2f4e4d1d6630623ca5b9c6c9dedfa9851e23cc4dd1e01cc4c33e1adec1366"
     },
     {
       "path": "profiles/SERVER_RENDERED_WEB_GO.md",
