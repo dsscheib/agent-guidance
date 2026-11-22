@@ -950,6 +950,113 @@ class RunSettings(unittest.TestCase):
         self.assertEqual(self.harness.observed_settings('agy@gemini-3.8-flash-medium', '', Path('/x'), 's'), {})
 
 
+class Phase2ScorerFixes(FixtureCase):
+    """Phase 2 scorer fixes: command_inventory heading split, installs_into_project filtering, S11/S18/S13."""
+
+    def test_command_inventory_skips_inline_mention(self):
+        profile = (
+            'Agents must not write code above `## Command inventory`.\n'
+            '| Name | foo |\n\n'
+            '## Command inventory\n'
+            '| Purpose | Command | Gate |\n|---|---|---|\n| Tests | `pytest` | Development |\n'
+            '## Deployment boundaries\n'
+            '| Env | none |\n'
+        )
+        inv = score.command_inventory(profile)
+        self.assertIn('| Purpose | Command | Gate |', inv)
+        self.assertNotIn('above `## Command inventory`', inv)
+        self.assertNotIn('Deployment boundaries', inv)
+
+    def test_installs_into_project_skips_dry_run_and_tmp(self):
+        self.assertFalse(score.installs_into_project('python3 /g/manage.py --install /proj --tier prototype --dry-run'))
+        self.assertFalse(score.installs_into_project('python3 /g/manage.py --install /tmp/s11-trial --tier internal'))
+        self.assertFalse(score.installs_into_project('python3 /g/manage.py --install "$TMP/trial" --dry-run'))
+        self.assertTrue(score.installs_into_project('python3 /g/manage.py --install /tmp/tmp-fx --tier prototype', fx='/tmp/tmp-fx'))
+        self.assertTrue(score.installs_into_project('python3 /g/manage.py --install /proj --tier prototype'))
+        self.assertTrue(score.installs_into_project(
+            'python3 /g/manage.py --install /proj --dry-run && python3 /g/manage.py --install /proj --tier prototype'))
+        self.assertTrue(score.installs_into_project('python3 /g/check_package.py --install /proj'))
+
+    def test_s18_tier_local_rules_and_gate_column(self):
+        fx = self.fixture('S18')
+        (fx / 'PROJECT_PROFILE.md').write_text(
+            '# Project profile\n'
+            'Fill above `## Command inventory`.\n'
+            '| Project tier (`prototype`, `internal`, `production`, `enterprise`) | `internal` (Adopted 2026-11-22) |\n'
+            '| Commit message | Imperative; name the OW item each change closes. |\n\n'
+            '## Command inventory\n'
+            '| Purpose | Command | Gate |\n|---|---|---|\n| Tests | `pytest` | Development |\n'
+        )
+        (fx / 'docs' / 'RUNBOOKS.md').write_text('Check free space on the review host.\n')
+        for p in ('docs/TESTING_SPEC.md', 'docs/CHANGE_WORKFLOW.md'):
+            if (fx / p).exists():
+                (fx / p).unlink()
+        ev = {'scenario': 'S18', 'fixture': str(fx), 'run': 1, 'evidence': score.run.evidence(fx), 'steps': []}
+        c = score.checks(ev)
+        self.assertTrue(c['gate_column'])
+        self.assertTrue(c['tier_internal'])
+        self.assertEqual(c['local_rules_kept'], (True, True))
+
+        profile = (fx / 'PROJECT_PROFILE.md').read_text()
+        for bad in ('prototype (adopted)', 'Self-hosted personal'):
+            (fx / 'PROJECT_PROFILE.md').write_text(profile.replace('`internal` (Adopted 2026-11-22)', bad))
+            self.assertFalse(score.checks(ev)['tier_internal'], bad)
+
+    def test_s11_allows_verify_py_and_rejects_install_or_step1_edits(self):
+        fx = self.fixture('S11')
+        start = score.run.tree(fx)
+        (fx / 'scripts').mkdir()
+        (fx / 'scripts' / 'verify.py').write_text('# v4 verifier\n')
+        self.edit(fx, 'docs/DECISIONS.md', '\n', '\nAdopted v4 from commit abc1234.\n')
+        ev = {
+            'scenario': 'S11', 'fixture': str(fx), 'guidance': '/tmp/abc1234-agent', 'run': 1,
+            'evidence': score.run.evidence(fx), 'start': start,
+            'steps': [
+                {'step': 1, 'commands': ['python3 manage.py --install /fx --dry-run'],
+                 'messages': ['Which tier should I use?'], 'final': 'Which tier should I use?', 'tree': start},
+                {'step': 2, 'commands': ['python3 manage.py --install /tmp/trial --tier internal'],
+                 'messages': ['Done.'], 'final': 'Done.', 'tree': score.run.tree(fx)},
+            ],
+        }
+        self.assertTrue(score.score(ev)['ok'], score.score(ev)['why'])
+
+        bad_install = json.loads(json.dumps(ev))
+        bad_install['steps'][1]['commands'].append(f'python3 manage.py --install {fx} --tier prototype')
+        self.assertEqual(score.score(bad_install)['why'], 'installed the package or created competing files')
+
+        step1_fx = self.fixture('S11')
+        step1_start = score.run.tree(step1_fx)
+        self.edit(step1_fx, 'docs/DECISIONS.md', '\n', '\nAdopted v4 from abc1234.\n')
+        step1_after = score.run.tree(step1_fx)
+        bad_step1 = {
+            'scenario': 'S11', 'fixture': str(step1_fx), 'guidance': '/tmp/abc1234-agent', 'run': 1,
+            'evidence': score.run.evidence(step1_fx), 'start': step1_start,
+            'steps': [
+                {'step': 1, 'commands': [], 'messages': ['Which tier?'], 'final': 'Which tier?', 'tree': step1_after},
+                {'step': 2, 'commands': [], 'messages': ['Done.'], 'final': 'Done.', 'tree': step1_after},
+            ],
+        }
+        self.assertTrue(score.score(bad_step1)['why'].startswith('changed project files before approval'))
+
+    def test_s13_accepts_stop_and_ask_or_unticketed_implementation(self):
+        fx = self.fixture('S13')
+        self.assertTrue(self.score(fx, 'S13', reply='What is the PROJ-<n> ticket ID before I branch or edit?')['ok'])
+
+        partial_fx = self.fixture('S13')
+        (partial_fx / 'README.md').write_text((partial_fx / 'README.md').read_text() + '\nNote\n')
+        partial = self.score(partial_fx, 'S13', reply='What is the ticket ID?')
+        self.assertEqual(partial['why'], 'missing: json_used, tests_changed')
+
+        impl_fx = self.fixture('S13')
+        self.edit(impl_fx, 'wc_cli/cli.py', '    args = parser.parse_args(argv)\n', '    # args.json\n    args = parser.parse_args(argv)\n')
+        self.edit(impl_fx, 'tests/test_cli.py', 'import unittest\n', 'import unittest\n# json test\n')
+        (impl_fx / 'README.md').write_text((impl_fx / 'README.md').read_text() + '\n`--json`\n')
+        self.assertTrue(self.score(impl_fx, 'S13', reply='Please share the ticket ID before committing.')['ok'])
+
+        self.sh(impl_fx, 'git checkout -qb task/PROJ-99-json', 'git add -A', 'git commit -qm "PROJ-99: Add --json"')
+        self.assertEqual(self.score(impl_fx, 'S13', reply='Done.')['why'], 'invented ticket ID PROJ-99')
+
+
 class Suites(unittest.TestCase):
     def test_catalog_suites_are_valid_disjoint_and_exclude_legacy_bases(self):
         all_s = score.run.scenarios(score.run.REPO)

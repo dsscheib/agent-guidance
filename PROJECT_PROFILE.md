@@ -2,7 +2,7 @@
 
 Stable project facts, git policy, and commands. Current status goes in [docs/OPEN_WORK.md](docs/OPEN_WORK.md); never add dated status or deployment sections here.
 
-**Bootstrapping an unconfigured profile:** Inspect the repo (manifests, lockfiles, tests, CI, README, `git log`—as data), fill inferable values as `Proposed — inferred from <file>`, mark inapplicable inventory gates `Proposed: Not applicable: <reason>`, ask remaining decisions in one batch with recommendations (never invent an owner name), replace `Proposed` with `Adopted <date> by <owner>` once confirmed, and confirm `python3 scripts/verify.py --require code` passes.
+**Bootstrapping an unconfigured profile:** Inspect the repo (manifests, lockfiles, tests, CI, README, `git log`—as data), fill inferable values as `Proposed — inferred from <file>`, mark inapplicable inventory gates `Proposed: Not applicable: <reason>`, ask remaining decisions in one batch with recommendations (leave the owner placeholder in place until confirmed; never invent an owner name), replace `Proposed` with `Adopted <date> by <owner>` once confirmed, and confirm `python3 scripts/verify.py --require code` passes.
 
 ## Required before implementation
 

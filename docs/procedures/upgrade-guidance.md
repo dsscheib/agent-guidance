@@ -11,11 +11,11 @@ Repository-only playbook run from the `agent-guidance` checkout. Goal: apply ups
 | Situation | Path |
 |---|---|
 | Empty or new repository | Not this procedure. Run `python3 manage.py --install DIR --tier T` (add `--features release-review` or `ui-design` if wanted), then bootstrap [PROJECT_PROFILE.md](../../PROJECT_PROFILE.md). |
-| Existing repo with no package install | **First adoption:** map the v4 concepts onto the repo's existing doc locations instead of dumping templates over existing files. |
+| Existing repo with no package install | **First adoption:** never run `manage.py --install` into an existing repository; map the v4 rules onto the repo's existing doc locations by hand (keeping existing decisions and open work) and record the source commit. |
 | Earlier package install (`PACKAGE_MANIFEST.json` or `.guidance.json`) | **Upgrade:** use `--plan-upgrade` and `--check-upgrade` below. |
 
 ## 1. Inspect the project (read-only first)
-Do steps 1–3 before modifying anything in the target repository; ask owner questions first and apply only after approval.
+**Stop before editing anything.** Complete steps 1–3 strictly read-only—never create, edit, move, or delete any file in the target repository until the owner approves the plan in a later turn.
 - Check `git status` and preserve uncommitted work.
 - Check `.guidance.json` (v4) or `PACKAGE_MANIFEST.json` (v2/v3) for `installed_from.commit`, tier, modules, and tools.
 - Map any existing `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.github/copilot-instructions.md`, and custom agent directories (`.claude/agents/`, `.codex/agents/`, `.github/agents/`, `.agents/agents/`).

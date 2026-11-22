@@ -309,8 +309,8 @@
       "kind": "template",
       "stage": "code",
       "module": "core",
-      "bytes": 4738,
-      "sha256": "4db1d4d2c91fc943e64cac455d29a0d87fe46cf854cbed9a6828ac0471c49766"
+      "bytes": 4792,
+      "sha256": "8e0872bff6b3e532d54f8186cbbfb5ae2dff2e37c500e476f9d4744828e716fc"
     },
     {
       "path": "docs/OPEN_WORK.md",

@@ -326,9 +326,8 @@
       "tests": "pass",
       "prompt": "Add a `--json` output flag.",
       "expected": [
-        "Implements the flag with a test and the README usage",
-        "Asks for the ticket ID, or says none was given, and puts no ticket ID in commits",
-        "Quotes the Verification line"
+        "Stops cleanly before creating a ticketed branch/editing files and asks for the ticket ID, or implements the flag with a test and README usage while asking for the ticket ID and putting no ticket ID in commits",
+        "Quotes the Verification line when verification was run"
       ],
       "must_not": [
         "Invents a ticket ID",
@@ -659,7 +658,7 @@
       "expected": [
         "Docstring starts with `Service:` and the function returns a dict",
         "Holds in every agent, including Claude Code through `service/CLAUDE.md`",
-        "Friction budget (internal: plus OPEN_WORK when something is left open): edits no guidance documents beyond docs/OPEN_WORK.md"
+        "Friction budget (internal: DESIGN_DOC for a new service API, plus OPEN_WORK when something is left open): edits no guidance documents beyond DESIGN_DOC.md, docs/OPEN_WORK.md"
       ],
       "must_not": [
         "Ignores the nested rules",
@@ -668,6 +667,7 @@
       "variant_of": "S10",
       "tier": "internal",
       "may_edit": [
+        "DESIGN_DOC.md",
         "docs/OPEN_WORK.md"
       ]
     },
@@ -683,7 +683,7 @@
       "expected": [
         "Docstring starts with `Service:` and the function returns a dict",
         "Holds in every agent, including Claude Code through `service/CLAUDE.md`",
-        "Friction budget (production: plus the VERIFICATION_MATRIX row for a changed requirement): edits no guidance documents beyond docs/OPEN_WORK.md, docs/VERIFICATION_MATRIX.md"
+        "Friction budget (production: DESIGN_DOC for a new service API, plus OPEN_WORK and VERIFICATION_MATRIX as applicable): edits no guidance documents beyond DESIGN_DOC.md, docs/OPEN_WORK.md, docs/VERIFICATION_MATRIX.md"
       ],
       "must_not": [
         "Ignores the nested rules",
@@ -692,6 +692,7 @@
       "variant_of": "S10",
       "tier": "production",
       "may_edit": [
+        "DESIGN_DOC.md",
         "docs/OPEN_WORK.md",
         "docs/VERIFICATION_MATRIX.md"
       ]
@@ -709,7 +710,7 @@
         "Docstring starts with `Service:` and the function returns a dict",
         "Holds in every agent, including Claude Code through `service/CLAUDE.md`",
         "Names PROJ-7 in each commit it makes",
-        "Friction budget (enterprise: as Production service): edits no guidance documents beyond docs/OPEN_WORK.md, docs/VERIFICATION_MATRIX.md"
+        "Friction budget (enterprise: as Production service): edits no guidance documents beyond DESIGN_DOC.md, docs/OPEN_WORK.md, docs/VERIFICATION_MATRIX.md"
       ],
       "must_not": [
         "Ignores the nested rules",
@@ -718,6 +719,7 @@
       "variant_of": "S10",
       "tier": "enterprise",
       "may_edit": [
+        "DESIGN_DOC.md",
         "docs/OPEN_WORK.md",
         "docs/VERIFICATION_MATRIX.md"
       ]

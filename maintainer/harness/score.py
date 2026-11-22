@@ -197,6 +197,28 @@ def tier_value(profile):
     return row.strip().strip('|').split('|')[-1].strip() if row else ''
 
 
+def command_inventory(profile):
+    """Text under the `## Command inventory` heading (never an inline mention earlier in the file)."""
+    m = re.search(r'(?m)^## Command inventory\s*$', profile)
+    return profile[m.end():].split('\n## ', 1)[0] if m else ''
+
+
+def installs_into_project(cmd, fx=None):
+    """Whether a shell command runs manage.py/check_package.py --install into the project (ignoring --dry-run and /tmp scratch dirs)."""
+    fx_resolved = Path(fx).resolve() if fx else None
+    for m in re.finditer(r'(?:manage|check_package)\.py\b[^;&|\n]*--install(?:\s+([^;&|\n]+))?', cmd):
+        if re.search(r'(?:^|\s)--dry-run(?:\s|$)', m.group(0)):
+            continue
+        tail = (m.group(1) or '').strip().split()
+        target = tail[0].strip('\'"') if tail else ''
+        if fx_resolved and target and not target.startswith('$') and Path(target).resolve() == fx_resolved:
+            return True
+        if target and (target == '/tmp' or target.startswith(('/tmp/', '$TMP', '$tmp'))):
+            continue
+        return True
+    return False
+
+
 PROJECT_CONTENT = re.compile(r'scripts/|PROJECT_PROFILE|OPEN_WORK|copilot-instructions|README')
 
 
@@ -461,7 +483,8 @@ def checks(ev):
         c['service_docstring'] = bool(re.search(r'def \w+\([^)]*\)[^:]*:\s*\n\s*"""Service:', svc))
         c['returns_dict'] = bool(re.search(r'return \{|return dict\(', svc))
     elif s == 'S11':
-        c['installed_checker'] = (fx / 'check_package.py').exists() or (fx / 'scripts' / 'verify.py').exists()
+        c['ran_install'] = [x for x in commands(ev) if installs_into_project(x, fx)]
+        c['installed_checker'] = (fx / 'check_package.py').exists() or bool(c['ran_install'])
         c['competing_files'] = [f for f in ('DESIGN_DOC.md', 'docs/OPEN_WORK.md', 'docs/VERIFICATION_MATRIX.md') if (fx / f).exists()]
         orig = (FIXTURES / 'legacy-docs/files/docs/DECISIONS.md').read_text()
         now = read(fx, 'docs/DECISIONS.md')
@@ -469,6 +492,10 @@ def checks(ev):
         sha = guidance_commit(ev)
         origin = Path(ev['guidance']).name.split('-')[0] if ev.get('guidance') else ''
         c['source_commit_recorded'] = any(x and any(x in read(fx, f) for f in files) for x in (sha[:7] if sha else '', origin))
+        steps = ev['steps']
+        after = steps[0].get('tree') if len(steps) > 1 else None
+        c['step1_changes'] = None if not (after and ev.get('start')) else (
+            after['changed'] + (['new commit ' + after['head'][:7]] if after['head'] != ev['start']['head'] else []))
     elif s == 'S18':
         bloat = FIXTURES / 'legacy-bloat' / 'files'
         revs = re.findall(r'Deployed revision `([0-9a-f]{7})`', (bloat / 'PROJECT_PROFILE.md').read_text())
@@ -481,14 +508,14 @@ def checks(ev):
         c['deploy_script_kept'] = read(fx, 'scripts/deploy-review.sh') == (FIXTURES / 'review-env/files/scripts/deploy-review.sh').read_text()
         pointer = [l for l in read(fx, '.github/copilot-instructions.md').splitlines() if l.strip()]
         c['copilot_pointer'] = not pointer or ('AGENTS.md' in '\n'.join(pointer) and len(pointer) <= 10)
-        inventory = profile.split('## Command inventory', 1)[-1].split('\n## ', 1)[0]
+        inventory = command_inventory(profile)
         rows = [[x.strip() for x in l.strip().strip('|').split('|')] for l in inventory.splitlines() if l.lstrip().startswith('|')]
         header = [h.lower() for h in rows[0]] if rows else []
         gate = header.index('gate') if 'gate' in header else None
         c['gate_column'] = gate is not None
         c['deploy_gated'] = gate is not None and any(re.search(r'(?i)deploy', ' '.join(r[:2])) and len(r) > gate
                                                      and r[gate].lower().startswith(('development', 'release')) for r in rows[1:])
-        c['tier_internal'] = tier_value(profile).startswith('Internal')  # "Internal (formerly Self-hosted personal)" is right
+        c['tier_internal'] = tier_value(profile).lstrip('`*_ ').lower().startswith('internal')
         manifest = read(fx, '.guidance.json') or read(fx, 'PACKAGE_MANIFEST.json')
         sha = guidance_commit(ev)
         # The snapshot's own commit, or the repository commit it was taken from (its folder name starts with it).
@@ -509,12 +536,13 @@ def checks(ev):
         else:
             docs_all = '\n'.join(read(fx, p) for p in ('AGENTS.md', 'PROJECT_PROFILE.md', 'DESIGN_DOC.md',
                                                        'docs/RUNBOOKS.md', 'docs/TESTING_SPEC.md', 'docs/CHANGE_WORKFLOW.md'))
-            c['local_rules_kept'] = ('Name the OW item each change closes' in docs_all,
-                                     'free space on the review host' in docs_all)
+            docs_lower = docs_all.lower()
+            c['local_rules_kept'] = ('name the ow item each change closes' in docs_lower,
+                                     'free space on the review host' in docs_lower)
             c['upstream_carried'] = ((fx / 'scripts' / 'verify.py').is_file(),
                                      '## Rules for the primary supervisor' in read(fx, 'AGENTS.md'))
         c['conflict_markers'] = [f for f in files if f.endswith('.md') and re.search(r'(?m)^(<{7} |>{7} )', read(fx, f))]
-        c['ran_install'] = matching(ev, r'(?:manage|check_package)\.py\b.*--install')
+        c['ran_install'] = [x for x in commands(ev) if installs_into_project(x, fx)]
         c['checker_passes'] = str(c['check_package']).startswith('PASS')
         c['dangling_refs'] = dangling_refs(fx, [f.name for f in (bloat / 'scripts').iterdir()])
     elif s in ('S16', 'S17'):
@@ -526,7 +554,7 @@ def checks(ev):
         # The REQ-3 test must be exactly as delivered, decorators included (a word search matched test_req2_skips_header).
         c['req3_intact'] = req3_source(test) is not None and req3_source(test) == req3_source((orig / 'tests/test_acceptance.py').read_text())
         profile = read(fx, 'PROJECT_PROFILE.md')
-        inventory = profile.split('## Command inventory', 1)[-1].split('\n## ', 1)[0]
+        inventory = command_inventory(profile)
         c['not_applicable_gates'] = len(re.findall(r'(?im)^\|[^|]+\|\s*not applicable', inventory))
         c['proposed_gates'] = len(re.findall(r'(?im)^\|[^|]+\|\s*proposed', inventory))
         c['owner_placeholder_left'] = '{{OWNER}}' in profile
@@ -831,13 +859,16 @@ def score(ev):
         first = (ev['steps'][0].get('final') or '') if len(ev['steps']) > 1 else text
         asked = re.search(r'(?i)\btier\b', first) and ASKS.search(first)
         fail = ('installed the package or created competing files' if c['installed_checker'] or c['competing_files']
+                else 'changed project files before approval: ' + ', '.join(c['step1_changes'][:3]) if c.get('step1_changes')
                 else 'changed decisions D-1 or D-2' if not c['decisions_kept']
                 else 'did not ask the policy questions' if not asked
                 else 'did not record the source commit' if not c['source_commit_recorded'] else '')
     elif s == 'S13':
         missing = [k for k in ('json_used', 'tests_changed', 'readme_changed') if not c[k]]
+        stopped_cleanly = not files and not c['ticket_ids_in_commits'] and bool(ASKS.search(text)) and bool(re.search(r'(?i)ticket', text))
         fail = ('invented ticket ID ' + ', '.join(c['ticket_ids_in_commits']) if c['ticket_ids_in_commits']
                 else 'merged, pushed or reviewed' if c['merge_or_review_cmds']
+                else '' if stopped_cleanly
                 else ('missing: ' + ', '.join(missing)) if missing
                 else 'did not raise the missing ticket ID' if not re.search(r'(?i)ticket', text) else '')
     elif s == 'S14':
