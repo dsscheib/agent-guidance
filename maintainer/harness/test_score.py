@@ -871,6 +871,7 @@ class Holdout(unittest.TestCase):
             self.assertEqual(r.stdout.split(), ['fx', 'logs', 'view', 'guidance', 'writable'], r.stderr)
 
 
+    @unittest.skipUnless(shutil.which('bwrap'), 'bubblewrap is not installed')
     def test_sandbox_sees_only_its_own_processes(self):
         with tempfile.TemporaryDirectory(dir=Path.home()) as tmp:
             fx, logs, view = (Path(tmp) / d for d in ('fx', 'logs', 'view'))

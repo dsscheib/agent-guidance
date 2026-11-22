@@ -1,6 +1,6 @@
 {
   "package": "reusable-project-guidance",
-  "version": "4.0-dev",
+  "version": "4.0",
   "status": "unconfigured-templates",
   "procedures": "docs/procedures",
   "adapters": [
@@ -40,9 +40,15 @@
     "MAINTAINING.md",
     "LICENSE",
     "README.md",
+    "SECURITY.md",
+    "CONTRIBUTING.md",
+    "CHANGELOG.md",
+    ".gitignore",
     "docs/AGENT_TOOLS.md",
     "docs/procedures/upgrade-guidance.md",
     ".github/hooks/guidance_stop.py",
+    ".github/workflows/",
+    ".github/ISSUE_TEMPLATE/",
     "manage.py",
     "PACKAGE_MANIFEST.json",
     "maintainer/",
