@@ -665,18 +665,27 @@ def install(manifest, target, force, tier=None, features=(), everything=False, d
 
     record_dest = target / GUIDANCE_FILE
     record_exists = record_dest.exists()
-    source = prev_doc.get('installed_from') if (record_exists and not force) else source_identity()
-    record = build_guidance_record(
-        manifest, chosen_tier, all_features, modules, chosen, source or source_identity(),
-        wanted_entries, agents_path=None if (dry_run and not agents_target.exists()) else agents_target)
-    record_changed = (not record_exists or force or chosen_tier != previous.get('tier')
-                      or modules != sorted(prev_modules) or chosen != sorted(previous.get('tools', [])))
-    if record_changed:
+    meta_changed = (not record_exists or force or chosen_tier != previous.get('tier')
+                    or modules != sorted(prev_modules) or chosen != sorted(previous.get('tools', [])))
+    if meta_changed:
+        source = prev_doc.get('installed_from') if (record_exists and not force) else source_identity()
+        record = build_guidance_record(
+            manifest, chosen_tier, all_features, modules, chosen, source or source_identity(),
+            wanted_entries, agents_path=None if (dry_run and not agents_target.exists()) else agents_target)
         if not dry_run:
             record_dest.write_text(json.dumps(record, indent=2) + '\n')
         (copied if (not record_exists or force) else refreshed).append(GUIDANCE_FILE)
     else:
-        skipped.append(GUIDANCE_FILE)
+        tracked = prev_doc.get('agents_blocks')
+        blocks = ({k: v for k, v in expected_agents_blocks(manifest, modules).items() if k in tracked}
+                  if isinstance(tracked, dict) else None)
+        if blocks is not None and blocks != tracked:
+            if not dry_run:
+                updated = {**prev_doc, 'agents_blocks': blocks}
+                record_dest.write_text(json.dumps(updated, indent=2) + '\n')
+            refreshed.append(GUIDANCE_FILE)
+        else:
+            skipped.append(GUIDANCE_FILE)
 
     if dry_run:
         print(f"Would install modules: {', '.join(modules)}" + (f' (tier {chosen_tier})' if chosen_tier else '')

@@ -1058,6 +1058,26 @@ class Phase2ScorerFixes(FixtureCase):
         self.sh(impl_fx, 'git checkout -qb task/PROJ-99-json', 'git add -A', 'git commit -qm "PROJ-99: Add --json"')
         self.assertEqual(self.score(impl_fx, 'S13', reply='Done.')['why'], 'invented ticket ID PROJ-99')
 
+    def test_prototype_budget_allows_open_work_gaps(self):
+        s2_fx = self.fixture('S2-prototype')
+        self.edit(s2_fx, 'wc_cli/cli.py', '    args = parser.parse_args(argv)\n', '    # args.json\n    args = parser.parse_args(argv)\n')
+        self.edit(s2_fx, 'tests/test_cli.py', 'import unittest\n', 'import unittest\n# json test\n')
+        (s2_fx / 'README.md').write_text((s2_fx / 'README.md').read_text() + '\n`--json`\n')
+        (s2_fx / 'docs' / 'OPEN_WORK.md').write_text((s2_fx / 'docs' / 'OPEN_WORK.md').read_text() + '| G-1 | Open | Format gap |\n')
+        r2 = self.score(s2_fx, 'S2-prototype')
+        self.assertTrue(r2['ok'], r2['why'])
+        (s2_fx / 'PROJECT_PROFILE.md').write_text((s2_fx / 'PROJECT_PROFILE.md').read_text() + '\n')
+        self.assertEqual(self.score(s2_fx, 'S2-prototype')['why'], 'over the friction budget: PROJECT_PROFILE.md')
+
+        s10_fx = self.fixture('S10-prototype')
+        (s10_fx / 'service' / '__init__.py').write_text(
+            'def version():\n    """Service: version."""\n    return {"v": "1"}\n')
+        (s10_fx / 'docs' / 'OPEN_WORK.md').write_text((s10_fx / 'docs' / 'OPEN_WORK.md').read_text() + '| G-1 | Open | Format gap |\n')
+        r10 = self.score(s10_fx, 'S10-prototype')
+        self.assertTrue(r10['ok'], r10['why'])
+        (s10_fx / 'PROJECT_PROFILE.md').write_text((s10_fx / 'PROJECT_PROFILE.md').read_text() + '\n')
+        self.assertEqual(self.score(s10_fx, 'S10-prototype')['why'], 'over the friction budget: PROJECT_PROFILE.md')
+
 
 class Suites(unittest.TestCase):
     def test_catalog_suites_are_valid_disjoint_and_exclude_legacy_bases(self):

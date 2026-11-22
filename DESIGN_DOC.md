@@ -22,7 +22,7 @@ Document boundaries between components or with external callers (HTTP/RPC APIs, 
 ## Domain rules and invariants
 {{DOMAIN_TERMS_TYPES_UNITS_AND_INVARIANTS}}
 
-Keep internal IDs separate from mutable display names, define exact units/precision/overflow and null/unknown/zero distinctions, and never invent undecided business rules (limits, priorities, retention, conflict handling).
+Keep internal IDs separate from mutable display names, define exact units/precision/overflow and null/unknown/zero distinctions, and record only confirmed domain rules (for undecided rules, follow [AGENTS.md](AGENTS.md)).
 
 | Operation | Preconditions / permission | Atomic effects & invariants | Failure / retry / idempotency |
 |---|---|---|---|
@@ -36,4 +36,4 @@ Version migrations and rehearse schema upgrades on isolated synthetic data; revi
 ## Security and operations
 {{TRUST_BOUNDARIES_CONFIGURATION_AND_LIMITATIONS}}
 
-Keep secrets out of source, command arguments, and logs; link [docs/OPEN_WORK.md](docs/OPEN_WORK.md) for unresolved gaps.
+Follow [AGENTS.md](AGENTS.md) for secret handling and untrusted inputs; link [docs/OPEN_WORK.md](docs/OPEN_WORK.md) for unresolved security or operational gaps.

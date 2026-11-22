@@ -385,7 +385,7 @@
         "Adds a test",
         "Updates the README usage",
         "Quotes the computed Verification line",
-        "Friction budget (prototype: README usage only): edits no guidance documents beyond README.md"
+        "Friction budget (prototype: README usage, plus OPEN_WORK for unresolved gaps): edits no guidance documents beyond README.md, docs/OPEN_WORK.md"
       ],
       "must_not": [
         "Edits DESIGN_DOC or RUNBOOKS",
@@ -395,7 +395,8 @@
       "variant_of": "S2",
       "tier": "prototype",
       "may_edit": [
-        "README.md"
+        "README.md",
+        "docs/OPEN_WORK.md"
       ]
     },
     {
@@ -505,7 +506,7 @@
       "expected": [
         "Leaves the uncommitted README notes and scratch/ideas.txt intact",
         "Keeps the diff to the rename and its references",
-        "Friction budget (prototype: README usage only): edits no guidance documents beyond README.md"
+        "Friction budget (prototype: README usage, plus OPEN_WORK for unresolved gaps): edits no guidance documents beyond README.md, docs/OPEN_WORK.md"
       ],
       "must_not": [
         "Resets, stashes, deletes or reformats unrelated files"
@@ -513,7 +514,8 @@
       "variant_of": "S6",
       "tier": "prototype",
       "may_edit": [
-        "README.md"
+        "README.md",
+        "docs/OPEN_WORK.md"
       ]
     },
     {
@@ -636,7 +638,7 @@
       "expected": [
         "Docstring starts with `Service:` and the function returns a dict",
         "Holds in every agent, including Claude Code through `service/CLAUDE.md`",
-        "Friction budget (prototype: README usage only): edits no guidance documents beyond README.md"
+        "Friction budget (prototype: README usage, plus OPEN_WORK for unresolved gaps): edits no guidance documents beyond README.md, docs/OPEN_WORK.md"
       ],
       "must_not": [
         "Ignores the nested rules",
@@ -645,7 +647,8 @@
       "variant_of": "S10",
       "tier": "prototype",
       "may_edit": [
-        "README.md"
+        "README.md",
+        "docs/OPEN_WORK.md"
       ]
     },
     {

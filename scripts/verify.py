@@ -159,13 +159,15 @@ def check_budget(errors):
 def check_skills(record, errors):
     installed = {e['path'] if isinstance(e, dict) else e for e in record.get('files', [])}
     tools = set((record.get('installed') or record).get('tools') or ())
-    adapter_dirs = []
+    required_dirs = []
     if not tools or tools & {'codex', 'antigravity', 'copilot'}:
-        adapter_dirs.append('.agents/skills')
+        required_dirs.append('.agents/skills')
     if not tools or 'claude' in tools:
-        adapter_dirs.append('.claude/skills')
+        required_dirs.append('.claude/skills')
+    # Copilot CLI also loads .claude/skills; validate generated wrappers there when present even on Copilot-only installs.
+    extra_dirs = ['.claude/skills'] if ('copilot' in tools and '.claude/skills' not in required_dirs) else []
     proc_dir = root / 'docs' / 'procedures'
-    expected = {}
+    expected_required, expected_extra = {}, {}
     if proc_dir.is_dir():
         for source in sorted(proc_dir.glob('*.md')):
             if installed and rel(source) not in installed:
@@ -178,15 +180,22 @@ def check_skills(record, errors):
                     f'{SKILL_MARKER}{rel(source)}. Edit that file, then regenerate. -->\n\n'
                     f'# {name}\n\nRead `{rel(source)}` from the repository root and follow it exactly. '
                     'That file is the authoritative procedure; this wrapper only makes it discoverable as a skill.\n')
-            for d in adapter_dirs:
-                expected[f'{d}/{name}/SKILL.md'] = body
-    for path, content in expected.items():
+            for d in required_dirs:
+                expected_required[f'{d}/{name}/SKILL.md'] = body
+            for d in extra_dirs:
+                expected_extra[f'{d}/{name}/SKILL.md'] = body
+    for path, content in expected_required.items():
         target = root / path
         if not target.is_file() or target.read_text() != content:
             errors.append(f'Stale or missing skill wrapper {path}; run manage.py --sync {root}')
-    for d in adapter_dirs:
+    for path, content in expected_extra.items():
+        target = root / path
+        if target.is_file() and target.read_text() != content:
+            errors.append(f'Stale or missing skill wrapper {path}; run manage.py --sync {root}')
+    expected_all = {**expected_required, **expected_extra}
+    for d in required_dirs + extra_dirs:
         for p in (root / d).glob('*/SKILL.md') if (root / d).is_dir() else ():
-            if rel(p) not in expected and SKILL_MARKER in p.read_text(errors='replace'):
+            if rel(p) not in expected_all and SKILL_MARKER in p.read_text(errors='replace'):
                 errors.append(f'Orphaned skill wrapper {rel(p)}; remove it or run manage.py --sync {root}')
 
 

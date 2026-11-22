@@ -349,6 +349,41 @@ def case_tools_and_default_and_broken(tmp):
     ok, out = check(claude_only)
     expect(ok, '--tools claude failed check: ' + out)
 
+    copilot_only = tmp / 'copilot-only'
+    copilot_only.mkdir()
+    install(copilot_only, '--tier', 'production', '--tools', 'copilot')
+    expect((copilot_only / '.agents/skills/release-review/SKILL.md').is_file()
+           and not (copilot_only / '.claude').exists()
+           and not (copilot_only / '.codex').exists(), '--tools copilot leaked other tools')
+    ok, out = check(copilot_only)
+    expect(ok, '--tools copilot failed check: ' + out)
+    rr_agents = copilot_only / '.agents/skills/release-review/SKILL.md'
+    orig_rr = rr_agents.read_text()
+    rr_agents.write_text('stale\n')
+    ok, out = check(copilot_only)
+    expect(not ok and '.agents/skills/release-review/SKILL.md' in out,
+           '--tools copilot should fail on stale .agents/skills wrapper: ' + out)
+    rr_agents.write_text(orig_rr)
+    rr_claude = copilot_only / '.claude/skills/release-review/SKILL.md'
+    rr_claude.parent.mkdir(parents=True)
+    rr_claude.write_text('stale\n')
+    ok, out = check(copilot_only)
+    expect(not ok and '.claude/skills/release-review/SKILL.md' in out,
+           '--tools copilot should fail on stale .claude/skills wrapper: ' + out)
+    rr_claude.unlink()
+    orphan = copilot_only / '.claude/skills/orphan/SKILL.md'
+    orphan.parent.mkdir(parents=True)
+    orphan.write_text(orig_rr)
+    ok, out = check(copilot_only)
+    expect(not ok and 'Orphaned skill wrapper .claude/skills/orphan/SKILL.md' in out,
+           '--tools copilot should fail on orphaned .claude/skills wrapper: ' + out)
+    orphan.unlink()
+    custom = copilot_only / '.claude/skills/custom/SKILL.md'
+    custom.parent.mkdir(parents=True)
+    custom.write_text('---\nname: custom\ndescription: "User skill"\n---\n')
+    ok, out = check(copilot_only)
+    expect(ok, '--tools copilot should allow user-authored .claude/skills without marker: ' + out)
+
 
 def case_agent_team_interop(tmp):
     if not AGENT_TEAM_BOOTSTRAP.is_file():
@@ -624,6 +659,42 @@ def case_reinstall_dry_run_and_refresh(tmp):
     expect('## Release qualification profile' in (target / 'PROJECT_PROFILE.md').read_text()
            and '| Dependency audit |' in (target / 'PROJECT_PROFILE.md').read_text(),
            'reinstall failed to refresh PROJECT_PROFILE.md')
+
+    # Reinstalling with unchanged tier/modules/tools refreshes .guidance.json agents_blocks when AGENTS.md routing updates.
+    pkg = tmp / 'pkg-reinstall'
+    shutil.copytree(root, pkg, ignore=shutil.ignore_patterns('.git', '__pycache__'))
+    same_tier = tmp / 'same-tier'
+    same_tier.mkdir()
+    r0 = subprocess.run([sys.executable, '-B', str(pkg / 'manage.py'), '--install', str(same_tier), '--tier', 'prototype'],
+                        cwd=pkg, capture_output=True, text=True)
+    expect(r0.returncode == 0, 'scratch prototype install failed: ' + r0.stdout + r0.stderr)
+    before_meta = json.loads((same_tier / '.guidance.json').read_text())
+    before_meta['installed_from'] = {'repository': 'https://example.invalid/repo.git', 'commit': 'deadbeef', 'dirty': False, 'date': '2026-11-22'}
+    (same_tier / '.guidance.json').write_text(json.dumps(before_meta, indent=2) + '\n')
+    pkg_manifest = json.loads((pkg / 'PACKAGE_MANIFEST.json').read_text())
+    pkg_manifest['agents_tables']['routing'].append({'module': 'core', 'row': '| Extra rule | a | b |'})
+    (pkg / 'PACKAGE_MANIFEST.json').write_text(json.dumps(pkg_manifest, indent=2) + '\n')
+
+    same_dry = subprocess.run([sys.executable, '-B', str(pkg / 'manage.py'), '--install', str(same_tier), '--tier', 'prototype', '--dry-run'],
+                              cwd=pkg, capture_output=True, text=True)
+    expect(same_dry.returncode == 0 and 'Nothing was written' in same_dry.stdout,
+           'same-tier --dry-run failed: ' + same_dry.stdout + same_dry.stderr)
+    same_dry_refresh = plan_section(same_dry.stdout, 'Would refresh')
+    expect('AGENTS.md' in same_dry_refresh and '.guidance.json' in same_dry_refresh,
+           'same-tier --dry-run should list AGENTS.md and .guidance.json under Would refresh:\n' + same_dry.stdout)
+    expect(json.loads((same_tier / '.guidance.json').read_text()) == before_meta, 'same-tier --dry-run modified .guidance.json')
+
+    same_live = subprocess.run([sys.executable, '-B', str(pkg / 'manage.py'), '--install', str(same_tier), '--tier', 'prototype'],
+                               cwd=pkg, capture_output=True, text=True)
+    expect(same_live.returncode == 0, 'same-tier live reinstall failed: ' + same_live.stdout + same_live.stderr)
+    same_live_refresh = plan_section(same_live.stdout, 'Refreshed')
+    expect('AGENTS.md' in same_live_refresh and '.guidance.json' in same_live_refresh,
+           'same-tier reinstall should list AGENTS.md and .guidance.json under Refreshed:\n' + same_live.stdout)
+    after_meta = json.loads((same_tier / '.guidance.json').read_text())
+    expect(after_meta['installed_from'] == before_meta['installed_from'],
+           'same-tier reinstall overwrote installed_from provenance')
+    ok, out = check(same_tier)
+    expect(ok, 'scripts/verify.py failed after same-tier AGENTS.md refresh: ' + out)
 
 
 def case_neutrality_and_sync_constants():
