@@ -32,7 +32,7 @@ Without guidance installed, all three models routinely skipped unconfigured poli
 
 \* After `DOC-129` allowed `docs/OPEN_WORK.md` in prototype friction budgets, re-scoring the `8f1fc48-agent` batch lifts `codex` from `25/30` (`83%`) to `27/30` (`90%`) (`86/90` = `96%` for that batch; `74/84` = `88%` `codex` and `238/256` = `93%` combined). Previously logged rows below remain unchanged.
 
-Notes on recorded commits: Phase 1 (`e758e76`) benchmarked the initial v4 `AGENTS.md` before later prompt and guardrail refinements (`DOC-123`–`DOC-131`), whereas the `b2dc8ea-agent` gap-fill exercised the final `4.0` packaged text. The `-agent` commit suffix denotes `maintainer/harness/run.py`'s maintainer-free snapshot copy of that revision (omitting `maintainer/` and maintainer role files).
+Notes on recorded commits: Phase 1 (`e758e76`) benchmarked the initial v4 `AGENTS.md` before later prompt and guardrail refinements (`DOC-123`–`DOC-131`), whereas the `b2dc8ea-agent` gap-fill exercised the then-current `4.0` packaged Markdown text (later commits hardened `scripts/verify.py` and guardrails without altering the benchmarked guidance rules). The `-agent` commit suffix denotes `maintainer/harness/run.py`'s maintainer-free snapshot copy of that revision (omitting `maintainer/` and maintainer role files).
 
 ## Run log
 

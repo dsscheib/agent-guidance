@@ -23,7 +23,7 @@ Earlier v1–v3 work evaluated cheaper/mid-tier models across ~50-file installs;
    python3 manage.py --install /path/to/project --tier internal --tools claude,codex --dry-run
    python3 manage.py --install /path/to/project --tier internal --tools claude,codex
    ```
-   Start at `prototype` (`core` files only) or `internal` (adds `DESIGN_DOC.md`, `OPEN_WORK.md`, and runbooks). Move up to `production` or `enterprise` only when the project needs release readiness records, verification matrices, or supply-chain and role gates.
+   Start at `prototype` (`core` files only) or `internal` (adds `DESIGN_DOC.md` and `docs/RUNBOOKS.md`). Move up to `production` or `enterprise` only when the project needs release readiness records, verification matrices, or supply-chain and role gates.
 2. **Wire up `--verify` immediately:** Fill in the command inventory in `PROJECT_PROFILE.md` with your real test and lint commands so `python3 scripts/verify.py --verify` runs them.
 3. **Use `--plan-upgrade` and `--check-upgrade` when updating later:** Never overwrite a configured project with `--install --force`; let the upgrade planner diff your local customizations against the baseline commit recorded in `.guidance.json` (or legacy `PACKAGE_MANIFEST.json` for v2/v3 projects).
 

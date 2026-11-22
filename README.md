@@ -18,7 +18,7 @@ For a new project:
    Optional flags:
    - `--features release-review,ui,ui-design,stack-go,stack-rust,embedded` — opt-in modules (`release-review` adds the deep pre-release audit skill to `prototype`/`internal`; `ui` adds `docs/UI.md`; `ui-design` adds the interactive `ui-design` skill on top of `ui`).
    - `--tools claude,codex,antigravity,copilot` — install adapters and guardrails only for the agent CLIs you use (default: all).
-   - `--all` — install all standard v2/v3-equivalent modules (everything except `enterprise` and `ui-design`).
+   - `--all` — install all standard v2/v3-equivalent modules (everything except `enterprise`, `ui-design`, and `embedded`).
 
    Fresh installs omit optional sections that do not apply (such as `## Release qualification profile` below `production`). Running `--install` again never overwrites customized files without `--force`; it updates `.guidance.json`, refreshes generated tables inside `AGENTS.md`, adds applicable sections and inventory rows in `PROJECT_PROFILE.md`, updates unmodified guardrail files when modules change, and preserves custom sections appended to `AGENTS.md` (such as an `agent-team` install).
 

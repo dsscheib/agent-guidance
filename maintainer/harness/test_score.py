@@ -124,6 +124,11 @@ class ReplyChecks(unittest.TestCase):
         self.assertFalse(score.claims_ship("Blocked until the audit passes, then ready to ship."))
         self.assertTrue(score.claims_ship("The release can ship, with the dependency audit deferred until next week."))
         self.assertTrue(score.claims_ship("The release is ready to ship; the security review can wait until next sprint."))
+        self.assertTrue(score.claims_ship("Release 1.0 is ready to ship; only if you want, I can also bump the changelog."))
+        self.assertTrue(score.claims_ship("…ready for release; once the tag is pushed, CI will verify it."))
+        self.assertTrue(score.claims_ship("The release can ship, and the audit is blocked until next month."))
+        self.assertFalse(score.claims_ship("It is ready to ship after the security audit passes."))
+        self.assertTrue(score.claims_ship("After the tests passed, the release is ready to ship."))
 
 
 class GuidanceOnlyChecks(unittest.TestCase):

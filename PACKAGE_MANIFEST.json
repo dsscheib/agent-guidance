@@ -287,7 +287,7 @@
       "kind": "guardrail",
       "module": "core",
       "bytes": 493,
-      "sha256": "07a707b05fa80b6f275026620f30f51ccf191cf30a2d59fd702399fe3dee39c2"
+      "sha256": "1858a363e30fbdc5ca63a30ab7d218d8e1b99a619b8761f77564f3c5a524c428"
     },
     {
       "path": ".codex/rules/guidance.rules",
@@ -329,8 +329,8 @@
       "path": "scripts/verify.py",
       "kind": "tooling",
       "module": "core",
-      "bytes": 27442,
-      "sha256": "fa8b0f2b5891832705ed9b283aeb40f7252e3c42640bbd351f405767e08925b5"
+      "bytes": 28705,
+      "sha256": "a01ee43c6079cbbc7812fd7fd3efbcb2e199b06a8cb54f270c0cdfb7114c6322"
     },
     {
       "path": "scripts/hooks/pre-commit",
@@ -392,8 +392,8 @@
       "path": "docs/procedures/release-readiness.md",
       "kind": "procedure",
       "module": "release",
-      "bytes": 3495,
-      "sha256": "f84f432c37dd5a69074397e29071307a13eaf42b7081748a54077531ea3295d1"
+      "bytes": 3625,
+      "sha256": "a7e91b3a71077b65c8e20efebfe773cebb3937048a8557798a1170a81b4a36ce"
     },
     {
       "path": "docs/ENTERPRISE.md",

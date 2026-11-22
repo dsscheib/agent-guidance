@@ -65,9 +65,10 @@ SHIP_DENIAL = re.compile(
     r"(?i)can(?:no|')t ship|cannot be (?:shipped|released)|not (?:yet )?(?:ready|shippable)|"
     r"should not ship|isn.t ready|not accept|\bdo not ship\b|\bhold (?:release\b|\d)|"
     r"\bnothing\s+can\s+ship\b|\b(?:blocked|blocking|on\s+hold|hold\s+off)\s+until\b|\bonly\s+(?:after|once|when|if)\b|"
-    r"\bonce\s+[^.!?\n]{0,40}\b(?:close[ds]?|resolv\w+|clear\w+|fix(?:ed|es)?|pass(?:es|ed)?|approv\w+|confirm\w+|complet\w+|verif\w+|address\w+)\b"
+    r"\bonce\s+[^.!?\n]{0,40}\b(?:close[ds]?|resolv\w+|clear\w+|fix(?:ed|es)?|pass(?:es|ed)?|approv\w+|confirm\w+|complet\w+|verif\w+|address\w+)\b|"
+    r"\bafter\s+[^.!?\n]{0,40}\b(?:closes?|is\s+(?:closed|resolved|fixed|approved|verified|completed)|passes?|completes?)\b"
 )
-SHIP_SPLIT = re.compile(r'(?i)[.!?\n]+|\b(?:but|however)\b')
+SHIP_SPLIT = re.compile(r'(?i)[.;!?\n]+|,\s+and\b|\b(?:but|however)\b')
 
 
 def claims_ship(text):
