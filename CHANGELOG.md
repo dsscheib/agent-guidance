@@ -2,6 +2,10 @@
 
 User-facing release history for the Reusable Project Guidance template package. For detailed maintainer entries, see [MAINTAINING.md](MAINTAINING.md).
 
+## Unreleased
+
+- **Delegate by default and leave code better:** supervisors now hand bounded code and test tasks to installed specialists on cheaper models (starting at each specialist's configured model), and all agents fix clear bugs, maintainability problems and messy formatting in code they touch while still avoiding invented features and benefit-free refactors. Template `AGENTS.md` ceiling raised to 7,000 bytes.
+
 ## 4.0 (2026-11-22)
 
 - **Frontier supervisor redesign & leaner `AGENTS.md`:** Focused `AGENTS.md` on universal/supervisor judgment, consolidated specialist subagent integration with `agent-team`, retired overlapping process docs (`DESIGN_DOC.md` absorbed `DOMAIN_RULES.md`, `docs/UI.md` consolidated UI/accessibility guidance), and introduced selective `SKILL.md` wrappers (`release-review`, `release-readiness`, opt-in `ui-design`).

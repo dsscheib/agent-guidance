@@ -18,7 +18,7 @@ DATED = re.compile(r'\b20\d\d-\d\d-\d\d\b')
 NAME = re.compile(r'^[a-z0-9][a-z0-9-]*$')
 HEADING = re.compile(r'^#{1,6} .*$', re.M)
 LINE_LIMITS = {'PROJECT_PROFILE.md': 250, 'docs/OPEN_WORK.md': 150}
-AGENTS_MAX_BYTES = 6800
+AGENTS_MAX_BYTES = 7000
 POINTER_FILES = ('GEMINI.md', '.github/copilot-instructions.md')
 POINTER_MAX_LINES = 10
 
