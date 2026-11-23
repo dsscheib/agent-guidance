@@ -623,6 +623,72 @@ def case_recorded_exclusions_and_walk_skips(tmp):
     expect(ok, 'gitignored or nested .git broken link should be skipped: ' + out)
 
 
+def case_require_placeholders_and_exclusions(tmp):
+    target = tmp / 'require-placeholders'
+    target.mkdir()
+    install(target, '--tier', 'production', '--features', 'ui')
+    profile = target / 'PROJECT_PROFILE.md'
+    adr_template = target / 'docs/decisions/ADR_TEMPLATE.md'
+    orig_adr = adr_template.read_text()
+
+    ok, out = check(target, '--require', 'code')
+    expect(not ok and 'above "## Command inventory"' in out,
+           '--require code must fail with code-stage placeholders: ' + out)
+
+    before, marker, after = profile.read_text().partition('<!-- stage: release -->')
+    filled_before = re.sub(r'\{\{[^}]+\}\}', 'filled', before.replace('{{EXCLUDED_GUIDES_OR_NONE}}', 'none'))
+    profile.write_text(filled_before + marker + after)
+
+    ok, out = check(target, '--require', 'code')
+    expect(ok, '--require code must pass once pre-inventory section is filled: ' + out)
+
+    ok, out = check(target, '--require', 'release')
+    expect(not ok and 'PROJECT_PROFILE.md' in out and 'DESIGN_DOC.md' in out,
+           '--require release must fail and name offending files when release placeholders remain: ' + out)
+
+    project_docs = (
+        'PROJECT_PROFILE.md',
+        'DESIGN_DOC.md',
+        'docs/RUNBOOKS.md',
+        'docs/OPEN_WORK.md',
+        'docs/RELEASE_NOTES.md',
+        'docs/VERIFICATION_MATRIX.md',
+        'docs/PRODUCTION_READINESS.md',
+        'docs/UI.md',
+    )
+    for rel_path in project_docs:
+        p = target / rel_path
+        p.write_text(re.sub(r'\{\{[^}]+\}\}', 'filled', p.read_text()))
+
+    expect(adr_template.read_text() == orig_adr and '{{' in orig_adr, 'ADR_TEMPLATE.md must stay blank')
+    ok, out = check(target, '--require', 'release')
+    expect(ok and 'Placeholders: 0 before implementation, 0 before release.' in out,
+           '--require release must pass with blank ADR_TEMPLATE.md: ' + out)
+
+    ui_doc = target / 'docs/UI.md'
+    ui_doc.write_text(ui_doc.read_text() + '\nPending: {{PLACEHOLDER}}\n')
+    ok, out = check(target, '--require', 'release')
+    expect(not ok and 'docs/UI.md' in out,
+           '--require release must fail and name docs/UI.md when it has a placeholder: ' + out)
+
+    profile.write_text(profile.read_text().replace('| none |', '| `docs/UI.md` |'))
+    ok, out = check(target, '--require', 'release')
+    expect(ok and 'Placeholders: 0 before implementation, 0 before release.' in out,
+           '--require release must pass when docs/UI.md is listed in Excluded guidance: ' + out)
+
+    profile_text = profile.read_text().replace('| `docs/UI.md` |', '| `docs/UI.md`, `PROJECT_PROFILE.md` |')
+    b2, m2, a2 = profile_text.partition('<!-- stage: release -->')
+    profile.write_text(b2.rstrip() + '\n{{TEST_PH}}\n' + m2 + a2)
+    ok, out = check(target, '--require', 'code')
+    expect(not ok and 'above "## Command inventory"' in out,
+           'PROJECT_PROFILE.md must not exempt itself via Excluded guidance for --require code: ' + out)
+
+    profile.write_text(b2 + m2 + a2.rstrip() + '\n{{TEST_REL}}\n')
+    ok, out = check(target, '--require', 'release')
+    expect(not ok and 'PROJECT_PROFILE.md' in out,
+           'PROJECT_PROFILE.md must not exempt itself via Excluded guidance for --require release: ' + out)
+
+
 def case_tools_and_default_and_broken(tmp):
     empty = tmp / 'empty'
     empty.mkdir()
@@ -1331,6 +1397,7 @@ def main():
             case_guardrails,
             case_exclusions_deps_rename_docs_timeouts,
             case_recorded_exclusions_and_walk_skips,
+            case_require_placeholders_and_exclusions,
             case_tools_and_default_and_broken,
             case_agent_team_interop,
             case_v4_upgrade,

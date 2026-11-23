@@ -329,8 +329,8 @@
       "path": "scripts/verify.py",
       "kind": "tooling",
       "module": "core",
-      "bytes": 38384,
-      "sha256": "16baf2cf3aadacae60f418f648ba35d5da78518039cd2b4955445cf824b15660"
+      "bytes": 38693,
+      "sha256": "090abe6e2469d9ff2def646ecbb1683a474dcef06566dad5ead4157c00f48e2e"
     },
     {
       "path": "scripts/hooks/pre-commit",

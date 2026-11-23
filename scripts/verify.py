@@ -7,6 +7,7 @@ import argparse, ast, json, os, re, shlex, signal, subprocess, sys, time
 root = Path(__file__).resolve().parent.parent
 guidance_path = root / '.guidance.json'
 STAGE_MARKER = '<!-- stage: release -->'
+COPY_TEMPLATES = {'docs/decisions/ADR_TEMPLATE.md'}
 SKIP_DIRS = {'.git', '__pycache__', 'node_modules', 'target'}
 PLACEHOLDER = re.compile(r'\{\{[^}]+\}\}')
 LINK = re.compile(r'\]\(([^)\s]+)(?:\s+"[^"]*")?\)')
@@ -672,11 +673,13 @@ def verify(phase, timeout, receipt, record):
     sys.exit({'complete': 0, 'failed': 1}.get(state, 2))
 
 
-def placeholders(record):
+def placeholders(record, exclusions=()):
     installed_md = {e['path'] if isinstance(e, dict) else e for e in record.get('files', [])
                     if (e['path'] if isinstance(e, dict) else e).endswith('.md')}
     counts = {}
     for rel_path in sorted(installed_md | ({'PROJECT_PROFILE.md'} if (root / 'PROJECT_PROFILE.md').is_file() else set())):
+        if rel_path in COPY_TEMPLATES or (rel_path != 'PROJECT_PROFILE.md' and excluded(rel_path, exclusions)):
+            continue
         path = root / rel_path
         if not path.is_file():
             continue
@@ -760,13 +763,14 @@ def main():
     if linked_elsewhere:
         notes.append(f'{linked_elsewhere} links point to uninstalled optional modules.')
 
-    counts = placeholders(record)
+    counts = placeholders(record, exclusions)
     code_total = sum(c for c, _ in counts.values())
     release_total = sum(r for _, r in counts.values())
     if args.require == 'code' and code_total:
         errors.append(f'{code_total} placeholders remain above "## Command inventory" in PROJECT_PROFILE.md')
     if args.require == 'release' and code_total + release_total:
-        errors.append(f'{code_total + release_total} placeholders remain; fill them or record exclusions before release')
+        listed = ', '.join(f'{p} ({c + r})' for p, (c, r) in sorted(counts.items()))
+        errors.append(f'{code_total + release_total} placeholders remain in {listed}; fill them or record exclusions before release')
 
     if errors:
         print('\n'.join(errors))
