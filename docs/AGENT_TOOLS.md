@@ -19,7 +19,7 @@ Never put a unique rule only in a tool adapter.
 | Command guardrails | `.codex/rules/*.rules` (`prefix_rule`) when trusted | User-level settings only (app preset or `~/.gemini/antigravity-cli/settings.json`) | `permissions` in `.claude/settings.json` | `preToolUse` in `.github/hooks/*.json` when trusted | Optional `scripts/hooks/pre-commit` |
 
 ## Rules for maintaining adapters
-- **Keep AGENTS.md lean.** Template `AGENTS.md` ceiling is 6,800 bytes (installed tiers run ~4.9–6.3 KB). Move detailed playbooks into routed files or on-demand procedures.
+- **Keep AGENTS.md lean.** Template `AGENTS.md` ceiling is 7,000 bytes (installed tiers run ~5.2–6.5 KB). Move detailed playbooks into routed files or on-demand procedures.
 - **Don't add a second always-on file.** Never duplicate `AGENTS.md` in `GEMINI.md` or `.github/copilot-instructions.md` (`scripts/verify.py` fails if either exceeds a 10-line pointer to `AGENTS.md`).
 - **Generate selective skill wrappers only for heavy procedures.** Only packaged procedures (`release-review`, `release-readiness`, `ui-design`) generate `SKILL.md` wrappers; repo-only procedures like `upgrade-guidance.md` do not. Edit `docs/procedures/<name>.md` and run `python3 manage.py --sync [DIR]`. Wrappers in `.agents/skills/` and `.claude/skills/` are byte-identical so Copilot CLI never sees divergent copies.
 - **Install only adopted tools.** `manage.py --install DIR --tools claude,codex` records `installed.tools` in `.guidance.json`. `scripts/verify.py`, `--sync DIR`, and `--plan-upgrade` ignore unconfigured tools and only enforce the `CLAUDE.md` shim rule when Claude Code is active.
